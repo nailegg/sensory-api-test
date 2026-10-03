@@ -28,6 +28,7 @@ app/
     models.py             # Synsory 공통 모델 (Document, Meeting …). 여기서만 정의
   services/<service>/
     router.py             # /<provider>/<service>/... 시나리오 단위 엔드포인트. 얇은 층, 옮기지 않음
+    picker.py             # (google_drive만) Google Picker 테스트 HTML 페이지 GET /google/picker. 옮기지 않음
     usecases.py           # 여러 client를 엮는 흐름 (FastAPI 의존성 없음). 옮겨지는 파일
     client.py             # 이 서비스의 외부 API 호출만. 옮겨지는 파일
     mapper.py             # API 응답 dict → core/models 순수 변환. 옮겨지는 파일

@@ -93,3 +93,43 @@ async def test_close_submissions_continues_after_failure():
     assert results[0].error is None and [d["id"] for d in results[0].downgraded] == ["p-s1"]
     assert results[1].error and "notFound" in results[1].error and results[1].downgraded == []
     assert results[2].error is None
+
+
+class FakeDocs:
+    def __init__(self):
+        self.updates: list[tuple[str, list[dict]]] = []
+
+    async def batch_update(self, document_id, requests, required_revision_id=None):
+        self.updates.append((document_id, requests))
+        return {"replies": [{"replaceAllText": {"occurrencesChanged": 1}} for _ in requests]}
+
+
+@pytest.mark.asyncio
+async def test_create_group_documents_from_google_doc_template_copies_then_replaces_then_shares():
+    drive, docs = FakeDrive(), FakeDocs()
+    drive.copied = []
+
+    async def copy_file(file_id, name, parent_folder_id=None):
+        drive.copied.append((file_id, name, parent_folder_id))
+        return {"id": f"copy-{len(drive.copied)}", "name": name, "mimeType": "application/vnd.google-apps.document", "parents": [parent_folder_id]}
+
+    drive.copy_file = copy_file
+    results = await usecases.create_group_documents(
+        docs, drive, "folder-1", "과제1", "{{activity_name}} - {{team_name}}", None,
+        [GroupSpec("A조", ["a1@example.com"])], due="2026-10-10", template_document_id="picked-doc",
+    )
+    assert drive.copied == [("picked-doc", "과제1 - A조", "folder-1")]  # 원본은 건드리지 않는다
+    assert drive.created == []  # Markdown 경로를 타지 않는다
+    doc_id, reqs = docs.updates[0]
+    assert doc_id == "copy-1"
+    assert reqs[0] == {"replaceAllText": {"containsText": {"text": "{{team_name}}", "matchCase": True}, "replaceText": "A조"}}
+    assert results[0].replaced == {"team_name": 1, "activity_name": 1, "due": 1}
+    assert drive.shared == [("copy-1", "a1@example.com", "writer")]
+
+
+@pytest.mark.asyncio
+async def test_create_group_documents_requires_exactly_one_template():
+    with pytest.raises(ValueError):
+        await usecases.create_group_documents(None, FakeDrive(), "f", "x", "{{team_name}}", None, [GroupSpec("A조")])
+    with pytest.raises(ValueError):
+        await usecases.create_group_documents(None, FakeDrive(), "f", "x", "{{team_name}}", "# md", [GroupSpec("A조")], template_document_id="d")

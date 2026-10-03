@@ -1,0 +1,33 @@
+{
+  "scenario": "유즈케이스 2: 교수자가 Drive 웹에서 만든 Google Doc ID를 Picker 없이 template_document_id로",
+  "captured_at": "2026-10-04",
+  "note": "새 경로(files.copy → Docs replaceAllText → 공유). Picker 전이라 그룹마다 files.copy 404 notFound. Picker로 고른 뒤의 성공 실측은 보류",
+  "request": {
+    "method": "POST",
+    "url": "/google/docs/create-group-documents",
+    "body": {
+      "folder_id": "1yGw5of_uiLGrJvFQht9kAsyRvmBjB2ZC",
+      "activity_name": "Picker 실측",
+      "template_document_id": "1CKTSlJvRoPYeiNoKz8Oqiyf_33fhsTwZqQJ_RmAnyYI",
+      "groups": [
+        {
+          "team_name": "A조",
+          "member_emails": [
+            "<EMAIL>"
+          ]
+        }
+      ],
+      "due": "2026-10-10"
+    }
+  },
+  "response_status": 200,
+  "response": [
+    {
+      "team_name": "A조",
+      "document": null,
+      "replaced": {},
+      "shares": [],
+      "error": "Drive 404 notFound: File not found: 1CKTSlJvRoPYeiNoKz8Oqiyf_33fhsTwZqQJ_RmAnyYI."
+    }
+  ]
+}

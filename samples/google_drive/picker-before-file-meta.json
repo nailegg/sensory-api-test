@@ -1,0 +1,52 @@
+{
+  "scenario": "Picker 전: 교수자가 Drive 웹에서 직접 만든 Slides·Sheets·Docs를 files.get",
+  "captured_at": "2026-10-04",
+  "note": "drive.file 경계. 앱이 만들지 않은 파일은 세 종류 모두 404 notFound(존재하지만 안 보임). 같은 ID를 Picker로 고른 뒤 결과는 picker-after-file-meta.json",
+  "calls": [
+    {
+      "request": {
+        "method": "GET",
+        "url": "/google/drive/file-meta/1kxoh2K_uJIT-wXpjAFKPGrm-9loC0glIlalDxiAAxZE",
+        "body": null
+      },
+      "response_status": 404,
+      "response": {
+        "detail": {
+          "reason": "notFound",
+          "message": "File not found: 1kxoh2K_uJIT-wXpjAFKPGrm-9loC0glIlalDxiAAxZE.",
+          "rate_limit": false
+        }
+      }
+    },
+    {
+      "request": {
+        "method": "GET",
+        "url": "/google/drive/file-meta/1z3tmB7VEgmyUXeZB70PbTkB-kejpO68Ldg59ahlFHEw",
+        "body": null
+      },
+      "response_status": 404,
+      "response": {
+        "detail": {
+          "reason": "notFound",
+          "message": "File not found: 1z3tmB7VEgmyUXeZB70PbTkB-kejpO68Ldg59ahlFHEw.",
+          "rate_limit": false
+        }
+      }
+    },
+    {
+      "request": {
+        "method": "GET",
+        "url": "/google/drive/file-meta/1CKTSlJvRoPYeiNoKz8Oqiyf_33fhsTwZqQJ_RmAnyYI",
+        "body": null
+      },
+      "response_status": 404,
+      "response": {
+        "detail": {
+          "reason": "notFound",
+          "message": "File not found: 1CKTSlJvRoPYeiNoKz8Oqiyf_33fhsTwZqQJ_RmAnyYI.",
+          "rate_limit": false
+        }
+      }
+    }
+  ]
+}

@@ -7,8 +7,6 @@
 4. 마감 시 파일로 내보내기 → export_presentation (pptx | pdf | txt | odp)
 """
 
-from dataclasses import dataclass, field
-
 from app.core.models import Document
 from app.services.google_drive.client import MIME_PPTX, MIME_SLIDES, SLIDES_EXPORT_MIME, DriveApiError, DriveClient
 from app.services.google_drive.mapper import document_from_drive_file
@@ -17,9 +15,11 @@ from app.services.google_drive.mapper import document_from_drive_file
 from app.services.google_drive.usecases import (  # noqa: F401
     CloseResult,
     ExportedFile,
+    GroupFileResult,
     GroupSpec,
     ShareResult,
     close_submissions,
+    create_group_files_from_template,
     downgrade_editors,
     export_file,
     group_variables,
@@ -78,13 +78,8 @@ async def replace_tags(slides: SlidesClient, presentation_id: str, variables: di
     }
 
 
-@dataclass
-class GroupPresentationResult:
-    team_name: str
-    document: Document | None
-    replaced: dict[str, int] = field(default_factory=dict)  # 태그별 치환 횟수
-    shares: list[ShareResult] = field(default_factory=list)
-    error: str | None = None
+# 복사 → 치환 → 공유 흐름은 Sheets(·Docs)와 같아 google_drive.usecases.create_group_files_from_template에 있다. 결과 타입도 공통.
+GroupPresentationResult = GroupFileResult
 
 
 async def create_group_presentations(
@@ -102,27 +97,17 @@ async def create_group_presentations(
     """그룹마다 템플릿 프레젠테이션을 폴더 안에 복사하고 태그를 치환한 뒤 그룹원에게 편집 권한을 준다.
     그룹당 Drive files.copy 1 + Slides batchUpdate 1 + 그룹원 수만큼 permissions.create.
 
-    template_presentation_id는 upload_template 결과(또는 앱이 만든 다른 Slides)여야 한다.
-    한 그룹이 실패해도 다음 그룹을 계속 만들고, 결과에 error를 담아 돌려준다.
-    복사는 됐는데 치환이 실패하면 document와 error가 함께 담긴다(파일은 남아 있으니 호출자가 정리하거나 재시도).
+    template_presentation_id는 ① upload_template 결과(앱이 변환 업로드한 Slides) 또는 ② 교수자가 Picker로 고른 Drive의 기존 Slides.
+    둘 다 같은 코드로 동작한다. 원본은 수정하지 않고 복사본만 치환한다. 실패 처리 규칙은 create_group_files_from_template 참고.
     """
-    results: list[GroupPresentationResult] = []
-    for group in groups:
-        variables = group_variables(group.team_name, activity_name, due)
-        title = render_template(title_template, variables)
-        try:
-            document = document_from_drive_file(await drive.copy_file(template_presentation_id, title, folder_id))
-        except DriveApiError as e:
-            results.append(GroupPresentationResult(team_name=group.team_name, document=None, error=str(e)))
-            continue
-        try:
-            replaced = await replace_tags(slides, document.id, variables)
-        except SlidesApiError as e:
-            results.append(GroupPresentationResult(team_name=group.team_name, document=document, error=str(e)))
-            continue
-        shares = await share_file(drive, document.id, group.member_emails, notify=notify, message=share_message)
-        results.append(GroupPresentationResult(team_name=group.team_name, document=document, replaced=replaced, shares=shares))
-    return results
+
+    async def _replace(presentation_id: str, variables: dict[str, str]) -> dict[str, int]:
+        return await replace_tags(slides, presentation_id, variables)
+
+    return await create_group_files_from_template(
+        drive, folder_id, activity_name, title_template, template_presentation_id, groups,
+        replace_tags=_replace, replace_errors=(SlidesApiError,), due=due, notify=notify, share_message=share_message,
+    )
 
 
 # ---------- 유즈케이스 3 ----------

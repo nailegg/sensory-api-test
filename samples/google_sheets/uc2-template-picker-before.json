@@ -1,0 +1,33 @@
+{
+  "scenario": "유즈케이스 2: 교수자가 Drive 웹에서 만든 시트 ID를 Picker 없이 템플릿으로(copy 방식)",
+  "captured_at": "2026-10-04",
+  "note": "그룹마다 Drive files.copy 404 notFound. Picker로 고른 뒤의 성공 실측은 보류(Slides는 uc2-create-group-presentations-picker.json으로 확인)",
+  "request": {
+    "method": "POST",
+    "url": "/google/sheets/create-group-sheets",
+    "body": {
+      "folder_id": "1yGw5of_uiLGrJvFQht9kAsyRvmBjB2ZC",
+      "activity_name": "Picker 실측",
+      "template_spreadsheet_id": "1z3tmB7VEgmyUXeZB70PbTkB-kejpO68Ldg59ahlFHEw",
+      "groups": [
+        {
+          "team_name": "A조",
+          "member_emails": [
+            "<EMAIL>"
+          ]
+        }
+      ],
+      "due": "2026-10-10"
+    }
+  },
+  "response_status": 200,
+  "response": [
+    {
+      "team_name": "A조",
+      "document": null,
+      "replaced": {},
+      "shares": [],
+      "error": "Drive 404 notFound: File not found: 1z3tmB7VEgmyUXeZB70PbTkB-kejpO68Ldg59ahlFHEw."
+    }
+  ]
+}

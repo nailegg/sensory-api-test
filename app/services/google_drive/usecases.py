@@ -7,6 +7,7 @@
 """
 
 import re
+from collections.abc import Awaitable, Callable
 from dataclasses import dataclass, field
 
 from app.core.models import Document
@@ -83,6 +84,68 @@ async def share_file(
             results.append(ShareResult(email=email, ok=True, permission_id=perm.get("id")))
         except DriveApiError as e:
             results.append(ShareResult(email=email, ok=False, error=f"{e.status} {e.reason}: {e.message}"))
+    return results
+
+
+# ---------- 공통: 템플릿 복사 → 태그 치환 → 공유 (Slides·Sheets 유즈케이스 2, Docs는 Google Doc 템플릿일 때) ----------
+
+
+@dataclass
+class GroupFileResult:
+    team_name: str
+    document: Document | None
+    replaced: dict[str, int] = field(default_factory=dict)  # 태그별 치환 횟수. 0이면 템플릿에 그 태그가 없거나 서식이 갈라진 것
+    shares: list[ShareResult] = field(default_factory=list)
+    error: str | None = None
+
+
+ReplaceTags = Callable[[str, dict[str, str]], Awaitable[dict[str, int]]]
+"""(복사본 파일 ID, 변수) → 태그별 치환 횟수. 서비스별 치환 요청(Slides replaceAllText, Sheets findReplace, Docs replaceAllText)은
+각 서비스의 usecases.replace_tags가 맡고, 여기서는 호출만 한다."""
+
+
+async def create_group_files_from_template(
+    drive: DriveClient,
+    folder_id: str,
+    activity_name: str,
+    title_template: str,
+    template_file_id: str,
+    groups: list[GroupSpec],
+    replace_tags: ReplaceTags,
+    replace_errors: tuple[type[Exception], ...] = (Exception,),
+    due: str | None = None,
+    notify: bool = False,
+    share_message: str | None = None,
+) -> list[GroupFileResult]:
+    """그룹마다 템플릿 파일을 폴더 안에 복사(Drive files.copy)하고 태그를 치환한 뒤 그룹원에게 편집 권한을 준다.
+    그룹당 Drive files.copy 1 + 서비스 batchUpdate 1 + 그룹원 수만큼 permissions.create. Slides·Sheets(·Docs)가 같은 흐름이라 여기 둔다.
+
+    template_file_id는 다음 중 하나다. 둘 다 같은 코드로 동작한다(2026-10 실측, docs/google_drive.md 2.1절).
+    ① 앱이 변환 업로드한 파일(upload_template 결과)
+    ② 교수자가 Google Picker로 고른 Drive의 기존 파일(앱이 만들지 않은 파일. drive.file + setAppId 조건)
+    원본 템플릿은 건드리지 않는다. 치환은 복사본에만 한다.
+
+    replace_errors: 치환 단계에서 "실패로 기록하고 다음 그룹으로" 넘길 예외 타입(서비스 API 에러). 그 밖의 예외는 그대로 올라간다.
+    한 그룹이 실패해도 다음 그룹을 계속 만들고, 결과에 error를 담아 돌려준다.
+    복사는 됐는데 치환이 실패하면 document와 error가 함께 담기고 공유는 하지 않는다(복사본은 폴더에 남는다).
+    """
+    results: list[GroupFileResult] = []
+    for group in groups:
+        variables = group_variables(group.team_name, activity_name, due)
+        title = render_template(title_template, variables)
+        try:
+            document = document_from_drive_file(await drive.copy_file(template_file_id, title, folder_id))
+        except DriveApiError as e:
+            # Picker로 고르지 않은(앱이 못 보는) 템플릿이면 여기서 404 notFound (2026-10 실측)
+            results.append(GroupFileResult(team_name=group.team_name, document=None, error=str(e)))
+            continue
+        try:
+            replaced = await replace_tags(document.id, variables)
+        except replace_errors as e:
+            results.append(GroupFileResult(team_name=group.team_name, document=document, error=str(e)))
+            continue
+        shares = await share_file(drive, document.id, group.member_emails, notify=notify, message=share_message)
+        results.append(GroupFileResult(team_name=group.team_name, document=document, replaced=replaced, shares=shares))
     return results
 
 

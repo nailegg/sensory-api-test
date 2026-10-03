@@ -3,11 +3,11 @@
 유즈케이스(docs/google_docs.md 1절, 2026-10-03 확정):
 1. 액티비티 폴더 생성 → google_drive.usecases.create_folder
 2. 템플릿으로 그룹마다 문서 생성 + 그룹원 편집 권한 → create_group_documents
+   템플릿 두 방식: ① Synsory가 보관하는 Markdown(그룹마다 변환 업로드) ② 교수자가 Picker로 고른 Google Doc(files.copy → replaceAllText).
+   ②는 Slides·Sheets와 같은 공통 함수(google_drive.usecases.create_group_files_from_template). 2026-10-04 상현 승인
 3. 마감 시 편집 비활성화 → close_submissions (문서마다 downgrade_editors, 둘 다 google_drive.usecases). 문서 잠금(contentRestrictions) 방식은 교수자도 API 편집이 막혀 쓰지 않기로 함(2026-10-03)
 4. 마감 시 파일로 내보내기 → export_document
 """
-
-from dataclasses import dataclass, field
 
 from app.core.models import Document
 from app.services.google_docs.client import DocsApiError, DocsClient
@@ -20,9 +20,11 @@ from app.services.google_drive.mapper import document_from_drive_file
 from app.services.google_drive.usecases import (  # noqa: F401
     CloseResult,
     ExportedFile,
+    GroupFileResult,
     GroupSpec,
     ShareResult,
     close_submissions,
+    create_group_files_from_template,
     downgrade_editors,
     export_file,
     group_variables,
@@ -32,12 +34,8 @@ from app.services.google_drive.usecases import (  # noqa: F401
 )
 
 
-@dataclass
-class GroupDocumentResult:
-    team_name: str
-    document: Document | None
-    shares: list[ShareResult] = field(default_factory=list)
-    error: str | None = None
+# Markdown 경로(replaced 없음)와 Google Doc 템플릿 경로(replaced 있음) 모두 이 공통 결과 타입을 쓴다.
+GroupDocumentResult = GroupFileResult
 
 
 # ---------- 읽기·생성 배관 ----------
@@ -86,23 +84,58 @@ async def create_document_with_docs_api(
 # ---------- 유즈케이스 2 ----------
 
 
+def replace_tag_requests(variables: dict[str, str]) -> list[dict]:
+    """Docs `replaceAllText` 요청(Slides와 같은 모양). `{{key}}` → 값, matchCase=true. tabId를 주지 않으면 모든 탭에 적용된다(10절)."""
+    return [
+        {"replaceAllText": {"containsText": {"text": f"{{{{{key}}}}}", "matchCase": True}, "replaceText": value}}
+        for key, value in variables.items()
+    ]
+
+
+async def replace_tags(docs: DocsClient, document_id: str, variables: dict[str, str]) -> dict[str, int]:
+    """문서 전체에서 태그를 치환하고 태그별 치환 횟수(occurrencesChanged)를 돌려준다. 0이면 템플릿에 그 태그가 없는 것."""
+    resp = await docs.batch_update(document_id, replace_tag_requests(variables))
+    replies = resp.get("replies", [])
+    return {
+        key: (replies[i].get("replaceAllText", {}).get("occurrencesChanged", 0) if i < len(replies) else 0)
+        for i, key in enumerate(variables)
+    }
+
+
 async def create_group_documents(
     docs: DocsClient,
     drive: DriveClient,
     folder_id: str,
     activity_name: str,
     title_template: str,
-    body_template: str,
+    body_template: str | None,
     groups: list[GroupSpec],
     due: str | None = None,
     method: str = "markdown",
     notify: bool = False,
     share_message: str | None = None,
+    template_document_id: str | None = None,
 ) -> list[GroupDocumentResult]:
-    """그룹마다 템플릿을 채워 폴더 안에 문서를 만들고 그룹원에게 편집 권한을 준다.
+    """그룹마다 템플릿을 채워 폴더 안에 문서를 만들고 그룹원에게 편집 권한을 준다. 템플릿은 둘 중 하나:
+
+    - body_template(Markdown 텍스트): 그룹마다 태그를 텍스트 치환해 Drive 변환 업로드(method=markdown) 또는 Docs API(method=docs_api).
+    - template_document_id(Google Doc ID): 교수자가 **Picker로 고른** 기존 문서(또는 앱이 만든 문서)를 그룹마다 Drive files.copy →
+      Docs batchUpdate replaceAllText → 공유. Slides·Sheets와 같은 공통 함수. 원본은 수정하지 않고 복사본만 치환한다.
+      Picker로 고르지 않은 문서면 그룹마다 files.copy 404 notFound가 error에 담긴다.
 
     한 그룹이 실패해도 다음 그룹을 계속 만들고, 결과에 error를 담아 돌려준다.
     """
+    if (template_document_id is None) == (body_template is None):
+        raise ValueError("body_template(Markdown)과 template_document_id(Google Doc 템플릿) 중 하나만 지정한다")
+    if template_document_id is not None:
+
+        async def _replace(document_id: str, variables: dict[str, str]) -> dict[str, int]:
+            return await replace_tags(docs, document_id, variables)
+
+        return await create_group_files_from_template(
+            drive, folder_id, activity_name, title_template, template_document_id, groups,
+            replace_tags=_replace, replace_errors=(DocsApiError,), due=due, notify=notify, share_message=share_message,
+        )
     results: list[GroupDocumentResult] = []
     for group in groups:
         variables = group_variables(group.team_name, activity_name, due)

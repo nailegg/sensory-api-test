@@ -13,6 +13,11 @@ class Settings(BaseSettings):
 
     google_client_id: str = ""
     google_client_secret: str = ""
+    # Google Picker (교수자가 Drive에 이미 가진 파일을 템플릿으로 고르는 테스트 페이지, GET /google/picker). docs/google_drive.md 2.1절
+    # API 키: 콘솔 > 사용자 인증 정보 > API 키. Picker API 사용 설정 필요. 서버는 쓰지 않고 브라우저 JS(setDeveloperKey)에만 넘긴다.
+    google_picker_api_key: str = ""
+    # setAppId에 넣는 Cloud 프로젝트 "번호"(ID가 아님). 비우면 클라이언트 ID 앞의 숫자(같은 프로젝트 번호)를 쓴다.
+    google_project_number: str = ""
 
     zoom_client_id: str = ""
     zoom_client_secret: str = ""
@@ -21,6 +26,14 @@ class Settings(BaseSettings):
 
     def redirect_uri(self, provider: str) -> str:
         return f"{self.app_base_url}/auth/{provider}/callback"
+
+    def picker_app_id(self) -> str:
+        """Picker setAppId 값 = Cloud 프로젝트 번호. 웹 클라이언트 ID는 `<프로젝트 번호>-xxxx.apps.googleusercontent.com` 꼴이라
+        GOOGLE_PROJECT_NUMBER가 비어 있으면 거기서 꺼낸다(2026-10-04 실측 클라이언트 ID로 확인). 다르면 .env에 명시한다."""
+        if self.google_project_number:
+            return self.google_project_number
+        head = self.google_client_id.split("-", 1)[0]
+        return head if head.isdigit() else ""
 
 
 @lru_cache

@@ -1,0 +1,228 @@
+{
+  "scenario": "Picker로 고른 뒤: 같은 Slides ID files.get → 200, files.list에도 나타남. 공유받은(소유자가 다른) Doc도 Picker로 고르면 접근이 생긴다",
+  "captured_at": "2026-10-04",
+  "note": "조건: API 키 + setAppId(프로젝트 번호) + drive.file 토큰 + Google에 로그인된 브라우저. 교수자 소유 Slides(내 드라이브 목록에서 클릭해 선택)는 200. '<TEMPLATE_TITLE>'(소유자가 다른 사람, 공유받은 문서)도 목록에서 골라 접근이 생겼고 parent_folder_id는 null(앱이 그 폴더를 못 보므로). 주의(1회 관찰): DocsView.setFileIds로 ID만 보여 주는 보기에서 골랐을 때는 페이지의 서버 확인이 404였고, 내 드라이브 목록에서 다시 골랐을 때 200이 됐다. 원인 미확인(docs/google_drive.md 12절). Sheets·Docs 템플릿은 상현이 이번 실측에서 고르지 않아 404 그대로(보류)",
+  "calls": [
+    {
+      "request": {
+        "method": "GET",
+        "url": "/google/drive/file-meta/1kxoh2K_uJIT-wXpjAFKPGrm-9loC0glIlalDxiAAxZE",
+        "body": null
+      },
+      "response_status": 200,
+      "response": {
+        "id": "1kxoh2K_uJIT-wXpjAFKPGrm-9loC0glIlalDxiAAxZE",
+        "provider": "google",
+        "kind": "slides",
+        "title": "<TEMPLATE_TITLE>",
+        "url": "https://docs.google.com/presentation/d/1kxoh2K_uJIT-wXpjAFKPGrm-9loC0glIlalDxiAAxZE/edit?usp=drivesdk",
+        "mime_type": "application/vnd.google-apps.presentation",
+        "owner": "<NAME>",
+        "created_at": "2026-09-30T10:38:46.666000Z",
+        "modified_at": "2026-10-01T14:26:50.140000Z",
+        "parent_folder_id": "0AAy5z0zisDdxUk9PVA",
+        "trashed": false,
+        "locked": false,
+        "text": "<본문 생략: 교수자 개인 덱 내용>"
+      }
+    },
+    {
+      "request": {
+        "method": "GET",
+        "url": "/google/drive/file-meta/1Q5QzrVHJJtmiKA2X6FwvuNrRt0P0zq3N4MsowIRMNB0",
+        "body": null
+      },
+      "response_status": 200,
+      "response": {
+        "id": "1Q5QzrVHJJtmiKA2X6FwvuNrRt0P0zq3N4MsowIRMNB0",
+        "provider": "google",
+        "kind": "doc",
+        "title": "<TEMPLATE_TITLE>",
+        "url": "https://docs.google.com/document/d/1Q5QzrVHJJtmiKA2X6FwvuNrRt0P0zq3N4MsowIRMNB0/edit?usp=drivesdk",
+        "mime_type": "application/vnd.google-apps.document",
+        "owner": "<NAME>",
+        "created_at": "2025-10-30T14:01:51.546000Z",
+        "modified_at": "2025-12-03T04:22:09.425000Z",
+        "parent_folder_id": null,
+        "trashed": false,
+        "locked": false,
+        "text": "<본문 생략: 교수자 개인 덱 내용>"
+      }
+    },
+    {
+      "request": {
+        "method": "GET",
+        "url": "/google/drive/list-app-files",
+        "body": null
+      },
+      "response_status": 200,
+      "response": [
+        {
+          "id": "1yGw5of_uiLGrJvFQht9kAsyRvmBjB2ZC",
+          "provider": "google",
+          "kind": "folder",
+          "title": "Picker 실측 - 템플릿 복사",
+          "url": "https://drive.google.com/drive/folders/1yGw5of_uiLGrJvFQht9kAsyRvmBjB2ZC",
+          "mime_type": "application/vnd.google-apps.folder",
+          "owner": "<NAME>",
+          "created_at": "2026-10-03T17:21:05.306000Z",
+          "modified_at": "2026-10-03T17:21:05.306000Z",
+          "parent_folder_id": "0AAy5z0zisDdxUk9PVA",
+          "trashed": false,
+          "locked": false,
+          "text": "<본문 생략: 교수자 개인 덱 내용>"
+        },
+        {
+          "id": "1zHinbTttu6Ay79gpokok5a4rPLHf9Q0JC0MQiF-dF-I",
+          "provider": "google",
+          "kind": "slides",
+          "title": "빈 발표",
+          "url": "https://docs.google.com/presentation/d/1zHinbTttu6Ay79gpokok5a4rPLHf9Q0JC0MQiF-dF-I/edit?usp=drivesdk",
+          "mime_type": "application/vnd.google-apps.presentation",
+          "owner": "<NAME>",
+          "created_at": "2026-10-03T16:53:10.217000Z",
+          "modified_at": "2026-10-03T16:53:10.217000Z",
+          "parent_folder_id": "1TPj4frzP4IrGuf6f2MHQOGKCxBryNcNZ",
+          "trashed": false,
+          "locked": false,
+          "text": "<본문 생략: 교수자 개인 덱 내용>"
+        },
+        {
+          "id": "13ztoGYzfAN6amtcO87xOBpx5IMrKmrT4OC899fXt_i4",
+          "provider": "google",
+          "kind": "slides",
+          "title": "발표 1차 - A조",
+          "url": "https://docs.google.com/presentation/d/13ztoGYzfAN6amtcO87xOBpx5IMrKmrT4OC899fXt_i4/edit?usp=drivesdk",
+          "mime_type": "application/vnd.google-apps.presentation",
+          "owner": "<NAME>",
+          "created_at": "2026-10-03T16:51:03.402000Z",
+          "modified_at": "2026-10-03T16:52:03.715000Z",
+          "parent_folder_id": "1TPj4frzP4IrGuf6f2MHQOGKCxBryNcNZ",
+          "trashed": false,
+          "locked": false,
+          "text": "<본문 생략: 교수자 개인 덱 내용>"
+        },
+        {
+          "id": "1POkri4hG3KF80KZD44QxIPXRdHwxkCN-VDlyf0-JjJs",
+          "provider": "google",
+          "kind": "slides",
+          "title": "발표 1차 - 정보통신공학과 융합캡스톤디자인 최우수 팀 이름이 아주 긴 B조",
+          "url": "https://docs.google.com/presentation/d/1POkri4hG3KF80KZD44QxIPXRdHwxkCN-VDlyf0-JjJs/edit?usp=drivesdk",
+          "mime_type": "application/vnd.google-apps.presentation",
+          "owner": "<NAME>",
+          "created_at": "2026-10-03T16:51:11.211000Z",
+          "modified_at": "2026-10-03T16:51:14.251000Z",
+          "parent_folder_id": "1TPj4frzP4IrGuf6f2MHQOGKCxBryNcNZ",
+          "trashed": false,
+          "locked": false,
+          "text": "<본문 생략: 교수자 개인 덱 내용>"
+        },
+        {
+          "id": "1hcHgiqYfp3HOp7bSijaYZhECpo5Vkg2JpzTnKpHrhlE",
+          "provider": "google",
+          "kind": "slides",
+          "title": "발표 1차 - Z조",
+          "url": "https://docs.google.com/presentation/d/1hcHgiqYfp3HOp7bSijaYZhECpo5Vkg2JpzTnKpHrhlE/edit?usp=drivesdk",
+          "mime_type": "application/vnd.google-apps.presentation",
+          "owner": "<NAME>",
+          "created_at": "2026-10-03T16:41:47.554000Z",
+          "modified_at": "2026-10-03T16:41:47.554000Z",
+          "parent_folder_id": "1TPj4frzP4IrGuf6f2MHQOGKCxBryNcNZ",
+          "trashed": false,
+          "locked": false,
+          "text": "<본문 생략: 교수자 개인 덱 내용>"
+        },
+        {
+          "id": "1fGVNVDJMVCWen2btkinxsPnWr3mEfv000OljeKdBDkw",
+          "provider": "google",
+          "kind": "slides",
+          "title": "[템플릿] 발표 1차",
+          "url": "https://docs.google.com/presentation/d/1fGVNVDJMVCWen2btkinxsPnWr3mEfv000OljeKdBDkw/edit?usp=drivesdk",
+          "mime_type": "application/vnd.google-apps.presentation",
+          "owner": "<NAME>",
+          "created_at": "2026-10-03T16:41:37.324000Z",
+          "modified_at": "2026-10-03T16:41:40.032000Z",
+          "parent_folder_id": "1TPj4frzP4IrGuf6f2MHQOGKCxBryNcNZ",
+          "trashed": false,
+          "locked": false,
+          "text": "<본문 생략: 교수자 개인 덱 내용>"
+        },
+        {
+          "id": "1TPj4frzP4IrGuf6f2MHQOGKCxBryNcNZ",
+          "provider": "google",
+          "kind": "folder",
+          "title": "Slides 실측 - 발표 1차",
+          "url": "https://drive.google.com/drive/folders/1TPj4frzP4IrGuf6f2MHQOGKCxBryNcNZ",
+          "mime_type": "application/vnd.google-apps.folder",
+          "owner": "<NAME>",
+          "created_at": "2026-10-03T16:41:35.462000Z",
+          "modified_at": "2026-10-03T16:41:35.462000Z",
+          "parent_folder_id": "0AAy5z0zisDdxUk9PVA",
+          "trashed": false,
+          "locked": false,
+          "text": "<본문 생략: 교수자 개인 덱 내용>"
+        },
+        {
+          "id": "1kxoh2K_uJIT-wXpjAFKPGrm-9loC0glIlalDxiAAxZE",
+          "provider": "google",
+          "kind": "slides",
+          "title": "<TEMPLATE_TITLE>",
+          "url": "https://docs.google.com/presentation/d/1kxoh2K_uJIT-wXpjAFKPGrm-9loC0glIlalDxiAAxZE/edit?usp=drivesdk",
+          "mime_type": "application/vnd.google-apps.presentation",
+          "owner": "<NAME>",
+          "created_at": "2026-09-30T10:38:46.666000Z",
+          "modified_at": "2026-10-01T14:26:50.140000Z",
+          "parent_folder_id": "0AAy5z0zisDdxUk9PVA",
+          "trashed": false,
+          "locked": false,
+          "text": "<본문 생략: 교수자 개인 덱 내용>"
+        },
+        {
+          "id": "1Q5QzrVHJJtmiKA2X6FwvuNrRt0P0zq3N4MsowIRMNB0",
+          "provider": "google",
+          "kind": "doc",
+          "title": "<TEMPLATE_TITLE>",
+          "url": "https://docs.google.com/document/d/1Q5QzrVHJJtmiKA2X6FwvuNrRt0P0zq3N4MsowIRMNB0/edit?usp=drivesdk",
+          "mime_type": "application/vnd.google-apps.document",
+          "owner": "<NAME>",
+          "created_at": "2025-10-30T14:01:51.546000Z",
+          "modified_at": "2025-12-03T04:22:09.425000Z",
+          "parent_folder_id": null,
+          "trashed": false,
+          "locked": false,
+          "text": "<본문 생략: 교수자 개인 덱 내용>"
+        }
+      ]
+    },
+    {
+      "request": {
+        "method": "GET",
+        "url": "/google/drive/file-meta/1z3tmB7VEgmyUXeZB70PbTkB-kejpO68Ldg59ahlFHEw",
+        "body": null
+      },
+      "response_status": 404,
+      "response": {
+        "detail": {
+          "reason": "notFound",
+          "message": "File not found: 1z3tmB7VEgmyUXeZB70PbTkB-kejpO68Ldg59ahlFHEw.",
+          "rate_limit": false
+        }
+      }
+    },
+    {
+      "request": {
+        "method": "GET",
+        "url": "/google/drive/file-meta/1CKTSlJvRoPYeiNoKz8Oqiyf_33fhsTwZqQJ_RmAnyYI",
+        "body": null
+      },
+      "response_status": 404,
+      "response": {
+        "detail": {
+          "reason": "notFound",
+          "message": "File not found: 1CKTSlJvRoPYeiNoKz8Oqiyf_33fhsTwZqQJ_RmAnyYI.",
+          "rate_limit": false
+        }
+      }
+    }
+  ]
+}

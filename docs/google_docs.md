@@ -22,7 +22,7 @@ Drive API 쪽 내용(파일 메타데이터, 폴더, 내보내기, 변경 감지
 **유즈케이스별 메모**
 
 - 1: 강의 폴더가 교수자가 Drive 웹에서 직접 만든 폴더여도 ID만 알면 그 안에 만들 수 있다(`docs/google_drive.md` 10절 실측). 폴더 ID 검증은 불가능하므로 잘못된 ID면 404.
-- 2: 템플릿은 **Synsory가 보관하는 Markdown 텍스트**와 제목 포맷 문자열로 가정한다(플레이스홀더 `{{team_name}}`, `{{activity_name}}`, `{{due}}`). 교수자가 Drive에 이미 가진 Google Doc을 템플릿으로 쓰려면 앱이 그 문서를 읽을 수 있어야 하므로 Picker가 필요하다. 이 경우는 보류. 생성 방식은 Markdown 변환(A)을 기본으로 하고, Docs `create`+`batchUpdate`(B)를 비교용으로 함께 구현한다.
+- 2: 템플릿은 **Synsory가 보관하는 Markdown 텍스트**와 제목 포맷 문자열로 가정한다(플레이스홀더 `{{team_name}}`, `{{activity_name}}`, `{{due}}`). 교수자가 Drive에 이미 가진 Google Doc을 템플릿으로 쓰는 경로는 **Google Picker**로 가능해졌다(`docs/google_drive.md` 2.1절). **2026-10-04 상현 승인으로 경로 추가**: `create_group_documents(template_document_id=…)`가 Picker로 고른 문서를 그룹마다 Drive `files.copy` → Docs `batchUpdate`(`replaceAllText`, `matchCase`) → 공유한다(공통 함수 `google_drive.usecases.create_group_files_from_template`, Slides·Sheets와 같은 흐름. Docs 쪽은 `replace_tags`만). `body_template`(Markdown)과 `template_document_id` 중 하나만 준다. 원본은 수정하지 않고 복사본만 치환한다. 실측: Picker 전 404 확인(`uc2-template-picker-before.json`), Picker 후 성공은 보류(Slides로 확인됨). 기존 Markdown 경로는 그대로다. 생성 방식은 Markdown 변환(A)을 기본으로 하고, Docs `create`+`batchUpdate`(B)를 비교용으로 함께 구현한다.
 - 2: 공유는 그룹원 이메일이 Google 계정이어야 한다(실측: 아니면 400 `invalidSharingRequest`, 알림 메일을 켜야 초대 가능). 같은 이메일 재공유는 200으로 멱등. 공유 알림 메일은 기본 끔(`sendNotificationEmail=false`)이고 알림 없이도 URL로 바로 열린다. 7절 실측 표.
 - 3: **권한 낮추기 방식으로 확정(2026-10-03 상현).** 교수자(owner)는 마감 뒤에도 웹·API 모두 편집 가능, 학생은 보기·댓글만. 조교 등은 `keep_emails`로 제외. 검토했다가 뺀 방식: ① 문서 잠금(`contentRestrictions.readOnly`)은 동작하지만 교수자도 API 편집이 403이라 제외. ② `permissions.create`의 `expirationTime`은 개인 계정에서 403 `cannotSetExpiration`으로 불가. "비활성화 = 읽기·댓글은 유지"다. Google에 예약 기능이 없으므로 due 시각에 호출하는 스케줄러는 Synsory 서비스 쪽 책임이고 여기서는 `close_submissions`만 제공한다(10절 11항).
 - 4: Turnitin API 연동은 이 레포 범위 밖이다. 여기서는 내보낸 바이트와 MIME, 파일명을 돌려주는 데까지 한다. 3번 잠금 뒤에 내보내야 제출 시점 내용이 고정된다.
@@ -175,6 +175,13 @@ Base URL: `https://docs.googleapis.com/v1`
 | 형식이 틀린 이메일 | 400 `invalid` | `uc2-share-errors.json` |
 | `expirationTime` 붙여 공유 (개인 계정) | 403 `cannotSetExpiration` | `uc3-share-with-expiration-fails.json` |
 
+**Google Doc 템플릿 경로 (2026-10-04)**
+
+| 상황 | 응답 | 샘플 |
+| --- | --- | --- |
+| Picker로 고르지 않은 교수자 문서를 `template_document_id`로 | 그룹마다 Drive `files.copy` 404 `notFound`, 복사본 없음 | `uc2-template-picker-before.json` |
+| `body_template`과 `template_document_id`를 둘 다 주거나 둘 다 생략 | `ValueError` → 라우터 400 | — |
+
 ## 8. 쿼터 · rate limit · 플랜 제약
 
 | 구분 | 프로젝트당 / 분 | 사용자당(프로젝트별) / 분 |
@@ -223,6 +230,8 @@ Docs API 자체에는 웹훅이 없다. 문서 변경 감지는 Drive API로 한
 14. **commenter 상태의 학생이 할 수 있는 것 (2026-10-04 실측).** 댓글 달기 가능, 파일 메뉴 다운로드 가능, 다른 사람에게 공유 **불가**. 즉 마감 뒤에도 학생은 자기 제출본을 보관하고 피드백 댓글을 주고받을 수 있으며, 문서를 외부로 퍼뜨리는 경로는 막힌다. 다운로드까지 막아야 하면 `files.update`의 `copyRequiresWriterPermission=true`를 추가로 검토한다(미실측). **마감 연장**: `restore_editors`로 다시 writer로 올리면 학생은 새로고침 후 바로 편집 가능(2026-10-04 실측).
 
 ## 11. 샘플 코드 (`usecases.py`의 흐름을 기준으로)
+
+Google Doc 템플릿(Picker로 고른 문서) 경로는 `body_template=None, template_document_id=picked_id`로 같은 함수를 부른다. 결과 `replaced`에 태그별 치환 횟수가 담긴다(2026-10-04 추가).
 
 아래는 `app/services/google_docs/usecases.py`·`app/services/google_drive/usecases.py`의 실제 함수 호출 순서다. FastAPI 없이 동작하며 `access_token`만 있으면 된다. 전체 흐름은 "학기 초 1·2 → 마감 시각에 3·4"이고, 1·2는 교수자 요청으로, 3·4는 서비스 스케줄러가 실행한다.
 
@@ -294,7 +303,7 @@ doc = await docs_uc.read_document(docs, drive, document_id)
 | 2026년 중 쿼터 초과 과금 계획의 실제 시행 여부 | 핸드오프(7단계) 직전 다시 확인 |
 | ~~`contentRestrictions.readOnly` 동작 여부~~ | 확인 완료(2026-10-03): 개인 계정 + `drive.file`에서 동작. 잠긴 문서 `batchUpdate`는 403 `PERMISSION_DENIED`. 7절·10절 |
 | ~~`permissions.create`의 `expirationTime`~~ | 확인 완료(2026-10-03): 개인 계정 불가, 403 `cannotSetExpiration`. 3안 제외 |
-| 교수자가 Drive에 가진 기존 Google Doc을 템플릿으로 쓰는 경우(Picker 필요) | 보류. 2단계 전제는 Markdown 템플릿 |
+| 교수자가 Drive에 가진 기존 Google Doc을 템플릿으로 쓰는 경우 | 경로 구현 완료(2026-10-04, `template_document_id`). Picker 전 404 실측. **Picker 후 복사·`replaceAllText`·공유 실측은 보류** → `uc2-create-group-documents-picker.json`으로 남길 것 |
 | ~~공유 대상이 Google 계정이 아닌 이메일~~ | 확인 완료(2026-10-03): 400 `invalidSharingRequest`. 단, `notify=true`로 하면 초대 메일이 가는지는 미확인(실제 메일 발송이라 보류) |
 | ~~마감 비활성화 방식~~ | 결정 완료(2026-10-03): 권한 낮추기. 잠금 방식 미사용 |
 | ~~권한이 commenter로 낮아진 학생 입장에서 문서 UI~~ | 확인 완료(2026-10-04): 10절 12·13·14항 |

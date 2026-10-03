@@ -64,7 +64,8 @@ class CreateGroupDocumentsRequest(BaseModel):
     folder_id: str
     activity_name: str
     title_template: str = "{{activity_name}} - {{team_name}}"
-    body_template: str
+    body_template: str | None = None  # Markdown 템플릿 (method=markdown | docs_api)
+    template_document_id: str | None = None  # Google Doc 템플릿 ID (Picker로 고른 문서 또는 앱이 만든 문서). body_template과 둘 중 하나
     groups: list[GroupIn]
     due: str | None = None
     method: str = "markdown"  # markdown | docs_api
@@ -77,10 +78,14 @@ async def create_group_documents(
     req: CreateGroupDocumentsRequest, docs: DocsClient = Depends(_docs), drive: DriveClient = Depends(_drive)
 ):
     groups = [usecases.GroupSpec(g.team_name, g.member_emails) for g in req.groups]
-    return await usecases.create_group_documents(
-        docs, drive, req.folder_id, req.activity_name, req.title_template, req.body_template, groups,
-        due=req.due, method=req.method, notify=req.notify, share_message=req.share_message,
-    )
+    try:
+        return await usecases.create_group_documents(
+            docs, drive, req.folder_id, req.activity_name, req.title_template, req.body_template, groups,
+            due=req.due, method=req.method, notify=req.notify, share_message=req.share_message,
+            template_document_id=req.template_document_id,
+        )
+    except ValueError as e:
+        raise HTTPException(400, str(e))
 
 
 # ---------- 유즈케이스 3 ----------

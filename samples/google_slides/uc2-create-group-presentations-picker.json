@@ -1,0 +1,86 @@
+{
+  "scenario": "유즈케이스 2: 같은 덱을 Picker로 고른 뒤 템플릿으로 → 그룹마다 files.copy → replaceAllText → 공유",
+  "captured_at": "2026-10-04",
+  "note": "코드 변경 없이 성공(복사본은 앱 폴더에, 소유자는 교수자). replaced가 전부 0인 것은 이 덱에 {{team_name}} 등 태그가 없기 때문(태그 넣은 뒤 재복사 실측은 보류). 원본은 건드리지 않았다. 복사본 본문은 교수자 개인 내용이라 생략. 실측 뒤 복사본·폴더는 휴지통",
+  "request": {
+    "method": "POST",
+    "url": "/google/slides/create-group-presentations",
+    "body": {
+      "folder_id": "1yGw5of_uiLGrJvFQht9kAsyRvmBjB2ZC",
+      "activity_name": "Picker 실측",
+      "template_presentation_id": "1kxoh2K_uJIT-wXpjAFKPGrm-9loC0glIlalDxiAAxZE",
+      "groups": [
+        {
+          "team_name": "A조",
+          "member_emails": [
+            "<EMAIL>"
+          ]
+        },
+        {
+          "team_name": "B조"
+        }
+      ],
+      "due": "2026-10-10"
+    }
+  },
+  "response_status": 200,
+  "response": [
+    {
+      "team_name": "A조",
+      "document": {
+        "id": "1EODd_Wls_lcDiipRUpxlf38GNFryIW1VJzfGWNNbEH0",
+        "provider": "google",
+        "kind": "slides",
+        "title": "Picker 실측 - A조",
+        "url": "https://docs.google.com/presentation/d/1EODd_Wls_lcDiipRUpxlf38GNFryIW1VJzfGWNNbEH0/edit?usp=drivesdk",
+        "mime_type": "application/vnd.google-apps.presentation",
+        "owner": "<NAME>",
+        "created_at": "2026-10-03T17:38:37.039000Z",
+        "modified_at": "2026-10-03T17:38:37.039000Z",
+        "parent_folder_id": "1yGw5of_uiLGrJvFQht9kAsyRvmBjB2ZC",
+        "trashed": false,
+        "locked": false,
+        "text": "<본문 생략: 교수자 개인 덱 내용>"
+      },
+      "replaced": {
+        "team_name": 0,
+        "activity_name": 0,
+        "due": 0
+      },
+      "shares": [
+        {
+          "email": "<EMAIL>",
+          "ok": true,
+          "permission_id": "18249801426757446426",
+          "error": null
+        }
+      ],
+      "error": null
+    },
+    {
+      "team_name": "B조",
+      "document": {
+        "id": "1AeUw6vAtQwfeJiI2iDWfHrQX_zdHngj-Ksbfxw44uuI",
+        "provider": "google",
+        "kind": "slides",
+        "title": "Picker 실측 - B조",
+        "url": "https://docs.google.com/presentation/d/1AeUw6vAtQwfeJiI2iDWfHrQX_zdHngj-Ksbfxw44uuI/edit?usp=drivesdk",
+        "mime_type": "application/vnd.google-apps.presentation",
+        "owner": "<NAME>",
+        "created_at": "2026-10-03T17:38:42.890000Z",
+        "modified_at": "2026-10-03T17:38:42.890000Z",
+        "parent_folder_id": "1yGw5of_uiLGrJvFQht9kAsyRvmBjB2ZC",
+        "trashed": false,
+        "locked": false,
+        "text": "<본문 생략: 교수자 개인 덱 내용>"
+      },
+      "replaced": {
+        "team_name": 0,
+        "activity_name": 0,
+        "due": 0
+      },
+      "shares": [],
+      "error": null
+    }
+  ]
+}

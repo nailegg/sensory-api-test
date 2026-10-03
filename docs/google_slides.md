@@ -42,7 +42,7 @@
 - 레이아웃·마스터 신규 생성, 슬라이드 전환·애니메이션, 발표 모드 제어. Request 목록에 없다.
 - 노트 페이지는 발표자 노트 텍스트 외에는 읽기 전용. 노트 마스터도 읽기 전용.
 - 웹훅 없음. 변경 감지는 Drive `changes.watch`/`changes.list`뿐이고 "어느 슬라이드가 바뀌었는지"는 알 수 없다.
-- 교수자가 Drive에 이미 가진 덱을 템플릿으로 쓰는 것은 `drive.file`로는 불가(Picker 또는 민감 scope). Docs·Sheets와 같은 경계. `files.copy`도 앱이 접근 가능한 원본만 복사한다.
+- 교수자가 Drive에 이미 가진 덱을 템플릿으로 쓰는 것은 `drive.file`만으로는 불가 → **Google Picker**로 고르게 하면 된다(민감 scope 불필요, `docs/google_drive.md` 2.1절). `files.copy`는 앱이 접근 가능한 원본(앱이 만든 것 + Picker로 고른 것)만 복사한다.
 - Sheets 차트를 **연결 상태**로 넣으려면 `spreadsheets`(또는 `spreadsheets.readonly`, `drive`, `drive.readonly`) scope가 추가로 필요하다. `drive.file`만으로는 안 된다(민감 scope → 재동의·심사 수준 상승).
 
 **눈에 띄는 제약**
@@ -89,7 +89,7 @@
 - 2: 태그는 Docs와 같은 이름(`{{team_name}}`, `{{activity_name}}`, `{{due}}`)이지만 **공백 없이 정확히** 써야 한다(`replaceAllText`는 문자열 일치. Docs의 `render_template`처럼 `{{ team_name }}`을 허용하지 않는다). 파일명은 Docs와 같은 `title_template`을 `render_template`로 만든다. 응답의 `replaced`(태그별 치환 횟수)가 0이면 템플릿에 태그가 없거나 서식이 갈라진 것이다.
 - 2: 실측(2026-10-04)으로 확인한 템플릿 동작: pptx 변환 뒤 플레이스홀더(제목·부제·본문) 타입이 보존된다. `replaceAllText` 한 번이 슬라이드 본문·표 셀·**발표자 노트**까지 모두 치환한다. 서식이 갈린 태그도 치환된다. **긴 팀명은 넘친다**(치환된 도형만 autofit이 `NONE`이 됨). 10절 3·4항.
 - 2: 복사는 됐는데 치환이 실패하면 결과에 `document`와 `error`가 함께 담기고 공유는 하지 않는다(복사본은 폴더에 남는다). 실측: `uc2-replace-fails-api-disabled.json`.
-- 2: 교수자가 Drive에 이미 가진 덱을 템플릿으로 쓰는 것은 Picker가 필요해 보류(Docs와 같은 경계).
+- 2: **템플릿은 두 방식 모두 지원한다(2026-10-04).** ① Synsory가 보관하는 pptx를 변환 업로드(`upload_template`). ② 교수자가 **Google Picker**로 Drive의 기존 덱을 고르고 그 ID를 `template_presentation_id`로 넘긴다. 둘 다 같은 `create_group_presentations`(실체는 `google_drive.usecases.create_group_files_from_template`, Sheets와 공유)가 `files.copy` → `replaceAllText` → 공유를 한다. **원본은 수정하지 않고 복사본만 치환한다.** Picker 조건·실측은 `docs/google_drive.md` 2.1절, 이 문서 7절·10절 16항. **실측(2026-10-04)**: Picker 전 404 → Picker 후 복사·치환·공유 성공. 태그 넣은 원본의 재복사는 보류.
 - 4: Slides는 docx·md·html 대신 **pptx · pdf · txt · odp**. 이미지 형식은 없다.
 - scope: 네 유즈케이스 모두 `drive.file` 하나. `services/google_slides/scopes.py`는 빈 dict.
 - 1단계 후보 중 썸네일 미리보기, 텍스트·노트 추출 유즈케이스는 채택하지 않았다. 다만 본문 확인용 배관 `read_presentation`(모든 슬라이드·표·발표자 노트 평문)은 Docs의 `read_document`처럼 둔다.
@@ -223,6 +223,14 @@ Base URL: `https://slides.googleapis.com/v1`. Discovery: `https://slides.googlea
 | `createSheetsChart`를 `drive.file`만으로 호출 | 403 예상 | Request 레퍼런스 |
 | 휴지통 · 기타 Drive 영역 | Docs와 동일 | `docs/google_docs.md` 7절 |
 
+**Picker 템플릿 (2026-10-04 실측)**
+
+| 상황 | 응답 | 샘플 |
+| --- | --- | --- |
+| 교수자가 UI에서 만든 덱 ID를 Picker 없이 `template_presentation_id`로 | 그룹마다 Drive `files.copy` **404 `notFound`**, 복사본 없음 | `uc2-template-picker-before.json` |
+| 같은 덱을 Picker(내 드라이브 목록)로 고른 뒤 | **`files.copy` 200 → `replaceAllText` 200 → 공유 200**. 코드 변경 없음. 토큰 refresh·서버 재시작 뒤에도 유지 | `uc2-create-group-presentations-picker.json` |
+| 태그 없는 덱을 템플릿으로 | 치환은 성공(200)하지만 `replaced`가 전부 0. 호출자가 0을 보고 "태그 없음"을 알려야 한다 | 같은 파일 |
+
 ## 8. 쿼터 · rate limit · 플랜 제약
 
 공식 limits 문서(2026-10-04 확인).
@@ -275,6 +283,8 @@ Slides API에는 없다. 변경 감지는 Drive `changes.watch`/`changes.list` �
 13. **동시 편집.** 학생이 덱을 열어 편집 중일 수 있다. `requiredRevisionId`를 쓰면 그사이 변경이 있을 때 400으로 거부되고, 안 쓰면 API를 또 한 명의 협업자로 보고 병합한다. 태그 치환은 병합이 안전하므로 안 써도 되고, 특정 도형 텍스트를 인덱스로 고칠 때만 `requiredRevisionId` + 재조회를 권장(Docs 10절 5항과 같다).
 14. **SDK 없이 REST.** 메서드가 다섯 개뿐이다. httpx로 충분. 예외 근거 없음.
 15. **Docs·Sheets와 다른 점 정리.** 대상 지정이 `objectId`. 썸네일 전용 메서드와 "비싼 읽기" 쿼터가 있다. 읽기 쿼터가 가장 넉넉하다(사용자당 600). 이미지 삽입은 URL만. 자동 맞춤이 API 편집으로 꺼진다. 낙관적 잠금은 Docs처럼 있다.
+
+16. **Picker로 고른 교수자 덱을 템플릿으로 (2026-10-04).** 조건은 `docs/google_drive.md` 2.1절(API 키 + `setAppId` + `drive.file` 토큰 + 로그인된 브라우저). 고른 ID는 그대로 `template_presentation_id`가 되고 코드는 ①과 같다. 지킬 것: 원본에는 `batchUpdate`를 하지 않는다(복사본만). 교수자가 나중에 원본을 고치면 다음 복사부터 반영된다(`files.copy`는 현재 내용을 복사한다. 실측은 보류). 태그 규칙(공백 없이, 같은 서식, `matchCase`)은 교수자가 UI에서 만든 덱에도 똑같이 적용되므로 Synsory 화면에 태그 안내를 둔다. 치환 결과 `replaced`가 전부 0이면 태그가 없는 덱이다.
 
 ## 11. 샘플 코드 (`usecases.py`의 흐름을 기준으로)
 
@@ -341,7 +351,7 @@ doc = await slides_uc.read_presentation(slides, drive, presentation_id)
 | ~~기본 `pageSize`~~ | 확인 완료(2026-10-04): `presentations.create` 기본 9,144,000 × 5,143,500 EMU(16:9), `locale`은 계정 언어(`ko`). pptx 변환은 원본 크기 유지 |
 | ~~`replaceAllText`가 서식이 갈린 태그를 못 찾는 것~~ | 확인 완료(2026-10-04): 찾는다. 결과는 첫 run 서식. 10절 4항 |
 | ~~pptx 변환 업로드 vs `files.copy`~~ | 결정·확인 완료(2026-10-04): pptx 1회 변환 + 그룹마다 복사. 플레이스홀더·표·노트 보존. 10절 11항 |
-| ~~`drive.file` 경계가 Slides에서도 같은지~~ | 부분 확인(2026-10-04): 앱이 만든 폴더 안 변환 업로드·복사·`batchUpdate` 모두 동작. 앱이 만들지 않은 덱을 템플릿 ID로 줄 때의 응답은 미실측(Drive 404 `notFound` 예상) |
+| ~~`drive.file` 경계가 Slides에서도 같은지~~ | 부분 확인(2026-10-04): 앱이 만든 폴더 안 변환 업로드·복사·`batchUpdate` 모두 동작. 앱이 만들지 않은 덱을 템플릿 ID로 주면 404, Picker로 고른 뒤 200(2026-10-04 확인, 7절) |
 | `files.copy`의 쿼터 단위와 `copyComments` 기본값 | 쿼터 단위는 limits 문서에 분류만 있어 미확인(편집 50으로 추정). 템플릿에 댓글이 없으니 보류 |
 | 템플릿 pptx의 실제 디자인(Synsory 테마·글꼴)이 변환 후 유지되는지 | Synsory가 실제 템플릿을 정하면 확인. 실측은 python-pptx 기본 테마로만 했다 |
 | 이미지 많은 덱의 pdf 내보내기가 10MB를 넘는 경우 | 보류. 실측 덱은 4장·68KB |
@@ -350,7 +360,7 @@ doc = await slides_uc.read_presentation(slides, drive, presentation_id)
 | `createSheetsChart`를 `drive.file`만으로 호출했을 때 실제 응답 | 차트 유즈케이스가 생길 때만 |
 | Drive에 올린 이미지를 `createImage` URL로 쓸 수 있는지 | 이미지 삽입 유즈케이스가 생길 때만 |
 | 댓글 API(2026-09-30 GA) | 유즈케이스에 없어 보류 |
-| 교수자가 Drive에 가진 기존 덱을 템플릿으로 쓰는 경우(Picker 필요) | 보류(Docs와 같음) |
+| ~~교수자가 Drive에 가진 기존 덱을 템플릿으로 쓰는 경우(Picker 필요)~~ | 확인 완료(2026-10-04): Picker로 고른 ID를 `template_presentation_id`로. 코드 변경 없음, 복사·치환·공유 성공. 7절. 남은 것: 태그 든 원본으로 치환 횟수 확인, 원본 수정 후 재복사(보류) |
 | `batchUpdate` 요청 개수·페이로드 상한 | 공식 수치 없음. 태그 3개 실측은 문제없음 |
 | 2026년 중 쿼터 초과 과금 계획의 실제 시행 여부 | 핸드오프 직전 재확인(Docs와 공통) |
 | MCP 서버(2026-07 Developer Preview) | 이 레포는 REST 직접 호출이라 범위 밖. 기록만 |

@@ -1,0 +1,33 @@
+{
+  "scenario": "유즈케이스 2: 교수자가 Drive 웹에서 만든 덱 ID를 Picker 없이 템플릿으로",
+  "captured_at": "2026-10-04",
+  "note": "그룹마다 Drive files.copy 404 notFound → document=null, error만. uc2-template-not-found.json의 '예상'을 실측으로 확인",
+  "request": {
+    "method": "POST",
+    "url": "/google/slides/create-group-presentations",
+    "body": {
+      "folder_id": "1yGw5of_uiLGrJvFQht9kAsyRvmBjB2ZC",
+      "activity_name": "Picker 실측",
+      "template_presentation_id": "1kxoh2K_uJIT-wXpjAFKPGrm-9loC0glIlalDxiAAxZE",
+      "groups": [
+        {
+          "team_name": "A조",
+          "member_emails": [
+            "<EMAIL>"
+          ]
+        }
+      ],
+      "due": "2026-10-10"
+    }
+  },
+  "response_status": 200,
+  "response": [
+    {
+      "team_name": "A조",
+      "document": null,
+      "replaced": {},
+      "shares": [],
+      "error": "Drive 404 notFound: File not found: 1kxoh2K_uJIT-wXpjAFKPGrm-9loC0glIlalDxiAAxZE."
+    }
+  ]
+}
