@@ -1,0 +1,70 @@
+{
+  "scenario": "유즈케이스 3 (1안): 문서 잠금 → 잠긴 상태에서 API 편집 시도 → 해제",
+  "captured_at": "2026-10-03",
+  "note": "개인 계정 + drive.file에서 contentRestrictions.readOnly 동작 확인. 잠긴 문서에 batchUpdate하면 소유자 토큰이어도 403 PERMISSION_DENIED. 따라서 API로 다시 편집하려면 먼저 unlock. restrictingUser에 이메일·사진 URL이 포함되므로 저장 시 마스킹 필요",
+  "request": {
+    "method": "POST",
+    "url": "/google/docs/lock-for-submission",
+    "body": {
+      "document_ids": [
+        "1qC94vLcj0V9dHqsY-6rr6AJ_noW0JuhH0eSJ6bBiBC4"
+      ],
+      "reason": "제출 마감"
+    }
+  },
+  "response_status": 200,
+  "response": {
+    "lock_response": [
+      {
+        "id": "1qC94vLcj0V9dHqsY-6rr6AJ_noW0JuhH0eSJ6bBiBC4",
+        "provider": "google",
+        "kind": "doc",
+        "title": "팀 프로젝트 1차 - A조",
+        "url": "https://docs.google.com/document/d/1qC94vLcj0V9dHqsY-6rr6AJ_noW0JuhH0eSJ6bBiBC4/edit?usp=drivesdk",
+        "mime_type": "application/vnd.google-apps.document",
+        "owner": "<OWNER_NAME>",
+        "created_at": "2026-10-03T14:28:23.937000Z",
+        "modified_at": "2026-10-03T14:28:24.127000Z",
+        "parent_folder_id": "1mNzdxpj9eW6e4PZRpgfFU6fYr3R2UCDB",
+        "trashed": false,
+        "locked": true,
+        "text": null
+      }
+    ],
+    "drive_files_get_contentRestrictions": {
+      "id": "1qC94vLcj0V9dHqsY-6rr6AJ_noW0JuhH0eSJ6bBiBC4",
+      "name": "팀 프로젝트 1차 - A조",
+      "contentRestrictions": [
+        {
+          "readOnly": true,
+          "reason": "제출 마감",
+          "restrictingUser": {
+            "kind": "drive#user",
+            "displayName": "<DISPLAY_NAME>",
+            "photoLink": "<PHOTO_URL>",
+            "me": true,
+            "permissionId": "02252346710657344069",
+            "emailAddress": "<EMAIL>"
+          },
+          "restrictionTime": "2026-10-03T14:28:38.045Z",
+          "type": "globalContentRestriction",
+          "ownerRestricted": false,
+          "systemRestricted": false
+        }
+      ]
+    },
+    "docs_batchUpdate_while_locked": {
+      "status": 403,
+      "status_text": "PERMISSION_DENIED",
+      "message": "The caller does not have permission",
+      "body": {
+        "error": {
+          "code": 403,
+          "message": "The caller does not have permission",
+          "status": "PERMISSION_DENIED"
+        }
+      }
+    },
+    "unlock_response_locked_flag": false
+  }
+}

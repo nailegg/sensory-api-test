@@ -1,0 +1,47 @@
+{
+  "scenario": "유즈케이스 2 (방식 B, 비교용): documents.create + batchUpdate insertText",
+  "captured_at": "2026-10-03",
+  "note": "호출 3회(create, batchUpdate, files.update 이동). Markdown 기호가 그대로 평문으로 들어간다. 서식을 주려면 인덱스 계산 + updateParagraphStyle 등이 추가로 필요. 방식 A 채택",
+  "request": {
+    "method": "POST",
+    "url": "/google/docs/create-group-documents",
+    "body": {
+      "folder_id": "1mNzdxpj9eW6e4PZRpgfFU6fYr3R2UCDB",
+      "activity_name": "팀 프로젝트 1차",
+      "title_template": "{{activity_name}} - {{team_name}} (docs_api)",
+      "body_template": "# {{activity_name}}\n\n**팀:** {{team_name}}\n\n## 1. 문제 정의\n",
+      "groups": [
+        {
+          "team_name": "C조"
+        }
+      ],
+      "method": "docs_api"
+    }
+  },
+  "response_status": 200,
+  "response": {
+    "result": [
+      {
+        "team_name": "C조",
+        "document": {
+          "id": "1jh2sr0Uuvb6AfYd5VAQGnfvUZtxsAdyecbO1hUTu3ck",
+          "provider": "google",
+          "kind": "doc",
+          "title": "팀 프로젝트 1차 - C조 (docs_api)",
+          "url": "https://docs.google.com/document/d/1jh2sr0Uuvb6AfYd5VAQGnfvUZtxsAdyecbO1hUTu3ck/edit?usp=drivesdk",
+          "mime_type": "application/vnd.google-apps.document",
+          "owner": "<OWNER_NAME>",
+          "created_at": "2026-10-03T14:28:32.296000Z",
+          "modified_at": "2026-10-03T14:28:33.081000Z",
+          "parent_folder_id": "1mNzdxpj9eW6e4PZRpgfFU6fYr3R2UCDB",
+          "trashed": false,
+          "locked": false,
+          "text": null
+        },
+        "shares": [],
+        "error": null
+      }
+    ],
+    "read_C_plain_text": "# 팀 프로젝트 1차\n\n**팀:** C조\n\n## 1. 문제 정의\n\n"
+  }
+}

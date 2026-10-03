@@ -1,0 +1,44 @@
+{
+  "scenario": "앱이 만든 파일·폴더 7건 휴지통 이동",
+  "captured_at": "2026-10-02",
+  "note": "files.update {trashed:true}. 폴더를 휴지통에 넣으면 안의 파일도 함께 간다(여기서는 문서를 먼저 보냈다). list-app-files는 q=trashed=false 라 이후 빈 배열. 사용자가 직접 만든 manual-test 폴더는 앱이 못 보므로 건드리지 않았다",
+  "request": {
+    "method": "POST",
+    "url": "/google/drive/move-to-trash/{file_id}",
+    "body": null
+  },
+  "response_status": 200,
+  "response": {
+    "each_call": [
+      {
+        "id": "1qwF4PPxOP-KJpO5SKRrIgYoKb_eL0w9RoOXCMtYEw9A",
+        "trashed": true
+      },
+      {
+        "id": "12YmOY_SMw0uAtuHpo_l7c5lnyr-_Ns7OkdUr2kMHYtY",
+        "trashed": true
+      },
+      {
+        "id": "1vu-07eJHisVD6E3ixY_zuzNcuVYXFBiGb2GL5xo50Pk",
+        "trashed": true
+      },
+      {
+        "id": "1zqopjEZwbAIXLE4kE69NRT-v6loBaODMAzz8q2x8W_c",
+        "trashed": true
+      },
+      {
+        "id": "1JEhGfb1Az28YYw0Rf98yMScAkOgKW1X_Ccbe_Aft05g",
+        "trashed": true
+      },
+      {
+        "id": "1JSQ6Vgsj8qXDWHsNOqcC-cYv4vNC2YDQA63i0gpmQyU",
+        "trashed": true
+      },
+      {
+        "id": "1SD0EoxcAKgGzhqCJiK-7FXgoJ27Yo39z",
+        "trashed": true
+      }
+    ],
+    "list-app-files_after": []
+  }
+}

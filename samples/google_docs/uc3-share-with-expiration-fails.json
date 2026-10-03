@@ -1,0 +1,26 @@
+{
+  "scenario": "유즈케이스 3 (3안): permissions.create expirationTime → 개인 계정 불가",
+  "captured_at": "2026-10-03",
+  "note": "403 cannotSetExpiration 'Expiration dates cannot be set on this item.' 개인 Gmail 소유 파일에서는 만료 공유가 안 된다(Workspace 전용으로 추정). 3안 제외",
+  "request": {
+    "method": "POST",
+    "url": "/google/docs/share",
+    "body": {
+      "document_id": "1c1rzDX7Cor5tepjSHO5O_F8_QGJ0cbAYccbaCWsqOvg",
+      "emails": [
+        "<EMAIL>"
+      ],
+      "expiration_time": "2026-10-05T14:44:21Z"
+    }
+  },
+  "response_status": 403,
+  "response": [
+    {
+      "email": "<EMAIL>",
+      "ok": false,
+      "status": 403,
+      "reason": "cannotSetExpiration",
+      "message": "Expiration dates cannot be set on this item."
+    }
+  ]
+}

@@ -1,0 +1,52 @@
+{
+  "scenario": "유즈케이스 2: 공유 실패·중복 케이스",
+  "captured_at": "2026-10-03",
+  "note": "① 이미 공유된 이메일에 다시 permissions.create → 200, 같은 permission id 반환(멱등). ② Google 계정이 아닌 이메일 + notify=false → 400 invalidSharingRequest. Google 메시지: 초대하려면 '이메일 알림 보내기'(sendNotificationEmail=true)가 필요. notify=true일 때 실제 초대 동작은 미확인. ③ 형식이 틀린 이메일 → 400 invalid",
+  "request": {
+    "method": "POST",
+    "url": "/google/docs/share",
+    "body": {
+      "document_id": "1d2V_J0disL9oRpZHnJFR4jcdf6fDn9R6dmzVqlTfJJU",
+      "emails": [
+        "<같은 이메일 재공유>",
+        "<EMAIL>",
+        "not-an-email"
+      ]
+    }
+  },
+  "response_status": 200,
+  "response": {
+    "duplicate_same_email": [
+      {
+        "email": "<EMAIL>",
+        "ok": true,
+        "permission": {
+          "id": "18249801426757446426",
+          "type": "user",
+          "emailAddress": "<EMAIL>",
+          "role": "writer",
+          "displayName": "<DISPLAY_NAME>",
+          "pendingOwner": false
+        }
+      }
+    ],
+    "non_google_email_notify_false": [
+      {
+        "email": "<EMAIL>",
+        "ok": false,
+        "status": 400,
+        "reason": "invalidSharingRequest",
+        "message": "Bad Request. User message: \"<EMAIL> 초대하려고 합니다. 이 이메일 계정에 연결된 Google 계정이 없기 때문에 이 수신자를 초대하려면 '이메일 알림 보내기'를 선택해야 합니다.\""
+      }
+    ],
+    "malformed_email": [
+      {
+        "email": "<EMAIL>",
+        "ok": false,
+        "status": 400,
+        "reason": "invalid",
+        "message": "The specified emailAddress is invalid or not applicable for the given permission type."
+      }
+    ]
+  }
+}

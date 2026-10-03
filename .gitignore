@@ -1,0 +1,8 @@
+.env
+.tokens/
+samples/**/raw/
+__pycache__/
+*.pyc
+.venv/
+.pytest_cache/
+.DS_Store

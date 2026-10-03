@@ -1,0 +1,21 @@
+{
+  "scenario": "공유 전 권한 목록 (소유자만)",
+  "captured_at": "2026-10-03",
+  "note": "permissions.list. 소유자 1건. emailAddress·displayName 마스킹",
+  "request": {
+    "method": "GET",
+    "url": "/google/docs/permissions/1qC94vLcj0V9dHqsY-6rr6AJ_noW0JuhH0eSJ6bBiBC4",
+    "body": null
+  },
+  "response_status": 200,
+  "response": [
+    {
+      "id": "02252346710657344069",
+      "displayName": "<DISPLAY_NAME>",
+      "type": "user",
+      "emailAddress": "<EMAIL>",
+      "role": "owner",
+      "pendingOwner": false
+    }
+  ]
+}

@@ -1,0 +1,18 @@
+{
+  "scenario": "사용자가 Drive 웹에서 직접 만든 폴더의 메타데이터 조회",
+  "captured_at": "2026-10-02",
+  "note": "drive.file scope: 앱이 만들지 않은 파일·폴더는 files.get이 404 notFound. 폴더는 실제로 존재한다. 같은 이유로 files.list에도 나오지 않는다",
+  "request": {
+    "method": "GET",
+    "url": "/google/drive/file-meta/1uNpfuVAIPp9wHaf6BuI6SeQAGoL6TYnd",
+    "body": null
+  },
+  "response_status": 404,
+  "response": {
+    "detail": {
+      "reason": "notFound",
+      "message": "File not found: 1uNpfuVAIPp9wHaf6BuI6SeQAGoL6TYnd.",
+      "rate_limit": false
+    }
+  }
+}

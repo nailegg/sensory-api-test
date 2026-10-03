@@ -1,0 +1,23 @@
+{
+  "scenario": "문서 본문·메타데이터 읽기",
+  "captured_at": "2026-10-02",
+  "note": "빈 문서의 text는 '\\n' 하나. documents.get(includeTabsContent=true) + Drive files.get",
+  "request": {
+    "method": "GET",
+    "url": "/google/docs/read/1vu-07eJHisVD6E3ixY_zuzNcuVYXFBiGb2GL5xo50Pk",
+    "body": null
+  },
+  "response": {
+    "id": "1vu-07eJHisVD6E3ixY_zuzNcuVYXFBiGb2GL5xo50Pk",
+    "provider": "google",
+    "kind": "doc",
+    "title": "synsory 테스트 문서",
+    "url": "https://docs.google.com/document/d/1vu-07eJHisVD6E3ixY_zuzNcuVYXFBiGb2GL5xo50Pk/edit?usp=drivesdk",
+    "mime_type": "application/vnd.google-apps.document",
+    "owner": "<OWNER_NAME>",
+    "created_at": "2026-10-02T13:52:13.637000Z",
+    "modified_at": "2026-10-02T13:52:13.637000Z",
+    "parent_folder_id": "1SD0EoxcAKgGzhqCJiK-7FXgoJ27Yo39z",
+    "text": "\n"
+  }
+}

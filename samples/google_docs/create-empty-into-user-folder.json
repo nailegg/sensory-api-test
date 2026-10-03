@@ -1,0 +1,27 @@
+{
+  "scenario": "빈 문서를 만들어 사용자가 직접 만든 폴더로 이동",
+  "captured_at": "2026-10-02",
+  "note": "예상과 달리 성공. files.update(addParents=<앱이 못 보는 폴더>)는 폴더가 사용자 소유이면 통과한다. 즉 drive.file로도 '폴더 ID만 알면' 그 폴더에 넣을 수 있다. 폴더 내용을 읽는 것만 안 된다. 옮긴 뒤에도 앱은 그 문서를 계속 읽을 수 있었다",
+  "request": {
+    "method": "POST",
+    "url": "/google/docs/create-empty",
+    "body": {
+      "title": "should fail",
+      "folder_id": "1uNpfuVAIPp9wHaf6BuI6SeQAGoL6TYnd"
+    }
+  },
+  "response_status": 200,
+  "response": {
+    "id": "12YmOY_SMw0uAtuHpo_l7c5lnyr-_Ns7OkdUr2kMHYtY",
+    "provider": "google",
+    "kind": "doc",
+    "title": "should fail",
+    "url": "https://docs.google.com/document/d/12YmOY_SMw0uAtuHpo_l7c5lnyr-_Ns7OkdUr2kMHYtY/edit?usp=drivesdk",
+    "mime_type": "application/vnd.google-apps.document",
+    "owner": "<OWNER_NAME>",
+    "created_at": "2026-10-02T14:02:22.599000Z",
+    "modified_at": "2026-10-02T14:02:22.599000Z",
+    "parent_folder_id": "1uNpfuVAIPp9wHaf6BuI6SeQAGoL6TYnd",
+    "text": null
+  }
+}

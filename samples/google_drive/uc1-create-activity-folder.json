@@ -1,0 +1,29 @@
+{
+  "scenario": "유즈케이스 1: 액티비티 폴더 생성 (부모 = 교수자가 Drive 웹에서 만든 폴더)",
+  "captured_at": "2026-10-03",
+  "note": "앱이 못 보는 사용자 폴더 아래에도 생성된다. 이 호출 직전 access token이 만료 상태였고 자동 refresh 후 성공했다",
+  "request": {
+    "method": "POST",
+    "url": "/google/drive/create-folder",
+    "body": {
+      "name": "Synsory 테스트 액티비티",
+      "parent_folder_id": "1uNpfuVAIPp9wHaf6BuI6SeQAGoL6TYnd"
+    }
+  },
+  "response_status": 200,
+  "response": {
+    "id": "1mNzdxpj9eW6e4PZRpgfFU6fYr3R2UCDB",
+    "provider": "google",
+    "kind": "folder",
+    "title": "Synsory 테스트 액티비티",
+    "url": "https://drive.google.com/drive/folders/1mNzdxpj9eW6e4PZRpgfFU6fYr3R2UCDB",
+    "mime_type": "application/vnd.google-apps.folder",
+    "owner": "<OWNER_NAME>",
+    "created_at": "2026-10-03T14:28:21.911000Z",
+    "modified_at": "2026-10-03T14:28:21.911000Z",
+    "parent_folder_id": "1uNpfuVAIPp9wHaf6BuI6SeQAGoL6TYnd",
+    "trashed": false,
+    "locked": false,
+    "text": null
+  }
+}

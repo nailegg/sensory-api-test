@@ -1,0 +1,18 @@
+{
+  "scenario": "존재하지 않는 ID 휴지통 이동",
+  "captured_at": "2026-10-02",
+  "note": "Drive 404 notFound. 오타 ID와 앱이 못 보는 파일이 같은 응답이다",
+  "request": {
+    "method": "POST",
+    "url": "/google/drive/move-to-trash/nonexistent-id-123",
+    "body": null
+  },
+  "response_status": 404,
+  "response": {
+    "detail": {
+      "reason": "notFound",
+      "message": "File not found: nonexistent-id-123.",
+      "rate_limit": false
+    }
+  }
+}

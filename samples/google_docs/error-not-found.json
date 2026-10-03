@@ -1,0 +1,24 @@
+{
+  "scenario": "존재하지 않는 문서 읽기",
+  "captured_at": "2026-10-02",
+  "note": "Docs API 404. drive.file scope에서 앱이 못 보는 파일(사용자가 직접 만든 문서)도 같은 404로 온다고 예상, 5단계에서 확인",
+  "request": {
+    "method": "GET",
+    "url": "/google/docs/read/nonexistent-id-123",
+    "body": null
+  },
+  "response": {
+    "detail": {
+      "api": "DocsApiError",
+      "message": "Requested entity was not found.",
+      "rate_limit": false,
+      "body": {
+        "error": {
+          "code": 404,
+          "message": "Requested entity was not found.",
+          "status": "NOT_FOUND"
+        }
+      }
+    }
+  }
+}

@@ -1,0 +1,71 @@
+{
+  "scenario": "유즈케이스 2 (방식 A): Markdown 템플릿으로 그룹 2개 문서 생성, 공유 없음",
+  "captured_at": "2026-10-03",
+  "note": "그룹당 Drive files.create 1회. 제목·굵게·목록이 Docs 서식으로 변환된다(평문 추출에서는 사라짐). Markdown의 '  \\n'(두 칸 공백 줄바꿈)은 Docs 소프트 줄바꿈(\\u000b)이 된다. 공유는 테스트 이메일 확보 후 별도 샘플",
+  "request": {
+    "method": "POST",
+    "url": "/google/docs/create-group-documents",
+    "body": {
+      "folder_id": "1mNzdxpj9eW6e4PZRpgfFU6fYr3R2UCDB",
+      "activity_name": "팀 프로젝트 1차",
+      "title_template": "{{activity_name}} - {{team_name}}",
+      "body_template": "# {{activity_name}}\n\n**팀:** {{team_name}}  \n**마감:** {{due}}\n\n## 1. 문제 정의\n\n여기에 작성하세요.\n\n## 2. 접근 방법\n\n- 항목 1\n- 항목 2\n\n## 3. 결과\n",
+      "groups": [
+        {
+          "team_name": "A조"
+        },
+        {
+          "team_name": "B조"
+        }
+      ],
+      "due": "2026-10-10 23:59",
+      "method": "markdown"
+    }
+  },
+  "response_status": 200,
+  "response": {
+    "result": [
+      {
+        "team_name": "A조",
+        "document": {
+          "id": "1qC94vLcj0V9dHqsY-6rr6AJ_noW0JuhH0eSJ6bBiBC4",
+          "provider": "google",
+          "kind": "doc",
+          "title": "팀 프로젝트 1차 - A조",
+          "url": "https://docs.google.com/document/d/1qC94vLcj0V9dHqsY-6rr6AJ_noW0JuhH0eSJ6bBiBC4/edit?usp=drivesdk",
+          "mime_type": "application/vnd.google-apps.document",
+          "owner": "<OWNER_NAME>",
+          "created_at": "2026-10-03T14:28:23.937000Z",
+          "modified_at": "2026-10-03T14:28:24.127000Z",
+          "parent_folder_id": "1mNzdxpj9eW6e4PZRpgfFU6fYr3R2UCDB",
+          "trashed": false,
+          "locked": false,
+          "text": null
+        },
+        "shares": [],
+        "error": null
+      },
+      {
+        "team_name": "B조",
+        "document": {
+          "id": "1c1rzDX7Cor5tepjSHO5O_F8_QGJ0cbAYccbaCWsqOvg",
+          "provider": "google",
+          "kind": "doc",
+          "title": "팀 프로젝트 1차 - B조",
+          "url": "https://docs.google.com/document/d/1c1rzDX7Cor5tepjSHO5O_F8_QGJ0cbAYccbaCWsqOvg/edit?usp=drivesdk",
+          "mime_type": "application/vnd.google-apps.document",
+          "owner": "<OWNER_NAME>",
+          "created_at": "2026-10-03T14:28:28.335000Z",
+          "modified_at": "2026-10-03T14:28:28.463000Z",
+          "parent_folder_id": "1mNzdxpj9eW6e4PZRpgfFU6fYr3R2UCDB",
+          "trashed": false,
+          "locked": false,
+          "text": null
+        },
+        "shares": [],
+        "error": null
+      }
+    ],
+    "read_A_plain_text": "팀 프로젝트 1차\n팀: A조\u000b마감: 2026-10-10 23:59\n1. 문제 정의\n여기에 작성하세요.\n2. 접근 방법\n항목 1\n항목 2\n3. 결과\n"
+  }
+}

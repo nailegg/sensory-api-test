@@ -1,0 +1,54 @@
+{
+  "scenario": "유즈케이스 3 (2안): writer→commenter 낮추기, keep_emails 예외, 복구",
+  "captured_at": "2026-10-03",
+  "note": "permissions.list → writer마다 permissions.update role=commenter. owner는 role이 달라 건드리지 않는다. keep_emails에 있으면 건너뛴다(빈 배열 반환). restore-edit-access로 다시 writer",
+  "request": {
+    "method": "POST",
+    "url": "/google/docs/revoke-edit-access",
+    "body": {
+      "document_id": "1d2V_J0disL9oRpZHnJFR4jcdf6fDn9R6dmzVqlTfJJU",
+      "to_role": "commenter",
+      "keep_emails": []
+    }
+  },
+  "response_status": 200,
+  "response": {
+    "changed": [
+      {
+        "id": "18249801426757446426",
+        "type": "user",
+        "emailAddress": "<EMAIL>",
+        "role": "commenter",
+        "displayName": "<DISPLAY_NAME>",
+        "pendingOwner": false
+      }
+    ],
+    "permissions_after": [
+      {
+        "id": "18249801426757446426",
+        "displayName": "<DISPLAY_NAME>",
+        "type": "user",
+        "emailAddress": "<EMAIL>",
+        "role": "commenter",
+        "pendingOwner": false
+      },
+      {
+        "id": "02252346710657344069",
+        "displayName": "<DISPLAY_NAME>",
+        "type": "user",
+        "emailAddress": "<EMAIL>",
+        "role": "owner",
+        "pendingOwner": false
+      }
+    ],
+    "revoke_with_keep_emails_after_restore": {
+      "request": {
+        "document_id": "1d2V_J0disL9oRpZHnJFR4jcdf6fDn9R6dmzVqlTfJJU",
+        "keep_emails": [
+          "<EMAIL>"
+        ]
+      },
+      "changed": []
+    }
+  }
+}

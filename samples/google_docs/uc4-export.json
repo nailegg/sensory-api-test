@@ -1,0 +1,26 @@
+{
+  "scenario": "유즈케이스 4: docx·pdf 내보내기",
+  "captured_at": "2026-10-03",
+  "note": "files.export는 바이트를 돌려준다(10MB 상한). 한글 파일명은 RFC 5987로 인코딩. Turnitin 전송은 범위 밖, 바이트를 호출자에게 넘긴다",
+  "request": {
+    "method": "GET",
+    "url": "/google/docs/export/1qC94vLcj0V9dHqsY-6rr6AJ_noW0JuhH0eSJ6bBiBC4?fmt=docx|pdf",
+    "body": null
+  },
+  "response_status": 200,
+  "response": {
+    "docx": {
+      "bytes": 7337,
+      "magic": "504b0304 (zip)",
+      "content_disposition": "attachment; filename*=UTF-8''<percent-encoded 한글 제목>.docx"
+    },
+    "pdf": {
+      "bytes": 33620,
+      "magic": "25504446 (%PDF)"
+    },
+    "bad_fmt_exe": {
+      "status": 400,
+      "detail": "지원하지 않는 형식: exe. 가능: ['docx', 'html', 'md', 'pdf', 'txt']"
+    }
+  }
+}

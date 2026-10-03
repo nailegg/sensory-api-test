@@ -1,0 +1,46 @@
+{
+  "scenario": "Markdown을 Drive files.create(multipart)로 올려 Docs로 변환, 사용자 폴더에 직접 생성",
+  "captured_at": "2026-10-02",
+  "note": "Drive client를 직접 호출해 캡처(라우터 없음). 변환 결과 평문은 '제목\\n본문 굵게\\n'. 제목 서식·굵게는 평문 추출에서 사라지므로 서식 검증은 documents.get 구조로 해야 한다. Docs create+batchUpdate 방식과의 비교는 2단계 유즈케이스 확정 후 5단계에서",
+  "request": {
+    "method": "POST",
+    "url": "https://www.googleapis.com/upload/drive/v3/files?uploadType=multipart",
+    "body": {
+      "metadata": {
+        "name": "synsory markdown test",
+        "mimeType": "application/vnd.google-apps.document",
+        "parents": [
+          "1uNpfuVAIPp9wHaf6BuI6SeQAGoL6TYnd"
+        ]
+      },
+      "file": {
+        "content_type": "text/markdown",
+        "content": "# 제목\n\n본문 **굵게**\n"
+      }
+    }
+  },
+  "response_status": 200,
+  "response": {
+    "files.create": {
+      "id": "1qwF4PPxOP-KJpO5SKRrIgYoKb_eL0w9RoOXCMtYEw9A",
+      "name": "synsory markdown test",
+      "mimeType": "application/vnd.google-apps.document",
+      "parents": [
+        "1uNpfuVAIPp9wHaf6BuI6SeQAGoL6TYnd"
+      ]
+    },
+    "then GET /google/docs/read/{id}": {
+      "id": "1qwF4PPxOP-KJpO5SKRrIgYoKb_eL0w9RoOXCMtYEw9A",
+      "provider": "google",
+      "kind": "doc",
+      "title": "synsory markdown test",
+      "url": "https://docs.google.com/document/d/1qwF4PPxOP-KJpO5SKRrIgYoKb_eL0w9RoOXCMtYEw9A/edit?usp=drivesdk",
+      "mime_type": "application/vnd.google-apps.document",
+      "owner": "<OWNER_NAME>",
+      "created_at": "2026-10-02T14:02:58.274000Z",
+      "modified_at": "2026-10-02T14:03:01.127000Z",
+      "parent_folder_id": "1uNpfuVAIPp9wHaf6BuI6SeQAGoL6TYnd",
+      "text": "제목\n본문 굵게\n"
+    }
+  }
+}

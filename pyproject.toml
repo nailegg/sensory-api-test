@@ -1,0 +1,26 @@
+[project]
+name = "synsory-api"
+version = "0.1.0"
+description = "Synsory SaaS API(Google Drive/Docs/Sheets/Slides/Forms, Zoom) 검증용 FastAPI 테스트 프로젝트"
+requires-python = ">=3.12,<3.13"
+dependencies = [
+    "fastapi>=0.115",
+    "uvicorn[standard]>=0.30",
+    "httpx>=0.27",
+    "pydantic>=2.8",
+    "pydantic-settings>=2.4",
+]
+
+[dependency-groups]
+dev = [
+    "pytest>=8.3",
+    "pytest-asyncio>=0.24",
+    "respx>=0.21",
+]
+
+[tool.pytest.ini_options]
+asyncio_mode = "auto"
+testpaths = ["tests"]
+
+[tool.uv]
+package = false

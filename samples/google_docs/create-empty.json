@@ -1,0 +1,26 @@
+{
+  "scenario": "빈 문서 생성 후 앱 폴더로 이동",
+  "captured_at": "2026-10-02",
+  "note": "documents.create → Drive files.update(addParents) → Document. drive.file scope만으로 동작 확인",
+  "request": {
+    "method": "POST",
+    "url": "/google/docs/create-empty",
+    "body": {
+      "title": "synsory 테스트 문서",
+      "folder_id": "1SD0EoxcAKgGzhqCJiK-7FXgoJ27Yo39z"
+    }
+  },
+  "response": {
+    "id": "1vu-07eJHisVD6E3ixY_zuzNcuVYXFBiGb2GL5xo50Pk",
+    "provider": "google",
+    "kind": "doc",
+    "title": "synsory 테스트 문서",
+    "url": "https://docs.google.com/document/d/1vu-07eJHisVD6E3ixY_zuzNcuVYXFBiGb2GL5xo50Pk/edit?usp=drivesdk",
+    "mime_type": "application/vnd.google-apps.document",
+    "owner": "<OWNER_NAME>",
+    "created_at": "2026-10-02T13:52:13.637000Z",
+    "modified_at": "2026-10-02T13:52:13.637000Z",
+    "parent_folder_id": "1SD0EoxcAKgGzhqCJiK-7FXgoJ27Yo39z",
+    "text": null
+  }
+}

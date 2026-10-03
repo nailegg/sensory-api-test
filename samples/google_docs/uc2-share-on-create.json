@@ -1,0 +1,72 @@
+{
+  "scenario": "유즈케이스 2: 그룹원 이메일 포함 생성 → 편집 권한 부여 → 권한 목록",
+  "captured_at": "2026-10-03",
+  "note": "permissions.create type=user role=writer sendNotificationEmail=false. 그룹원은 writer, 교수자는 owner로 별개 권한 건. 알림 없이도 URL로 바로 열 수 있다",
+  "request": {
+    "method": "POST",
+    "url": "/google/docs/create-group-documents",
+    "body": {
+      "folder_id": "1mNzdxpj9eW6e4PZRpgfFU6fYr3R2UCDB",
+      "activity_name": "팀 프로젝트 1차",
+      "body_template": "# {{activity_name}}\n\n**팀:** {{team_name}}\n\n## 1. 문제 정의\n",
+      "groups": [
+        {
+          "team_name": "D조",
+          "member_emails": [
+            "<EMAIL>"
+          ]
+        }
+      ]
+    }
+  },
+  "response_status": 200,
+  "response": {
+    "create_result": [
+      {
+        "team_name": "D조",
+        "document": {
+          "id": "1d2V_J0disL9oRpZHnJFR4jcdf6fDn9R6dmzVqlTfJJU",
+          "provider": "google",
+          "kind": "doc",
+          "title": "팀 프로젝트 1차 - D조",
+          "url": "https://docs.google.com/document/d/1d2V_J0disL9oRpZHnJFR4jcdf6fDn9R6dmzVqlTfJJU/edit?usp=drivesdk",
+          "mime_type": "application/vnd.google-apps.document",
+          "owner": "<OWNER_NAME>",
+          "created_at": "2026-10-03T14:43:46.391000Z",
+          "modified_at": "2026-10-03T14:43:48.988000Z",
+          "parent_folder_id": "1mNzdxpj9eW6e4PZRpgfFU6fYr3R2UCDB",
+          "trashed": false,
+          "locked": false,
+          "text": null
+        },
+        "shares": [
+          {
+            "email": "<EMAIL>",
+            "ok": true,
+            "permission_id": "18249801426757446426",
+            "error": null
+          }
+        ],
+        "error": null
+      }
+    ],
+    "permissions_after": [
+      {
+        "id": "18249801426757446426",
+        "displayName": "<DISPLAY_NAME>",
+        "type": "user",
+        "emailAddress": "<EMAIL>",
+        "role": "writer",
+        "pendingOwner": false
+      },
+      {
+        "id": "02252346710657344069",
+        "displayName": "<DISPLAY_NAME>",
+        "type": "user",
+        "emailAddress": "<EMAIL>",
+        "role": "owner",
+        "pendingOwner": false
+      }
+    ]
+  }
+}

@@ -1,0 +1,61 @@
+{
+  "scenario": "유즈케이스 3: 마감 처리. 문서 5개(그중 1개는 없는 ID) 일괄 권한 낮추기 → 내보내기 → 재실행",
+  "captured_at": "2026-10-03",
+  "note": "스케줄러가 due 시각에 부르는 흐름. 편집자가 없는 문서는 downgraded=[]로 정상. 없는 ID는 error에 404 notFound가 담기고 나머지는 계속 처리. 직후 export는 200. 같은 요청을 다시 보내면 이미 commenter라 downgraded=[] (멱등). 캡처 후 테스트 계정은 writer로 복구했다",
+  "request": {
+    "method": "POST",
+    "url": "/google/docs/close-submission",
+    "body": {
+      "document_ids": [
+        "1qC94vLcj0V9dHqsY-6rr6AJ_noW0JuhH0eSJ6bBiBC4",
+        "1c1rzDX7Cor5tepjSHO5O_F8_QGJ0cbAYccbaCWsqOvg",
+        "1jh2sr0Uuvb6AfYd5VAQGnfvUZtxsAdyecbO1hUTu3ck",
+        "1d2V_J0disL9oRpZHnJFR4jcdf6fDn9R6dmzVqlTfJJU",
+        "nonexistent-id-123"
+      ],
+      "to_role": "commenter",
+      "keep_emails": []
+    }
+  },
+  "response_status": 200,
+  "response": [
+    {
+      "document_id": "1qC94vLcj0V9dHqsY-6rr6AJ_noW0JuhH0eSJ6bBiBC4",
+      "downgraded": [],
+      "error": null
+    },
+    {
+      "document_id": "1c1rzDX7Cor5tepjSHO5O_F8_QGJ0cbAYccbaCWsqOvg",
+      "downgraded": [],
+      "error": null
+    },
+    {
+      "document_id": "1jh2sr0Uuvb6AfYd5VAQGnfvUZtxsAdyecbO1hUTu3ck",
+      "downgraded": [],
+      "error": null
+    },
+    {
+      "document_id": "1d2V_J0disL9oRpZHnJFR4jcdf6fDn9R6dmzVqlTfJJU",
+      "downgraded": [
+        {
+          "id": "18249801426757446426",
+          "type": "user",
+          "emailAddress": "<EMAIL>",
+          "role": "commenter",
+          "displayName": "<DISPLAY_NAME>",
+          "pendingOwner": false
+        }
+      ],
+      "error": null
+    },
+    {
+      "document_id": "nonexistent-id-123",
+      "downgraded": [],
+      "error": "404 notFound: File not found: nonexistent-id-123."
+    }
+  ],
+  "then": {
+    "GET /google/docs/export/{D}?fmt=docx": "200",
+    "rerun close-submission on D": "downgraded=[]"
+  }
+}

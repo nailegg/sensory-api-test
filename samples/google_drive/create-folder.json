@@ -1,0 +1,25 @@
+{
+  "scenario": "앱 소유 폴더 생성",
+  "captured_at": "2026-10-02",
+  "note": "응답은 Document 공통 모델. parent_folder_id는 내 드라이브 루트 ID. 원본 Drive API 응답은 5단계에서 캡처 훅을 붙여 저장한다",
+  "request": {
+    "method": "POST",
+    "url": "/google/drive/create-folder",
+    "body": {
+      "name": "synsory-test"
+    }
+  },
+  "response": {
+    "id": "1SD0EoxcAKgGzhqCJiK-7FXgoJ27Yo39z",
+    "provider": "google",
+    "kind": "folder",
+    "title": "synsory-test",
+    "url": "https://drive.google.com/drive/folders/1SD0EoxcAKgGzhqCJiK-7FXgoJ27Yo39z",
+    "mime_type": "application/vnd.google-apps.folder",
+    "owner": "<OWNER_NAME>",
+    "created_at": "2026-10-02T13:52:12.368000Z",
+    "modified_at": "2026-10-02T13:52:12.368000Z",
+    "parent_folder_id": "0AAy5z0zisDdxUk9PVA",
+    "text": null
+  }
+}
