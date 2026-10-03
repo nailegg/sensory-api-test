@@ -1,0 +1,83 @@
+{
+  "scenario": "실험: values.append의 표 탐지 — 제목 행(1행)과 빈 2행 뒤 3행부터 표가 있는 시트에 2행 추가",
+  "captured_at": "2026-10-04",
+  "note": "range를 시트 이름만 주면 시트 안의 연속 데이터 블록을 찾아 그 다음 행에 쓴다. 응답 tableRange가 찾은 표",
+  "steps": [
+    {
+      "request": {
+        "method": "POST",
+        "url": "https://sheets.googleapis.com/v4/spreadsheets/1fvbMmkdgA4hIPeZ9OIjxtoQQwKJOMZu95Brd_yszGOs/values/%27역할%20분담%20(학생이%20이름%20바꿈)%27:append",
+        "body": {
+          "values": [
+            [
+              "이영희",
+              "발표",
+              ""
+            ],
+            [
+              "박민수",
+              "코딩",
+              ""
+            ]
+          ]
+        }
+      },
+      "response_status": 200,
+      "response": {
+        "spreadsheetId": "1fvbMmkdgA4hIPeZ9OIjxtoQQwKJOMZu95Brd_yszGOs",
+        "tableRange": "'역할 분담 (학생이 이름 바꿈)'!A3:C5",
+        "updates": {
+          "spreadsheetId": "1fvbMmkdgA4hIPeZ9OIjxtoQQwKJOMZu95Brd_yszGOs",
+          "updatedRange": "'역할 분담 (학생이 이름 바꿈)'!A6:C7",
+          "updatedRows": 2,
+          "updatedColumns": 3,
+          "updatedCells": 6
+        }
+      }
+    },
+    {
+      "request": {
+        "method": "GET",
+        "url": "/google/sheets/values/1fvbMmkdgA4hIPeZ9OIjxtoQQwKJOMZu95Brd_yszGOs",
+        "params": {
+          "sheet_id": 705952363
+        }
+      },
+      "response_status": 200,
+      "response": {
+        "spreadsheet_id": "1fvbMmkdgA4hIPeZ9OIjxtoQQwKJOMZu95Brd_yszGOs",
+        "sheet_id": 705952363,
+        "sheet_title": "역할 분담 (학생이 이름 바꿈)",
+        "range": "'역할 분담 (학생이 이름 바꿈)'!A1:Z1002",
+        "values": [
+          [
+            "A조 역할 분담"
+          ],
+          [],
+          [
+            "이름",
+            "역할",
+            "비고"
+          ],
+          [
+            "홍길동",
+            "조장"
+          ],
+          [
+            "김철수",
+            "자료 조사",
+            46298
+          ],
+          [
+            "이영희",
+            "발표"
+          ],
+          [
+            "박민수",
+            "코딩"
+          ]
+        ]
+      }
+    }
+  ]
+}

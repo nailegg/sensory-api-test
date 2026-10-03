@@ -1,0 +1,158 @@
+{
+  "scenario": "에러: 없는 ID · 없는 시트 이름 · 범위 밖 · 범위보다 큰 값 배열 · 없는 템플릿 복사 · 템플릿 미지정",
+  "captured_at": "2026-10-04",
+  "note": "Sheets 400 INVALID_ARGUMENT 메시지 형태 기록",
+  "steps": [
+    {
+      "request": {
+        "method": "GET",
+        "url": "/google/sheets/read/1nonexistent_spreadsheet_id_xxxxxxxxxxxxxxxxx"
+      },
+      "response_status": 404,
+      "response": {
+        "detail": {
+          "api": "SheetsApiError",
+          "message": "Requested entity was not found.",
+          "rate_limit": false,
+          "body": {
+            "error": {
+              "code": 404,
+              "message": "Requested entity was not found.",
+              "status": "NOT_FOUND"
+            }
+          }
+        }
+      }
+    },
+    {
+      "request": {
+        "method": "GET",
+        "url": "/google/sheets/values/1fvbMmkdgA4hIPeZ9OIjxtoQQwKJOMZu95Brd_yszGOs",
+        "params": {
+          "sheet_title": "없는 시트"
+        }
+      },
+      "response_status": 400,
+      "response": {
+        "detail": {
+          "api": "SheetsApiError",
+          "message": "Unable to parse range: '없는 시트'",
+          "rate_limit": false,
+          "body": {
+            "error": {
+              "code": 400,
+              "message": "Unable to parse range: '없는 시트'",
+              "status": "INVALID_ARGUMENT"
+            }
+          }
+        }
+      }
+    },
+    {
+      "request": {
+        "method": "GET",
+        "url": "/google/sheets/values/1fvbMmkdgA4hIPeZ9OIjxtoQQwKJOMZu95Brd_yszGOs",
+        "params": {
+          "sheet_title": "평가",
+          "cell_range": "ZZZ999999:ZZZ9999999"
+        }
+      },
+      "response_status": 400,
+      "response": {
+        "detail": {
+          "api": "SheetsApiError",
+          "message": "Range ('평가'!ZZZ999999:ZZZ9999999) exceeds grid limits. Max rows: 1000, max columns: 26",
+          "rate_limit": false,
+          "body": {
+            "error": {
+              "code": 400,
+              "message": "Range ('평가'!ZZZ999999:ZZZ9999999) exceeds grid limits. Max rows: 1000, max columns: 26",
+              "status": "INVALID_ARGUMENT"
+            }
+          }
+        }
+      }
+    },
+    {
+      "request": {
+        "method": "POST",
+        "url": "/google/sheets/write-values",
+        "body": {
+          "spreadsheet_id": "1fvbMmkdgA4hIPeZ9OIjxtoQQwKJOMZu95Brd_yszGOs",
+          "sheet_title": "평가",
+          "cell_range": "A1:B1",
+          "values": [
+            [
+              1,
+              2,
+              3,
+              4,
+              5
+            ]
+          ],
+          "value_input_option": "RAW"
+        }
+      },
+      "response_status": 400,
+      "response": {
+        "detail": {
+          "api": "SheetsApiError",
+          "message": "Requested writing within range ['평가'!A1:B1], but tried writing to column [C]",
+          "rate_limit": false,
+          "body": {
+            "error": {
+              "code": 400,
+              "message": "Requested writing within range ['평가'!A1:B1], but tried writing to column [C]",
+              "status": "INVALID_ARGUMENT"
+            }
+          }
+        }
+      }
+    },
+    {
+      "request": {
+        "method": "POST",
+        "url": "/google/sheets/create-group-sheets",
+        "body": {
+          "folder_id": "1t4SxbnE0IOeKonDp_qNgtXtovx1zLmZB",
+          "activity_name": "x",
+          "template_spreadsheet_id": "1nonexistent_template_xxxxxxxxxxxxxxxxxxxxxxx",
+          "groups": [
+            {
+              "team_name": "D조"
+            }
+          ]
+        }
+      },
+      "response_status": 200,
+      "response": [
+        {
+          "team_name": "D조",
+          "document": null,
+          "replaced": {},
+          "shares": [],
+          "error": "Drive 404 notFound: File not found: 1nonexistent_template_xxxxxxxxxxxxxxxxxxxxxxx."
+        }
+      ]
+    },
+    {
+      "request": {
+        "method": "POST",
+        "url": "/google/sheets/create-group-sheets",
+        "body": {
+          "folder_id": "1t4SxbnE0IOeKonDp_qNgtXtovx1zLmZB",
+          "activity_name": "x",
+          "groups": [
+            {
+              "team_name": "D조"
+            }
+          ]
+        }
+      },
+      "response_status": 400,
+      "response": {
+        "detail": "template_spreadsheet_id(copy 방식)와 csv_template(csv 방식) 중 하나만 지정한다"
+      }
+    }
+  ]
+}

@@ -1,0 +1,89 @@
+{
+  "scenario": "유즈케이스 4: 내보내기 xlsx · csv · pdf · tsv (docx는 400) — csv는 첫 시트만",
+  "captured_at": "2026-10-04",
+  "note": "Drive files.export. csv/tsv 출력에 두 번째 시트가 없음을 확인",
+  "steps": [
+    {
+      "request": {
+        "method": "GET",
+        "url": "/google/sheets/export/1fvbMmkdgA4hIPeZ9OIjxtoQQwKJOMZu95Brd_yszGOs",
+        "params": {
+          "fmt": "xlsx"
+        }
+      },
+      "response_status": 200,
+      "response": {
+        "_bytes": 13264,
+        "_content_type": "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+        "_content_disposition": "attachment; filename*=UTF-8''%EB%8F%99%EB%A3%8C%20%ED%8F%89%EA%B0%80%201%EC%B0%A8%20-%20A%EC%A1%B0.xlsx"
+      }
+    },
+    {
+      "request": {
+        "method": "GET",
+        "url": "/google/sheets/export/1fvbMmkdgA4hIPeZ9OIjxtoQQwKJOMZu95Brd_yszGOs",
+        "params": {
+          "fmt": "csv"
+        }
+      },
+      "response_status": 200,
+      "response": {
+        "_bytes": 268,
+        "_content_type": "text/csv; charset=utf-8",
+        "_content_disposition": "attachment; filename*=UTF-8''%EB%8F%99%EB%A3%8C%20%ED%8F%89%EA%B0%80%201%EC%B0%A8%20-%20A%EC%A1%B0.csv",
+        "_text_head": "동료 평가 1차,,\r\n팀: A조,,\r\n마감: 2026-10-10 23:59,,\r\n,,\r\n항목,점수 (0~10),비고\r\n기여도,5,교수자 코멘트\r\n소통,8,\r\n일정 준수,10,지각 없음\r\n결과물 품질,7,마무리 부족\r\n합계,30,\r\nA조 평균: 7.5,,\r\n,,\r\n학번(문자),0123456,",
+        "_sheets_in_output": false
+      }
+    },
+    {
+      "request": {
+        "method": "GET",
+        "url": "/google/sheets/export/1fvbMmkdgA4hIPeZ9OIjxtoQQwKJOMZu95Brd_yszGOs",
+        "params": {
+          "fmt": "pdf"
+        }
+      },
+      "response_status": 200,
+      "response": {
+        "_bytes": 63529,
+        "_content_type": "application/pdf",
+        "_content_disposition": "attachment; filename*=UTF-8''%EB%8F%99%EB%A3%8C%20%ED%8F%89%EA%B0%80%201%EC%B0%A8%20-%20A%EC%A1%B0.pdf"
+      }
+    },
+    {
+      "request": {
+        "method": "GET",
+        "url": "/google/sheets/export/1fvbMmkdgA4hIPeZ9OIjxtoQQwKJOMZu95Brd_yszGOs",
+        "params": {
+          "fmt": "tsv"
+        }
+      },
+      "response_status": 200,
+      "response": {
+        "_bytes": 268,
+        "_content_type": "text/tab-separated-values; charset=utf-8",
+        "_content_disposition": "attachment; filename*=UTF-8''%EB%8F%99%EB%A3%8C%20%ED%8F%89%EA%B0%80%201%EC%B0%A8%20-%20A%EC%A1%B0.tsv",
+        "_text_head": "동료 평가 1차\t\t\r\n팀: A조\t\t\r\n마감: 2026-10-10 23:59\t\t\r\n\t\t\r\n항목\t점수 (0~10)\t비고\r\n기여도\t5\t교수자 코멘트\r\n소통\t8\t\r\n일정 준수\t10\t지각 없음\r\n결과물 품질\t7\t마무리 부족\r\n합계\t30\t\r\nA조 평균: 7.5\t\t\r\n\t\t\r\n학번(문자)\t0123456\t",
+        "_sheets_in_output": false
+      }
+    },
+    {
+      "request": {
+        "method": "GET",
+        "url": "/google/sheets/export/1fvbMmkdgA4hIPeZ9OIjxtoQQwKJOMZu95Brd_yszGOs",
+        "params": {
+          "fmt": "docx"
+        }
+      },
+      "response_status": 400,
+      "response": {
+        "_bytes": 98,
+        "_content_type": "application/json",
+        "_content_disposition": null,
+        "error": {
+          "detail": "지원하지 않는 형식: docx. 가능: ['csv', 'ods', 'pdf', 'tsv', 'xlsx', 'zip']"
+        }
+      }
+    }
+  ]
+}

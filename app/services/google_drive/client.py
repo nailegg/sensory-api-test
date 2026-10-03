@@ -37,6 +37,17 @@ SLIDES_EXPORT_MIME = {
     "odp": "application/vnd.oasis.opendocument.presentation",
 }
 MIME_PPTX = SLIDES_EXPORT_MIME["pptx"]
+# files.export 대상 형식 (Sheets 기준). csv·tsv는 첫 시트만 내보낸다. 전체 보존은 xlsx.
+SHEETS_EXPORT_MIME = {
+    "xlsx": "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+    "pdf": "application/pdf",
+    "csv": "text/csv",
+    "tsv": "text/tab-separated-values",
+    "ods": "application/vnd.oasis.opendocument.spreadsheet",
+    "zip": "application/zip",
+}
+MIME_XLSX = SHEETS_EXPORT_MIME["xlsx"]
+MIME_CSV = "text/csv"
 
 PERMISSION_FIELDS = "id,type,role,emailAddress,displayName,expirationTime,pendingOwner"
 

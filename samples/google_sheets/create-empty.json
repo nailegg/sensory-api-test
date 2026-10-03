@@ -1,0 +1,33 @@
+{
+  "scenario": "배관: spreadsheets.create(시트 2장, ko_KR/Asia/Seoul) → Drive 폴더 이동 → Document",
+  "captured_at": "2026-10-04",
+  "note": "호출 2회. 폴더만 필요하면 Drive files.create 1회가 더 싸다",
+  "request": {
+    "method": "POST",
+    "url": "/google/sheets/create-empty",
+    "body": {
+      "title": "빈 시트 (실측)",
+      "folder_id": "1t4SxbnE0IOeKonDp_qNgtXtovx1zLmZB",
+      "sheet_names": [
+        "평가",
+        "역할 분담"
+      ]
+    }
+  },
+  "response_status": 200,
+  "response": {
+    "id": "17GRPyNta637JquhzJEhyErbuYhd67qx7DqluZWdhHpc",
+    "provider": "google",
+    "kind": "sheet",
+    "title": "빈 시트 (실측)",
+    "url": "https://docs.google.com/spreadsheets/d/17GRPyNta637JquhzJEhyErbuYhd67qx7DqluZWdhHpc/edit?usp=drivesdk",
+    "mime_type": "application/vnd.google-apps.spreadsheet",
+    "owner": "<OWNER_NAME>",
+    "created_at": "2026-10-03T17:12:08.002000Z",
+    "modified_at": "2026-10-03T17:12:08.417000Z",
+    "parent_folder_id": "1t4SxbnE0IOeKonDp_qNgtXtovx1zLmZB",
+    "trashed": false,
+    "locked": false,
+    "text": null
+  }
+}

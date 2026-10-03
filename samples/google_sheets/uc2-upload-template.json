@@ -1,0 +1,169 @@
+{
+  "scenario": "유즈케이스 2-1: xlsx 템플릿을 Sheets로 변환 업로드 (액티비티당 1회) + 구조·값 확인",
+  "captured_at": "2026-10-04",
+  "note": "python-openpyxl로 만든 2시트 xlsx(평가: 태그 3개·데이터 검증 0~10·SUM 수식·수식 안 태그·문자 학번 0123456·틀 고정 5행 / 역할 분담: 태그 1개). 변환 뒤 Sheets get으로 검증 규칙·서식·수식 보존 여부를 봤다",
+  "steps": [
+    {
+      "request": {
+        "method": "POST",
+        "url": "/google/sheets/upload-template",
+        "multipart": {
+          "name": "[템플릿] 동료 평가 1차",
+          "folder_id": "1t4SxbnE0IOeKonDp_qNgtXtovx1zLmZB",
+          "xlsx": "template.xlsx (6KB)"
+        }
+      },
+      "response_status": 200,
+      "response": {
+        "id": "1RacBcJkWUxl5QNvslowQnjjcZSRmYkP3YE46U6m1cUU",
+        "provider": "google",
+        "kind": "sheet",
+        "title": "[템플릿] 동료 평가 1차",
+        "url": "https://docs.google.com/spreadsheets/d/1RacBcJkWUxl5QNvslowQnjjcZSRmYkP3YE46U6m1cUU/edit?usp=drivesdk",
+        "mime_type": "application/vnd.google-apps.spreadsheet",
+        "owner": "<OWNER_NAME>",
+        "created_at": "2026-10-03T17:11:10.038000Z",
+        "modified_at": "2026-10-03T17:11:10.194000Z",
+        "parent_folder_id": "1t4SxbnE0IOeKonDp_qNgtXtovx1zLmZB",
+        "trashed": false,
+        "locked": false,
+        "text": null
+      }
+    },
+    {
+      "request": {
+        "method": "GET",
+        "url": "/google/sheets/read/1RacBcJkWUxl5QNvslowQnjjcZSRmYkP3YE46U6m1cUU",
+        "params": {
+          "include_values": "true"
+        }
+      },
+      "response_status": 200,
+      "response": {
+        "id": "1RacBcJkWUxl5QNvslowQnjjcZSRmYkP3YE46U6m1cUU",
+        "provider": "google",
+        "kind": "sheet",
+        "title": "file",
+        "url": "https://docs.google.com/spreadsheets/d/1RacBcJkWUxl5QNvslowQnjjcZSRmYkP3YE46U6m1cUU/edit?usp=drivesdk",
+        "mime_type": "application/vnd.google-apps.spreadsheet",
+        "owner": "<OWNER_NAME>",
+        "created_at": "2026-10-03T17:11:10.038000Z",
+        "modified_at": "2026-10-03T17:11:12.534000Z",
+        "parent_folder_id": "1t4SxbnE0IOeKonDp_qNgtXtovx1zLmZB",
+        "trashed": false,
+        "locked": false,
+        "text": "[평가]\n{{activity_name}}\n팀: {{team_name}}\n마감: {{due}}\n\n항목\t점수 (0~10)\t비고\n기여도\n소통\n일정 준수\n결과물 품질\n합계\t0\n#DIV/0! (Evaluation of function AVERAGE caused a divide by zero error.)\n\n학번(문자)\t0123456\n\n[역할 분담]\n{{team_name}} 역할 분담\n\n이름\t역할\t비고"
+      }
+    },
+    {
+      "request": {
+        "method": "GET",
+        "url": "https://sheets.googleapis.com/v4/spreadsheets/1RacBcJkWUxl5QNvslowQnjjcZSRmYkP3YE46U6m1cUU"
+      },
+      "response_status": 200,
+      "response_summary": {
+        "frozenRowCount": 5,
+        "cells": {
+          "A1": {
+            "format": {
+              "textFormat": {
+                "bold": true
+              }
+            },
+            "string": "{{activity_name}}"
+          },
+          "A5": {
+            "format": {
+              "textFormat": {
+                "bold": true
+              }
+            },
+            "string": "항목"
+          },
+          "B5": {
+            "format": {
+              "textFormat": {
+                "bold": true
+              }
+            },
+            "string": "점수 (0~10)"
+          },
+          "B6": {
+            "validation": {
+              "type": "NUMBER_BETWEEN",
+              "values": [
+                {
+                  "userEnteredValue": "0"
+                },
+                {
+                  "userEnteredValue": "10"
+                }
+              ]
+            }
+          },
+          "B7": {
+            "validation": {
+              "type": "NUMBER_BETWEEN",
+              "values": [
+                {
+                  "userEnteredValue": "0"
+                },
+                {
+                  "userEnteredValue": "10"
+                }
+              ]
+            }
+          },
+          "B8": {
+            "validation": {
+              "type": "NUMBER_BETWEEN",
+              "values": [
+                {
+                  "userEnteredValue": "0"
+                },
+                {
+                  "userEnteredValue": "10"
+                }
+              ]
+            }
+          },
+          "B9": {
+            "validation": {
+              "type": "NUMBER_BETWEEN",
+              "values": [
+                {
+                  "userEnteredValue": "0"
+                },
+                {
+                  "userEnteredValue": "10"
+                }
+              ]
+            }
+          },
+          "A10": {
+            "format": {
+              "textFormat": {
+                "bold": true
+              }
+            },
+            "string": "합계"
+          },
+          "B10": {
+            "formula": "=SUM(B6:B9)"
+          },
+          "A11": {
+            "formula": "=\"{{team_name}} 평균: \"&TEXT(AVERAGE(B6:B9),\"0.0\")"
+          },
+          "B13": {
+            "format": {
+              "numberFormat": {
+                "type": "TEXT"
+              }
+            },
+            "string": "0123456"
+          }
+        }
+      }
+    }
+  ]
+}

@@ -1,0 +1,290 @@
+{
+  "scenario": "유즈케이스 5: 마감 후 그룹 시트 값 읽기 — UNFORMATTED vs FORMATTED, 날짜 일련번호, 시트 이름 변경 뒤 sheet_id로 읽기",
+  "captured_at": "2026-10-04",
+  "note": "학생 입력을 write-values(USER_ENTERED)로 흉내. 날짜 '2026-10-03'은 UNFORMATTED에서 일련번호. 시트 이름을 바꾼 뒤 sheet_id로는 읽히고 옛 이름으로는 400",
+  "steps": [
+    {
+      "request": {
+        "method": "POST",
+        "url": "/google/sheets/write-values",
+        "body": {
+          "spreadsheet_id": "1fvbMmkdgA4hIPeZ9OIjxtoQQwKJOMZu95Brd_yszGOs",
+          "sheet_title": "평가",
+          "cell_range": "B6:C9",
+          "values": [
+            [
+              9,
+              "좋음"
+            ],
+            [
+              8,
+              ""
+            ],
+            [
+              10,
+              "지각 없음"
+            ],
+            [
+              7,
+              "마무리 부족"
+            ]
+          ],
+          "value_input_option": "USER_ENTERED"
+        }
+      },
+      "response_status": 200,
+      "response": {
+        "spreadsheetId": "1fvbMmkdgA4hIPeZ9OIjxtoQQwKJOMZu95Brd_yszGOs",
+        "updatedRange": "'평가'!B6:C9",
+        "updatedRows": 4,
+        "updatedColumns": 2,
+        "updatedCells": 8
+      }
+    },
+    {
+      "request": {
+        "method": "POST",
+        "url": "/google/sheets/write-values",
+        "body": {
+          "spreadsheet_id": "1fvbMmkdgA4hIPeZ9OIjxtoQQwKJOMZu95Brd_yszGOs",
+          "sheet_title": "역할 분담",
+          "cell_range": "A4:C5",
+          "values": [
+            [
+              "홍길동",
+              "조장",
+              ""
+            ],
+            [
+              "김철수",
+              "자료 조사",
+              "2026-10-03"
+            ]
+          ],
+          "value_input_option": "USER_ENTERED"
+        }
+      },
+      "response_status": 200,
+      "response": {
+        "spreadsheetId": "1fvbMmkdgA4hIPeZ9OIjxtoQQwKJOMZu95Brd_yszGOs",
+        "updatedRange": "'역할 분담'!A4:C5",
+        "updatedRows": 2,
+        "updatedColumns": 3,
+        "updatedCells": 6
+      }
+    },
+    {
+      "request": {
+        "method": "GET",
+        "url": "/google/sheets/values/1fvbMmkdgA4hIPeZ9OIjxtoQQwKJOMZu95Brd_yszGOs",
+        "params": {
+          "sheet_title": "평가",
+          "cell_range": "A5:C11"
+        }
+      },
+      "response_status": 200,
+      "response": {
+        "spreadsheet_id": "1fvbMmkdgA4hIPeZ9OIjxtoQQwKJOMZu95Brd_yszGOs",
+        "sheet_id": 484197496,
+        "sheet_title": "평가",
+        "range": "'평가'!A5:C11",
+        "values": [
+          [
+            "항목",
+            "점수 (0~10)",
+            "비고"
+          ],
+          [
+            "기여도",
+            9,
+            "좋음"
+          ],
+          [
+            "소통",
+            8
+          ],
+          [
+            "일정 준수",
+            10,
+            "지각 없음"
+          ],
+          [
+            "결과물 품질",
+            7,
+            "마무리 부족"
+          ],
+          [
+            "합계",
+            34
+          ],
+          [
+            "A조 평균: 8.5"
+          ]
+        ]
+      }
+    },
+    {
+      "request": {
+        "method": "GET",
+        "url": "/google/sheets/values/1fvbMmkdgA4hIPeZ9OIjxtoQQwKJOMZu95Brd_yszGOs",
+        "params": {
+          "sheet_title": "평가",
+          "cell_range": "A5:C11",
+          "value_render_option": "FORMATTED_VALUE"
+        }
+      },
+      "response_status": 200,
+      "response": {
+        "spreadsheet_id": "1fvbMmkdgA4hIPeZ9OIjxtoQQwKJOMZu95Brd_yszGOs",
+        "sheet_id": 484197496,
+        "sheet_title": "평가",
+        "range": "'평가'!A5:C11",
+        "values": [
+          [
+            "항목",
+            "점수 (0~10)",
+            "비고"
+          ],
+          [
+            "기여도",
+            "9",
+            "좋음"
+          ],
+          [
+            "소통",
+            "8"
+          ],
+          [
+            "일정 준수",
+            "10",
+            "지각 없음"
+          ],
+          [
+            "결과물 품질",
+            "7",
+            "마무리 부족"
+          ],
+          [
+            "합계",
+            "34"
+          ],
+          [
+            "A조 평균: 8.5"
+          ]
+        ]
+      }
+    },
+    {
+      "request": {
+        "method": "POST",
+        "url": "https://sheets.googleapis.com/v4/spreadsheets/1fvbMmkdgA4hIPeZ9OIjxtoQQwKJOMZu95Brd_yszGOs:batchUpdate",
+        "body": {
+          "requests": [
+            {
+              "updateSheetProperties": {
+                "properties": {
+                  "sheetId": 705952363,
+                  "title": "역할 분담 (학생이 이름 바꿈)"
+                },
+                "fields": "title"
+              }
+            }
+          ]
+        }
+      },
+      "response_status": 200,
+      "response": {
+        "spreadsheetId": "1fvbMmkdgA4hIPeZ9OIjxtoQQwKJOMZu95Brd_yszGOs",
+        "replies": [
+          {}
+        ],
+        "commentUpdateState": "NO_UPDATES_REQUESTED"
+      }
+    },
+    {
+      "request": {
+        "method": "GET",
+        "url": "/google/sheets/values/1fvbMmkdgA4hIPeZ9OIjxtoQQwKJOMZu95Brd_yszGOs",
+        "params": {
+          "sheet_id": 705952363
+        }
+      },
+      "response_status": 200,
+      "response": {
+        "spreadsheet_id": "1fvbMmkdgA4hIPeZ9OIjxtoQQwKJOMZu95Brd_yszGOs",
+        "sheet_id": 705952363,
+        "sheet_title": "역할 분담 (학생이 이름 바꿈)",
+        "range": "'역할 분담 (학생이 이름 바꿈)'!A1:Z1000",
+        "values": [
+          [
+            "A조 역할 분담"
+          ],
+          [],
+          [
+            "이름",
+            "역할",
+            "비고"
+          ],
+          [
+            "홍길동",
+            "조장"
+          ],
+          [
+            "김철수",
+            "자료 조사",
+            46298
+          ]
+        ]
+      }
+    },
+    {
+      "request": {
+        "method": "GET",
+        "url": "/google/sheets/values/1fvbMmkdgA4hIPeZ9OIjxtoQQwKJOMZu95Brd_yszGOs",
+        "params": {
+          "sheet_title": "역할 분담"
+        }
+      },
+      "response_status": 400,
+      "response": {
+        "detail": {
+          "api": "SheetsApiError",
+          "message": "Unable to parse range: '역할 분담'",
+          "rate_limit": false,
+          "body": {
+            "error": {
+              "code": 400,
+              "message": "Unable to parse range: '역할 분담'",
+              "status": "INVALID_ARGUMENT"
+            }
+          }
+        }
+      }
+    },
+    {
+      "request": {
+        "method": "GET",
+        "url": "/google/sheets/read/1fvbMmkdgA4hIPeZ9OIjxtoQQwKJOMZu95Brd_yszGOs",
+        "params": {
+          "include_values": "true"
+        }
+      },
+      "response_status": 200,
+      "response": {
+        "id": "1fvbMmkdgA4hIPeZ9OIjxtoQQwKJOMZu95Brd_yszGOs",
+        "provider": "google",
+        "kind": "sheet",
+        "title": "동료 평가 1차 - A조",
+        "url": "https://docs.google.com/spreadsheets/d/1fvbMmkdgA4hIPeZ9OIjxtoQQwKJOMZu95Brd_yszGOs/edit?usp=drivesdk",
+        "mime_type": "application/vnd.google-apps.spreadsheet",
+        "owner": "<OWNER_NAME>",
+        "created_at": "2026-10-03T17:11:15.682000Z",
+        "modified_at": "2026-10-03T17:11:20.249000Z",
+        "parent_folder_id": "1t4SxbnE0IOeKonDp_qNgtXtovx1zLmZB",
+        "trashed": false,
+        "locked": false,
+        "text": "[평가]\n동료 평가 1차\n팀: A조\n마감: 2026-10-10 23:59\n\n항목\t점수 (0~10)\t비고\n기여도\t9\t좋음\n소통\t8\n일정 준수\t10\t지각 없음\n결과물 품질\t7\t마무리 부족\n합계\t34\nA조 평균: 8.5\n\n학번(문자)\t0123456\n\n[역할 분담 (학생이 이름 바꿈)]\nA조 역할 분담\n\n이름\t역할\t비고\n홍길동\t조장\n김철수\t자료 조사\t46298"
+      }
+    }
+  ]
+}

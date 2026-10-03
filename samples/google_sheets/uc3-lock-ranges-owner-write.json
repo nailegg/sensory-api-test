@@ -1,0 +1,283 @@
+{
+  "scenario": "유즈케이스 3 선택지: addProtectedRange로 학생 입력 범위(평가!B6:C9) 보호 → 소유자 토큰 values.update → editors 지정 보호 → 해제",
+  "captured_at": "2026-10-04",
+  "note": "변환 업로드·복사된 파일의 sheetId는 0이 아니다(첫 시도에 sheetId=0으로 보내 400 'No grid with id: 0'). /sheets/{id}로 sheetId를 얻어 다시 실행. 보호 중에도 소유자(요청자) API 쓰기는 200. editors.users에 넣은 이메일은 응답에 그대로 노출되어 마스킹. 추가 실측: editors를 생략한 첫 보호의 GET 결과 editors.users에 학생 writer까지 들어갔다(=현재 편집자 전원). 별도 확인에서 editors.users=[]로 보내면 소유자만 남는다 → 코드는 항상 editors를 명시하도록 수정",
+  "steps": [
+    {
+      "request": {
+        "method": "GET",
+        "url": "/google/sheets/sheets/1fvbMmkdgA4hIPeZ9OIjxtoQQwKJOMZu95Brd_yszGOs"
+      },
+      "response_status": 200,
+      "response": [
+        {
+          "sheet_id": 484197496,
+          "title": "평가",
+          "index": 0,
+          "hidden": false,
+          "row_count": 1000,
+          "column_count": 26,
+          "frozen_row_count": 5,
+          "protected_ranges": []
+        },
+        {
+          "sheet_id": 705952363,
+          "title": "역할 분담 (학생이 이름 바꿈)",
+          "index": 1,
+          "hidden": false,
+          "row_count": 1002,
+          "column_count": 26,
+          "frozen_row_count": 0,
+          "protected_ranges": []
+        }
+      ]
+    },
+    {
+      "request": {
+        "method": "POST",
+        "url": "/google/sheets/lock-ranges",
+        "body": {
+          "spreadsheet_id": "1fvbMmkdgA4hIPeZ9OIjxtoQQwKJOMZu95Brd_yszGOs",
+          "sheet_id": 484197496,
+          "cell_ranges": [
+            "B6:C9"
+          ],
+          "description": "마감 (실측)"
+        }
+      },
+      "response_status": 200,
+      "response": [
+        74271523
+      ]
+    },
+    {
+      "request": {
+        "method": "POST",
+        "url": "/google/sheets/write-values",
+        "body": {
+          "spreadsheet_id": "1fvbMmkdgA4hIPeZ9OIjxtoQQwKJOMZu95Brd_yszGOs",
+          "sheet_title": "평가",
+          "cell_range": "B6",
+          "values": [
+            [
+              6
+            ]
+          ],
+          "value_input_option": "USER_ENTERED"
+        }
+      },
+      "response_status": 200,
+      "response": {
+        "spreadsheetId": "1fvbMmkdgA4hIPeZ9OIjxtoQQwKJOMZu95Brd_yszGOs",
+        "updatedRange": "'평가'!B6",
+        "updatedRows": 1,
+        "updatedColumns": 1,
+        "updatedCells": 1
+      }
+    },
+    {
+      "request": {
+        "method": "GET",
+        "url": "/google/sheets/values/1fvbMmkdgA4hIPeZ9OIjxtoQQwKJOMZu95Brd_yszGOs"
+      },
+      "response_status": 200,
+      "response": {
+        "spreadsheet_id": "1fvbMmkdgA4hIPeZ9OIjxtoQQwKJOMZu95Brd_yszGOs",
+        "sheet_id": 484197496,
+        "sheet_title": "평가",
+        "range": "'평가'!B6",
+        "values": [
+          [
+            6
+          ]
+        ]
+      }
+    },
+    {
+      "request": {
+        "method": "GET",
+        "url": "/google/sheets/sheets/1fvbMmkdgA4hIPeZ9OIjxtoQQwKJOMZu95Brd_yszGOs"
+      },
+      "response_status": 200,
+      "response": [
+        {
+          "sheet_id": 484197496,
+          "title": "평가",
+          "index": 0,
+          "hidden": false,
+          "row_count": 1000,
+          "column_count": 26,
+          "frozen_row_count": 5,
+          "protected_ranges": [
+            {
+              "protectedRangeId": 74271523,
+              "range": {
+                "sheetId": 484197496,
+                "startRowIndex": 5,
+                "endRowIndex": 9,
+                "startColumnIndex": 1,
+                "endColumnIndex": 3
+              },
+              "description": "마감 (실측)",
+              "requestingUserCanEdit": true,
+              "editors": {
+                "users": [
+                  "<EMAIL>",
+                  "<EMAIL>"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "sheet_id": 705952363,
+          "title": "역할 분담 (학생이 이름 바꿈)",
+          "index": 1,
+          "hidden": false,
+          "row_count": 1002,
+          "column_count": 26,
+          "frozen_row_count": 0,
+          "protected_ranges": []
+        }
+      ]
+    },
+    {
+      "request": {
+        "method": "POST",
+        "url": "/google/sheets/lock-ranges",
+        "body": {
+          "spreadsheet_id": "1fvbMmkdgA4hIPeZ9OIjxtoQQwKJOMZu95Brd_yszGOs",
+          "sheet_id": 484197496,
+          "cell_ranges": [
+            "A1:A3"
+          ],
+          "description": "헤더 보호, 조교 편집 허용",
+          "editor_emails": [
+            "<EMAIL>"
+          ]
+        }
+      },
+      "response_status": 200,
+      "response": [
+        1690817636
+      ]
+    },
+    {
+      "request": {
+        "method": "GET",
+        "url": "/google/sheets/sheets/1fvbMmkdgA4hIPeZ9OIjxtoQQwKJOMZu95Brd_yszGOs"
+      },
+      "response_status": 200,
+      "response": [
+        {
+          "sheet_id": 484197496,
+          "title": "평가",
+          "index": 0,
+          "hidden": false,
+          "row_count": 1000,
+          "column_count": 26,
+          "frozen_row_count": 5,
+          "protected_ranges": [
+            {
+              "protectedRangeId": 1690817636,
+              "range": {
+                "sheetId": 484197496,
+                "startRowIndex": 0,
+                "endRowIndex": 3,
+                "startColumnIndex": 0,
+                "endColumnIndex": 1
+              },
+              "description": "헤더 보호, 조교 편집 허용",
+              "requestingUserCanEdit": true,
+              "editors": {
+                "users": [
+                  "<EMAIL>",
+                  "<EMAIL>"
+                ]
+              }
+            },
+            {
+              "protectedRangeId": 74271523,
+              "range": {
+                "sheetId": 484197496,
+                "startRowIndex": 5,
+                "endRowIndex": 9,
+                "startColumnIndex": 1,
+                "endColumnIndex": 3
+              },
+              "description": "마감 (실측)",
+              "requestingUserCanEdit": true,
+              "editors": {
+                "users": [
+                  "<EMAIL>",
+                  "<EMAIL>"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "sheet_id": 705952363,
+          "title": "역할 분담 (학생이 이름 바꿈)",
+          "index": 1,
+          "hidden": false,
+          "row_count": 1002,
+          "column_count": 26,
+          "frozen_row_count": 0,
+          "protected_ranges": []
+        }
+      ]
+    },
+    {
+      "request": {
+        "method": "POST",
+        "url": "/google/sheets/unlock-ranges",
+        "body": {
+          "spreadsheet_id": "1fvbMmkdgA4hIPeZ9OIjxtoQQwKJOMZu95Brd_yszGOs",
+          "protected_range_ids": [
+            74271523,
+            1690817636
+          ]
+        }
+      },
+      "response_status": 200,
+      "response": {
+        "spreadsheetId": "1fvbMmkdgA4hIPeZ9OIjxtoQQwKJOMZu95Brd_yszGOs",
+        "replies": [
+          {},
+          {}
+        ],
+        "commentUpdateState": "NO_UPDATES_REQUESTED"
+      }
+    },
+    {
+      "request": {
+        "method": "GET",
+        "url": "/google/sheets/sheets/1fvbMmkdgA4hIPeZ9OIjxtoQQwKJOMZu95Brd_yszGOs"
+      },
+      "response_status": 200,
+      "response": [
+        {
+          "sheet_id": 484197496,
+          "title": "평가",
+          "index": 0,
+          "hidden": false,
+          "row_count": 1000,
+          "column_count": 26,
+          "frozen_row_count": 5,
+          "protected_ranges": []
+        },
+        {
+          "sheet_id": 705952363,
+          "title": "역할 분담 (학생이 이름 바꿈)",
+          "index": 1,
+          "hidden": false,
+          "row_count": 1002,
+          "column_count": 26,
+          "frozen_row_count": 0,
+          "protected_ranges": []
+        }
+      ]
+    }
+  ]
+}

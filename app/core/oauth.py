@@ -24,6 +24,7 @@ from app.core.config import Settings, get_settings
 from app.core.token_store import TokenSet, TokenStore
 from app.services.google_docs import scopes as google_docs_scopes
 from app.services.google_drive import scopes as google_drive_scopes
+from app.services.google_sheets import scopes as google_sheets_scopes
 from app.services.google_slides import scopes as google_slides_scopes
 
 # 서비스가 추가되면 여기에 scopes 모듈만 추가한다.
@@ -31,6 +32,7 @@ REGISTERED_SCOPE_MODULES: list[ModuleType] = [
     google_drive_scopes,
     google_docs_scopes,
     google_slides_scopes,
+    google_sheets_scopes,
 ]
 
 

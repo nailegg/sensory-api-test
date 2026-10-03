@@ -1,0 +1,179 @@
+{
+  "scenario": "실험: valueInputOption RAW vs USER_ENTERED — 앞자리 0 학번과 수식 문자열",
+  "captured_at": "2026-10-04",
+  "note": "RAW는 둘 다 문자열 그대로(수식도 계산 안 됨), USER_ENTERED는 0123456→숫자 123456, 수식은 계산. 학번 열은 RAW 또는 텍스트 서식 필요",
+  "steps": [
+    {
+      "request": {
+        "method": "POST",
+        "url": "/google/sheets/write-values",
+        "body": {
+          "spreadsheet_id": "13SFZqUEIYOHjn0hxrjxZWX-90Rdf587yj_EyfsKRDYo",
+          "sheet_title": "평가",
+          "cell_range": "A14:B15",
+          "values": [
+            [
+              "학번 RAW",
+              "0123456"
+            ],
+            [
+              "수식 RAW",
+              "=SUM(B6:B9)"
+            ]
+          ],
+          "value_input_option": "RAW"
+        }
+      },
+      "response_status": 200,
+      "response": {
+        "spreadsheetId": "13SFZqUEIYOHjn0hxrjxZWX-90Rdf587yj_EyfsKRDYo",
+        "updatedRange": "'평가'!A14:B15",
+        "updatedRows": 2,
+        "updatedColumns": 2,
+        "updatedCells": 4
+      }
+    },
+    {
+      "request": {
+        "method": "GET",
+        "url": "/google/sheets/values/13SFZqUEIYOHjn0hxrjxZWX-90Rdf587yj_EyfsKRDYo",
+        "params": {
+          "sheet_title": "평가",
+          "cell_range": "A14:B15",
+          "value_render_option": "FORMULA"
+        }
+      },
+      "response_status": 200,
+      "response": {
+        "spreadsheet_id": "13SFZqUEIYOHjn0hxrjxZWX-90Rdf587yj_EyfsKRDYo",
+        "sheet_id": 484197496,
+        "sheet_title": "평가",
+        "range": "'평가'!A14:B15",
+        "values": [
+          [
+            "학번 RAW",
+            "0123456"
+          ],
+          [
+            "수식 RAW",
+            "=SUM(B6:B9)"
+          ]
+        ]
+      }
+    },
+    {
+      "request": {
+        "method": "GET",
+        "url": "/google/sheets/values/13SFZqUEIYOHjn0hxrjxZWX-90Rdf587yj_EyfsKRDYo",
+        "params": {
+          "sheet_title": "평가",
+          "cell_range": "A14:B15",
+          "value_render_option": "UNFORMATTED_VALUE"
+        }
+      },
+      "response_status": 200,
+      "response": {
+        "spreadsheet_id": "13SFZqUEIYOHjn0hxrjxZWX-90Rdf587yj_EyfsKRDYo",
+        "sheet_id": 484197496,
+        "sheet_title": "평가",
+        "range": "'평가'!A14:B15",
+        "values": [
+          [
+            "학번 RAW",
+            "0123456"
+          ],
+          [
+            "수식 RAW",
+            "=SUM(B6:B9)"
+          ]
+        ]
+      }
+    },
+    {
+      "request": {
+        "method": "POST",
+        "url": "/google/sheets/write-values",
+        "body": {
+          "spreadsheet_id": "13SFZqUEIYOHjn0hxrjxZWX-90Rdf587yj_EyfsKRDYo",
+          "sheet_title": "평가",
+          "cell_range": "A14:B15",
+          "values": [
+            [
+              "학번 USER_ENTERED",
+              "0123456"
+            ],
+            [
+              "수식 USER_ENTERED",
+              "=SUM(B6:B9)"
+            ]
+          ],
+          "value_input_option": "USER_ENTERED"
+        }
+      },
+      "response_status": 200,
+      "response": {
+        "spreadsheetId": "13SFZqUEIYOHjn0hxrjxZWX-90Rdf587yj_EyfsKRDYo",
+        "updatedRange": "'평가'!A14:B15",
+        "updatedRows": 2,
+        "updatedColumns": 2,
+        "updatedCells": 4
+      }
+    },
+    {
+      "request": {
+        "method": "GET",
+        "url": "/google/sheets/values/13SFZqUEIYOHjn0hxrjxZWX-90Rdf587yj_EyfsKRDYo",
+        "params": {
+          "sheet_title": "평가",
+          "cell_range": "A14:B15",
+          "value_render_option": "FORMULA"
+        }
+      },
+      "response_status": 200,
+      "response": {
+        "spreadsheet_id": "13SFZqUEIYOHjn0hxrjxZWX-90Rdf587yj_EyfsKRDYo",
+        "sheet_id": 484197496,
+        "sheet_title": "평가",
+        "range": "'평가'!A14:B15",
+        "values": [
+          [
+            "학번 USER_ENTERED",
+            123456
+          ],
+          [
+            "수식 USER_ENTERED",
+            "=SUM(B6:B9)"
+          ]
+        ]
+      }
+    },
+    {
+      "request": {
+        "method": "GET",
+        "url": "/google/sheets/values/13SFZqUEIYOHjn0hxrjxZWX-90Rdf587yj_EyfsKRDYo",
+        "params": {
+          "sheet_title": "평가",
+          "cell_range": "A14:B15",
+          "value_render_option": "UNFORMATTED_VALUE"
+        }
+      },
+      "response_status": 200,
+      "response": {
+        "spreadsheet_id": "13SFZqUEIYOHjn0hxrjxZWX-90Rdf587yj_EyfsKRDYo",
+        "sheet_id": 484197496,
+        "sheet_title": "평가",
+        "range": "'평가'!A14:B15",
+        "values": [
+          [
+            "학번 USER_ENTERED",
+            123456
+          ],
+          [
+            "수식 USER_ENTERED",
+            0
+          ]
+        ]
+      }
+    }
+  ]
+}

@@ -1,0 +1,93 @@
+{
+  "scenario": "유즈케이스 2-2: 템플릿 복사 + findReplace 태그 치환 + 그룹원 공유 (그룹 2개, 긴 팀명, Google 계정 아닌 이메일)",
+  "captured_at": "2026-10-04",
+  "note": "그룹당 Drive files.copy 1 + Sheets batchUpdate(findReplace 3개, allSheets, includeFormulas) 1 + 그룹원 수만큼 permissions.create. team_name 치환 3회 = 평가!A2, 평가!A11(수식 안), 역할 분담!A1",
+  "request": {
+    "method": "POST",
+    "url": "/google/sheets/create-group-sheets",
+    "body": {
+      "folder_id": "1t4SxbnE0IOeKonDp_qNgtXtovx1zLmZB",
+      "activity_name": "동료 평가 1차",
+      "template_spreadsheet_id": "1RacBcJkWUxl5QNvslowQnjjcZSRmYkP3YE46U6m1cUU",
+      "groups": [
+        {
+          "team_name": "A조",
+          "member_emails": [
+            "<EMAIL>",
+            "not-a-google-account@example.invalid"
+          ]
+        },
+        {
+          "team_name": "정보통신공학과 융합캡스톤디자인 최우수 팀 이름이 아주 긴 B조"
+        }
+      ],
+      "due": "2026-10-10 23:59"
+    }
+  },
+  "response_status": 200,
+  "response": [
+    {
+      "team_name": "A조",
+      "document": {
+        "id": "1fvbMmkdgA4hIPeZ9OIjxtoQQwKJOMZu95Brd_yszGOs",
+        "provider": "google",
+        "kind": "sheet",
+        "title": "동료 평가 1차 - A조",
+        "url": "https://docs.google.com/spreadsheets/d/1fvbMmkdgA4hIPeZ9OIjxtoQQwKJOMZu95Brd_yszGOs/edit?usp=drivesdk",
+        "mime_type": "application/vnd.google-apps.spreadsheet",
+        "owner": "<OWNER_NAME>",
+        "created_at": "2026-10-03T17:11:15.682000Z",
+        "modified_at": "2026-10-03T17:11:15.682000Z",
+        "parent_folder_id": "1t4SxbnE0IOeKonDp_qNgtXtovx1zLmZB",
+        "trashed": false,
+        "locked": false,
+        "text": null
+      },
+      "replaced": {
+        "team_name": 3,
+        "activity_name": 1,
+        "due": 1
+      },
+      "shares": [
+        {
+          "email": "<EMAIL>",
+          "ok": true,
+          "permission_id": "18249801426757446426",
+          "error": null
+        },
+        {
+          "email": "not-a-google-account@example.invalid",
+          "ok": false,
+          "permission_id": null,
+          "error": "400 invalidSharingRequest: Bad Request. User message: \"not-a-google-account@example.invalid님을 초대하려고 합니다. 이 이메일 계정에 연결된 Google 계정이 없기 때문에 이 수신자를 초대하려면 '이메일 알림 보내기'를 선택해야 합니다.\""
+        }
+      ],
+      "error": null
+    },
+    {
+      "team_name": "정보통신공학과 융합캡스톤디자인 최우수 팀 이름이 아주 긴 B조",
+      "document": {
+        "id": "13SFZqUEIYOHjn0hxrjxZWX-90Rdf587yj_EyfsKRDYo",
+        "provider": "google",
+        "kind": "sheet",
+        "title": "동료 평가 1차 - 정보통신공학과 융합캡스톤디자인 최우수 팀 이름이 아주 긴 B조",
+        "url": "https://docs.google.com/spreadsheets/d/13SFZqUEIYOHjn0hxrjxZWX-90Rdf587yj_EyfsKRDYo/edit?usp=drivesdk",
+        "mime_type": "application/vnd.google-apps.spreadsheet",
+        "owner": "<OWNER_NAME>",
+        "created_at": "2026-10-03T17:11:21.629000Z",
+        "modified_at": "2026-10-03T17:11:21.629000Z",
+        "parent_folder_id": "1t4SxbnE0IOeKonDp_qNgtXtovx1zLmZB",
+        "trashed": false,
+        "locked": false,
+        "text": null
+      },
+      "replaced": {
+        "team_name": 3,
+        "activity_name": 1,
+        "due": 1
+      },
+      "shares": [],
+      "error": null
+    }
+  ]
+}

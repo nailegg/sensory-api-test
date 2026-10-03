@@ -1,0 +1,266 @@
+{
+  "scenario": "유즈케이스 2 비교: CSV 텍스트 치환 후 변환 업로드(그룹당 Drive 1회, Sheets 호출 없음) vs xlsx 복사+치환",
+  "captured_at": "2026-10-04",
+  "note": "CSV는 시트 1장·수식은 들어가지만 검증·서식·틀 고정 없음. 학번 0123456이 숫자로 바뀌는지, 수식 안 태그가 치환됐는지(copy는 includeFormulas) 비교",
+  "steps": [
+    {
+      "request": {
+        "method": "POST",
+        "url": "/google/sheets/create-group-sheets",
+        "body": {
+          "folder_id": "1t4SxbnE0IOeKonDp_qNgtXtovx1zLmZB",
+          "activity_name": "동료 평가 1차",
+          "csv_template": "{{activity_name}},,\n팀: {{team_name}},,\n마감: {{due}},,\n,,\n항목,점수 (0~10),비고\n기여도,,\n소통,,\n일정 준수,,\n결과물 품질,,\n합계,=SUM(B6:B9),\n학번(문자),0123456,\n",
+          "groups": [
+            {
+              "team_name": "C조 (CSV)"
+            }
+          ],
+          "due": "2026-10-10 23:59"
+        }
+      },
+      "response_status": 200,
+      "response": [
+        {
+          "team_name": "C조 (CSV)",
+          "document": {
+            "id": "1y843q8iFK32qvWI_aBn8i1FO8XTUyZBduaGScoH9B0M",
+            "provider": "google",
+            "kind": "sheet",
+            "title": "동료 평가 1차 - C조 (CSV)",
+            "url": "https://docs.google.com/spreadsheets/d/1y843q8iFK32qvWI_aBn8i1FO8XTUyZBduaGScoH9B0M/edit?usp=drivesdk",
+            "mime_type": "application/vnd.google-apps.spreadsheet",
+            "owner": "<OWNER_NAME>",
+            "created_at": "2026-10-03T17:11:26.122000Z",
+            "modified_at": "2026-10-03T17:11:26.262000Z",
+            "parent_folder_id": "1t4SxbnE0IOeKonDp_qNgtXtovx1zLmZB",
+            "trashed": false,
+            "locked": false,
+            "text": null
+          },
+          "replaced": {},
+          "shares": [],
+          "error": null
+        }
+      ]
+    },
+    {
+      "method": "copy(xlsx)",
+      "spreadsheet_id": "1fvbMmkdgA4hIPeZ9OIjxtoQQwKJOMZu95Brd_yszGOs",
+      "first_sheet_FORMULA": {
+        "spreadsheet_id": "1fvbMmkdgA4hIPeZ9OIjxtoQQwKJOMZu95Brd_yszGOs",
+        "sheet_id": 484197496,
+        "sheet_title": "평가",
+        "range": "'평가'!A1:Z1000",
+        "values": [
+          [
+            "동료 평가 1차"
+          ],
+          [
+            "팀: A조"
+          ],
+          [
+            "마감: 2026-10-10 23:59"
+          ],
+          [],
+          [
+            "항목",
+            "점수 (0~10)",
+            "비고"
+          ],
+          [
+            "기여도"
+          ],
+          [
+            "소통"
+          ],
+          [
+            "일정 준수"
+          ],
+          [
+            "결과물 품질"
+          ],
+          [
+            "합계",
+            "=SUM(B6:B9)"
+          ],
+          [
+            "=\"A조 평균: \"&TEXT(AVERAGE(B6:B9),\"0.0\")"
+          ],
+          [],
+          [
+            "학번(문자)",
+            "0123456"
+          ]
+        ]
+      },
+      "first_sheet_UNFORMATTED": {
+        "spreadsheet_id": "1fvbMmkdgA4hIPeZ9OIjxtoQQwKJOMZu95Brd_yszGOs",
+        "sheet_id": 484197496,
+        "sheet_title": "평가",
+        "range": "'평가'!A1:Z1000",
+        "values": [
+          [
+            "동료 평가 1차"
+          ],
+          [
+            "팀: A조"
+          ],
+          [
+            "마감: 2026-10-10 23:59"
+          ],
+          [],
+          [
+            "항목",
+            "점수 (0~10)",
+            "비고"
+          ],
+          [
+            "기여도"
+          ],
+          [
+            "소통"
+          ],
+          [
+            "일정 준수"
+          ],
+          [
+            "결과물 품질"
+          ],
+          [
+            "합계",
+            0
+          ],
+          [
+            "#DIV/0! (Evaluation of function AVERAGE caused a divide by zero error.)"
+          ],
+          [],
+          [
+            "학번(문자)",
+            "0123456"
+          ]
+        ]
+      },
+      "structure": {
+        "id": "1fvbMmkdgA4hIPeZ9OIjxtoQQwKJOMZu95Brd_yszGOs",
+        "provider": "google",
+        "kind": "sheet",
+        "title": "동료 평가 1차 - A조",
+        "url": "https://docs.google.com/spreadsheets/d/1fvbMmkdgA4hIPeZ9OIjxtoQQwKJOMZu95Brd_yszGOs/edit?usp=drivesdk",
+        "mime_type": "application/vnd.google-apps.spreadsheet",
+        "owner": "<OWNER_NAME>",
+        "created_at": "2026-10-03T17:11:15.682000Z",
+        "modified_at": "2026-10-03T17:11:20.249000Z",
+        "parent_folder_id": "1t4SxbnE0IOeKonDp_qNgtXtovx1zLmZB",
+        "trashed": false,
+        "locked": false,
+        "text": null
+      }
+    },
+    {
+      "method": "csv",
+      "spreadsheet_id": "1y843q8iFK32qvWI_aBn8i1FO8XTUyZBduaGScoH9B0M",
+      "first_sheet_FORMULA": {
+        "spreadsheet_id": "1y843q8iFK32qvWI_aBn8i1FO8XTUyZBduaGScoH9B0M",
+        "sheet_id": 828482595,
+        "sheet_title": "file",
+        "range": "file!A1:Z1000",
+        "values": [
+          [
+            "동료 평가 1차"
+          ],
+          [
+            "팀: C조 (CSV)"
+          ],
+          [
+            "마감: 2026-10-10 23:59"
+          ],
+          [],
+          [
+            "항목",
+            "점수 (0~10)",
+            "비고"
+          ],
+          [
+            "기여도"
+          ],
+          [
+            "소통"
+          ],
+          [
+            "일정 준수"
+          ],
+          [
+            "결과물 품질"
+          ],
+          [
+            "합계",
+            "=SUM(B6:B9)"
+          ],
+          [
+            "학번(문자)",
+            123456
+          ]
+        ]
+      },
+      "first_sheet_UNFORMATTED": {
+        "spreadsheet_id": "1y843q8iFK32qvWI_aBn8i1FO8XTUyZBduaGScoH9B0M",
+        "sheet_id": 828482595,
+        "sheet_title": "file",
+        "range": "file!A1:Z1000",
+        "values": [
+          [
+            "동료 평가 1차"
+          ],
+          [
+            "팀: C조 (CSV)"
+          ],
+          [
+            "마감: 2026-10-10 23:59"
+          ],
+          [],
+          [
+            "항목",
+            "점수 (0~10)",
+            "비고"
+          ],
+          [
+            "기여도"
+          ],
+          [
+            "소통"
+          ],
+          [
+            "일정 준수"
+          ],
+          [
+            "결과물 품질"
+          ],
+          [
+            "합계",
+            0
+          ],
+          [
+            "학번(문자)",
+            123456
+          ]
+        ]
+      },
+      "structure": {
+        "id": "1y843q8iFK32qvWI_aBn8i1FO8XTUyZBduaGScoH9B0M",
+        "provider": "google",
+        "kind": "sheet",
+        "title": "동료 평가 1차 - C조 (CSV)",
+        "url": "https://docs.google.com/spreadsheets/d/1y843q8iFK32qvWI_aBn8i1FO8XTUyZBduaGScoH9B0M/edit?usp=drivesdk",
+        "mime_type": "application/vnd.google-apps.spreadsheet",
+        "owner": "<OWNER_NAME>",
+        "created_at": "2026-10-03T17:11:26.122000Z",
+        "modified_at": "2026-10-03T17:11:28.429000Z",
+        "parent_folder_id": "1t4SxbnE0IOeKonDp_qNgtXtovx1zLmZB",
+        "trashed": false,
+        "locked": false,
+        "text": null
+      }
+    }
+  ]
+}

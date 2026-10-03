@@ -1,0 +1,172 @@
+{
+  "scenario": "유즈케이스 3: 마감 처리(writer→commenter) · 없는 ID 포함 · 재실행 · 마감 뒤 교수자 쓰기 · 되돌리기",
+  "captured_at": "2026-10-04",
+  "note": "Docs·Slides와 같은 함수. 없는 ID는 그 파일만 404, 나머지 계속. 재실행은 변경 0건. 소유자는 마감 뒤에도 API 쓰기 200",
+  "steps": [
+    {
+      "request": {
+        "method": "GET",
+        "url": "/google/sheets/permissions/1fvbMmkdgA4hIPeZ9OIjxtoQQwKJOMZu95Brd_yszGOs"
+      },
+      "response_status": 200,
+      "response": [
+        {
+          "id": "18249801426757446426",
+          "displayName": "<OWNER_NAME>",
+          "type": "user",
+          "emailAddress": "<EMAIL>",
+          "role": "writer",
+          "pendingOwner": false
+        },
+        {
+          "id": "02252346710657344069",
+          "displayName": "<OWNER_NAME>",
+          "type": "user",
+          "emailAddress": "<EMAIL>",
+          "role": "owner",
+          "pendingOwner": false
+        }
+      ]
+    },
+    {
+      "request": {
+        "method": "POST",
+        "url": "/google/sheets/close-submission",
+        "body": {
+          "spreadsheet_ids": [
+            "1fvbMmkdgA4hIPeZ9OIjxtoQQwKJOMZu95Brd_yszGOs",
+            "13SFZqUEIYOHjn0hxrjxZWX-90Rdf587yj_EyfsKRDYo",
+            "1y843q8iFK32qvWI_aBn8i1FO8XTUyZBduaGScoH9B0M",
+            "1nonexistent_spreadsheet_id_xxxxxxxxxxxxxxxxx"
+          ],
+          "to_role": "commenter"
+        }
+      },
+      "response_status": 200,
+      "response": [
+        {
+          "document_id": "1fvbMmkdgA4hIPeZ9OIjxtoQQwKJOMZu95Brd_yszGOs",
+          "downgraded": [
+            {
+              "id": "18249801426757446426",
+              "type": "user",
+              "emailAddress": "<EMAIL>",
+              "role": "commenter",
+              "displayName": "<OWNER_NAME>",
+              "pendingOwner": false
+            }
+          ],
+          "error": null
+        },
+        {
+          "document_id": "13SFZqUEIYOHjn0hxrjxZWX-90Rdf587yj_EyfsKRDYo",
+          "downgraded": [],
+          "error": null
+        },
+        {
+          "document_id": "1y843q8iFK32qvWI_aBn8i1FO8XTUyZBduaGScoH9B0M",
+          "downgraded": [],
+          "error": null
+        },
+        {
+          "document_id": "1nonexistent_spreadsheet_id_xxxxxxxxxxxxxxxxx",
+          "downgraded": [],
+          "error": "404 notFound: File not found: 1nonexistent_spreadsheet_id_xxxxxxxxxxxxxxxxx."
+        }
+      ]
+    },
+    {
+      "request": {
+        "method": "POST",
+        "url": "/google/sheets/close-submission",
+        "body": {
+          "spreadsheet_ids": [
+            "1fvbMmkdgA4hIPeZ9OIjxtoQQwKJOMZu95Brd_yszGOs"
+          ],
+          "to_role": "commenter"
+        }
+      },
+      "response_status": 200,
+      "response": [
+        {
+          "document_id": "1fvbMmkdgA4hIPeZ9OIjxtoQQwKJOMZu95Brd_yszGOs",
+          "downgraded": [],
+          "error": null
+        }
+      ]
+    },
+    {
+      "request": {
+        "method": "POST",
+        "url": "/google/sheets/write-values",
+        "body": {
+          "spreadsheet_id": "1fvbMmkdgA4hIPeZ9OIjxtoQQwKJOMZu95Brd_yszGOs",
+          "sheet_title": "평가",
+          "cell_range": "C6",
+          "values": [
+            [
+              "교수자 코멘트"
+            ]
+          ],
+          "value_input_option": "RAW"
+        }
+      },
+      "response_status": 200,
+      "response": {
+        "spreadsheetId": "1fvbMmkdgA4hIPeZ9OIjxtoQQwKJOMZu95Brd_yszGOs",
+        "updatedRange": "'평가'!C6",
+        "updatedRows": 1,
+        "updatedColumns": 1,
+        "updatedCells": 1
+      }
+    },
+    {
+      "request": {
+        "method": "POST",
+        "url": "/google/sheets/restore-edit-access",
+        "body": {
+          "spreadsheet_id": "1fvbMmkdgA4hIPeZ9OIjxtoQQwKJOMZu95Brd_yszGOs",
+          "emails": [
+            "<EMAIL>"
+          ]
+        }
+      },
+      "response_status": 200,
+      "response": [
+        {
+          "id": "18249801426757446426",
+          "type": "user",
+          "emailAddress": "<EMAIL>",
+          "role": "writer",
+          "displayName": "<OWNER_NAME>",
+          "pendingOwner": false
+        }
+      ]
+    },
+    {
+      "request": {
+        "method": "GET",
+        "url": "/google/sheets/permissions/1fvbMmkdgA4hIPeZ9OIjxtoQQwKJOMZu95Brd_yszGOs"
+      },
+      "response_status": 200,
+      "response": [
+        {
+          "id": "18249801426757446426",
+          "displayName": "<OWNER_NAME>",
+          "type": "user",
+          "emailAddress": "<EMAIL>",
+          "role": "writer",
+          "pendingOwner": false
+        },
+        {
+          "id": "02252346710657344069",
+          "displayName": "<OWNER_NAME>",
+          "type": "user",
+          "emailAddress": "<EMAIL>",
+          "role": "owner",
+          "pendingOwner": false
+        }
+      ]
+    }
+  ]
+}
