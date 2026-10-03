@@ -1,0 +1,25 @@
+{
+  "scenario": "에러: 없는 presentationId 읽기",
+  "captured_at": "2026-10-04",
+  "note": "Slides 404 NOT_FOUND. Docs(404 NOT_FOUND)와 같은 형태. Drive 쪽은 404 notFound(reason)",
+  "request": {
+    "method": "GET",
+    "url": "/google/slides/read/does-not-exist-123",
+    "body": null
+  },
+  "response_status": 404,
+  "response": {
+    "detail": {
+      "api": "SlidesApiError",
+      "message": "Requested entity was not found.",
+      "rate_limit": false,
+      "body": {
+        "error": {
+          "code": 404,
+          "message": "Requested entity was not found.",
+          "status": "NOT_FOUND"
+        }
+      }
+    }
+  }
+}

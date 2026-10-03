@@ -29,6 +29,15 @@ EXPORT_MIME = {
     "md": "text/markdown",
     "html": "text/html",
 }
+# files.export 대상 형식 (Slides 기준). Drive에 Slides용 이미지 형식(png/jpeg/svg)은 없다 → 슬라이드 이미지는 Slides getThumbnail.
+SLIDES_EXPORT_MIME = {
+    "pptx": "application/vnd.openxmlformats-officedocument.presentationml.presentation",
+    "pdf": "application/pdf",
+    "txt": "text/plain",
+    "odp": "application/vnd.oasis.opendocument.presentation",
+}
+MIME_PPTX = SLIDES_EXPORT_MIME["pptx"]
+
 PERMISSION_FIELDS = "id,type,role,emailAddress,displayName,expirationTime,pendingOwner"
 
 
@@ -77,6 +86,17 @@ class DriveClient:
         if from_folder_id:
             params["removeParents"] = from_folder_id
         resp = await self._request("PATCH", f"{BASE_URL}/files/{file_id}", params=params, json={})
+        return resp.json()
+
+    async def copy_file(self, file_id: str, name: str, parent_folder_id: str | None = None) -> dict:
+        """files.copy. 템플릿(Slides 등)을 통째로 복사한다. drive.file에서는 앱이 접근 가능한 원본만 복사할 수 있고,
+        사본은 앱이 만든 파일이 된다. parent_folder_id가 없으면 원본의 (앱이 볼 수 있는) 부모 폴더를 물려받는다(공식 문서)."""
+        metadata: dict = {"name": name}
+        if parent_folder_id:
+            metadata["parents"] = [parent_folder_id]
+        resp = await self._request(
+            "POST", f"{BASE_URL}/files/{file_id}/copy", params={"fields": DOCUMENT_META_FIELDS}, json=metadata
+        )
         return resp.json()
 
     async def create_folder(self, name: str, parent_folder_id: str | None = None) -> dict:

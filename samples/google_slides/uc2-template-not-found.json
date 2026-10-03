@@ -1,0 +1,29 @@
+{
+  "scenario": "유즈케이스 2 에러: 템플릿 ID가 없거나 앱이 볼 수 없음",
+  "captured_at": "2026-10-04",
+  "note": "Drive files.copy 404 notFound → 그 그룹은 document=null, error만 담고 다음 그룹 계속. drive.file로 앱이 만들지 않은 덱을 템플릿으로 주면 같은 404가 날 것으로 예상(미실측)",
+  "request": {
+    "method": "POST",
+    "url": "/google/slides/create-group-presentations",
+    "body": {
+      "folder_id": "1TPj4frzP4IrGuf6f2MHQOGKCxBryNcNZ",
+      "activity_name": "발표 1차",
+      "template_presentation_id": "does-not-exist-123",
+      "groups": [
+        {
+          "team_name": "C조"
+        }
+      ]
+    }
+  },
+  "response_status": 200,
+  "response": [
+    {
+      "team_name": "C조",
+      "document": null,
+      "replaced": {},
+      "shares": [],
+      "error": "Drive 404 notFound: File not found: does-not-exist-123."
+    }
+  ]
+}

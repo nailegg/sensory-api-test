@@ -1,0 +1,29 @@
+{
+  "scenario": "배관: 빈 프레젠테이션 생성 → 폴더 이동",
+  "captured_at": "2026-10-04",
+  "note": "Slides presentations.create 1 + Drive files.update(addParents) 1. 기본 pageSize 9,144,000×5,143,500 EMU(16:9, 10in×5.625in), 제목 슬라이드 1장",
+  "request": {
+    "method": "POST",
+    "url": "/google/slides/create-empty",
+    "body": {
+      "title": "빈 발표",
+      "folder_id": "1TPj4frzP4IrGuf6f2MHQOGKCxBryNcNZ"
+    }
+  },
+  "response_status": 200,
+  "response": {
+    "id": "1zHinbTttu6Ay79gpokok5a4rPLHf9Q0JC0MQiF-dF-I",
+    "provider": "google",
+    "kind": "slides",
+    "title": "빈 발표",
+    "url": "https://docs.google.com/presentation/d/1zHinbTttu6Ay79gpokok5a4rPLHf9Q0JC0MQiF-dF-I/edit?usp=drivesdk",
+    "mime_type": "application/vnd.google-apps.presentation",
+    "owner": "<OWNER_NAME>",
+    "created_at": "2026-10-03T16:53:10.217000Z",
+    "modified_at": "2026-10-03T16:53:10.217000Z",
+    "parent_folder_id": "1TPj4frzP4IrGuf6f2MHQOGKCxBryNcNZ",
+    "trashed": false,
+    "locked": false,
+    "text": null
+  }
+}

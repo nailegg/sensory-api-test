@@ -1,0 +1,29 @@
+{
+  "scenario": "유즈케이스 2 준비: pptx 템플릿을 액티비티 폴더에 Slides로 변환 업로드(액티비티당 1회)",
+  "captured_at": "2026-10-04",
+  "note": "Drive files.create multipart(uploadType=multipart, mimeType=application/vnd.google-apps.presentation, parents) 1회. 앱이 만든 파일이 되므로 drive.file로 files.copy 원본이 될 수 있다. 템플릿은 python-pptx로 만든 4장짜리(표지·본문·표·실험용)",
+  "request": {
+    "method": "POST",
+    "url": "/google/slides/upload-template (multipart: pptx=<35,919 bytes>, name, folder_id)",
+    "body": {
+      "name": "[템플릿] 발표 1차",
+      "folder_id": "1TPj4frzP4IrGuf6f2MHQOGKCxBryNcNZ"
+    }
+  },
+  "response_status": 200,
+  "response": {
+    "id": "1fGVNVDJMVCWen2btkinxsPnWr3mEfv000OljeKdBDkw",
+    "provider": "google",
+    "kind": "slides",
+    "title": "[템플릿] 발표 1차",
+    "url": "https://docs.google.com/presentation/d/1fGVNVDJMVCWen2btkinxsPnWr3mEfv000OljeKdBDkw/edit?usp=drivesdk",
+    "mime_type": "application/vnd.google-apps.presentation",
+    "owner": "<OWNER_NAME>",
+    "created_at": "2026-10-03T16:41:37.324000Z",
+    "modified_at": "2026-10-03T16:41:37.478000Z",
+    "parent_folder_id": "1TPj4frzP4IrGuf6f2MHQOGKCxBryNcNZ",
+    "trashed": false,
+    "locked": false,
+    "text": null
+  }
+}

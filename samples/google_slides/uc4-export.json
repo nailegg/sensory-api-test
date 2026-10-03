@@ -1,0 +1,40 @@
+{
+  "scenario": "유즈케이스 4: pptx·pdf·txt·odp 내보내기 (마감 처리 뒤)",
+  "captured_at": "2026-10-04",
+  "note": "Drive files.export. txt에는 발표자 노트가 라벨 없이 슬라이드 본문 뒤에 들어간다. Drive에 image/png를 직접 요청하면 400 badRequest(슬라이드 이미지는 getThumbnail뿐)",
+  "request": {
+    "method": "GET",
+    "url": "/google/slides/export/13ztoGYzfAN6amtcO87xOBpx5IMrKmrT4OC899fXt_i4?fmt=pptx|pdf|txt|odp",
+    "body": null
+  },
+  "response_status": 200,
+  "response": {
+    "pptx": {
+      "bytes": 45869,
+      "magic": "504b0304 (zip)",
+      "content_disposition": "attachment; filename*=UTF-8''<percent-encoded 한글 제목>.pptx"
+    },
+    "pdf": {
+      "bytes": 68340,
+      "magic": "25504446 (%PDF)",
+      "pages": 4
+    },
+    "txt": {
+      "bytes": 178,
+      "content": "발표 1차\n팀: A조\n마감: 2026-10-10 23:59\nA조 발표 시작 인사\n\n1. 문제 정의\n여기에 작성하세요\n\nA조 역할 분담\n이름\n역할\n\nsplit: A조\nautofit: A조\n"
+    },
+    "odp": {
+      "bytes": 14958,
+      "magic": "504b0304 (zip)"
+    },
+    "bad_fmt_png": {
+      "status": 400,
+      "detail": "지원하지 않는 형식: png. 가능: ['odp', 'pdf', 'pptx', 'txt']"
+    },
+    "drive_export_image_png_direct": {
+      "status": 400,
+      "reason": "badRequest",
+      "message": "The requested conversion is not supported."
+    }
+  }
+}

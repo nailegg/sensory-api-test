@@ -1,0 +1,104 @@
+{
+  "scenario": "유즈케이스 3: 마감 처리(Docs와 같은 close_submissions) → 재실행 → 교수자 API 편집 → 되돌리기",
+  "captured_at": "2026-10-04",
+  "note": "학생 writer→commenter, 소유자 유지. 공유 없는 B조는 변경 없음, 없는 ID는 그 파일만 404 notFound로 담고 계속. 재실행 시 변경 0. 마감 뒤에도 소유자 토큰의 Slides batchUpdate는 200(잠금 방식과 달리 교수자 편집 가능). 없는 태그 치환은 에러가 아니라 occurrencesChanged 0",
+  "request": {
+    "method": "POST",
+    "url": "/google/slides/close-submission",
+    "body": {
+      "presentation_ids": [
+        "13ztoGYzfAN6amtcO87xOBpx5IMrKmrT4OC899fXt_i4",
+        "1POkri4hG3KF80KZD44QxIPXRdHwxkCN-VDlyf0-JjJs",
+        "does-not-exist-123"
+      ]
+    }
+  },
+  "response_status": 200,
+  "response": {
+    "permissions_before": [
+      {
+        "id": "18249801426757446426",
+        "displayName": "<NAME>",
+        "type": "user",
+        "emailAddress": "<EMAIL>",
+        "role": "writer",
+        "pendingOwner": false
+      },
+      {
+        "id": "02252346710657344069",
+        "displayName": "<OWNER_NAME>",
+        "type": "user",
+        "emailAddress": "<EMAIL>",
+        "role": "owner",
+        "pendingOwner": false
+      }
+    ],
+    "close_submission": [
+      {
+        "document_id": "13ztoGYzfAN6amtcO87xOBpx5IMrKmrT4OC899fXt_i4",
+        "downgraded": [
+          {
+            "id": "18249801426757446426",
+            "type": "user",
+            "emailAddress": "<EMAIL>",
+            "role": "commenter",
+            "displayName": "<NAME>",
+            "pendingOwner": false
+          }
+        ],
+        "error": null
+      },
+      {
+        "document_id": "1POkri4hG3KF80KZD44QxIPXRdHwxkCN-VDlyf0-JjJs",
+        "downgraded": [],
+        "error": null
+      },
+      {
+        "document_id": "does-not-exist-123",
+        "downgraded": [],
+        "error": "404 notFound: File not found: does-not-exist-123."
+      }
+    ],
+    "permissions_after": [
+      {
+        "id": "18249801426757446426",
+        "displayName": "<NAME>",
+        "type": "user",
+        "emailAddress": "<EMAIL>",
+        "role": "commenter",
+        "pendingOwner": false
+      },
+      {
+        "id": "02252346710657344069",
+        "displayName": "<OWNER_NAME>",
+        "type": "user",
+        "emailAddress": "<EMAIL>",
+        "role": "owner",
+        "pendingOwner": false
+      }
+    ],
+    "rerun": [
+      {
+        "document_id": "13ztoGYzfAN6amtcO87xOBpx5IMrKmrT4OC899fXt_i4",
+        "downgraded": [],
+        "error": null
+      }
+    ],
+    "owner_batchUpdate_after_close": {
+      "status": 200,
+      "replaced": {
+        "no_such_tag": 0
+      }
+    },
+    "restore_edit_access": [
+      {
+        "id": "18249801426757446426",
+        "type": "user",
+        "emailAddress": "<EMAIL>",
+        "role": "writer",
+        "displayName": "<NAME>",
+        "pendingOwner": false
+      }
+    ]
+  }
+}

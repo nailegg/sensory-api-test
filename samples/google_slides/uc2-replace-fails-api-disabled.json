@@ -1,0 +1,44 @@
+{
+  "scenario": "유즈케이스 2 에러: Slides API 미사용 설정 상태에서 그룹 생성",
+  "captured_at": "2026-10-04",
+  "note": "Drive files.copy는 성공(사본이 폴더에 남음), 이어지는 Slides batchUpdate가 403 PERMISSION_DENIED/SERVICE_DISABLED. 결과에 document와 error가 함께 담기고 공유는 하지 않는다. 콘솔에서 Google Slides API를 사용 설정하면 해결(2절)",
+  "request": {
+    "method": "POST",
+    "url": "/google/slides/create-group-presentations",
+    "body": {
+      "folder_id": "1TPj4frzP4IrGuf6f2MHQOGKCxBryNcNZ",
+      "activity_name": "발표 1차",
+      "template_presentation_id": "1fGVNVDJMVCWen2btkinxsPnWr3mEfv000OljeKdBDkw",
+      "groups": [
+        {
+          "team_name": "Z조"
+        }
+      ],
+      "due": "2026-10-10 23:59"
+    }
+  },
+  "response_status": 200,
+  "response": [
+    {
+      "team_name": "Z조",
+      "document": {
+        "id": "1hcHgiqYfp3HOp7bSijaYZhECpo5Vkg2JpzTnKpHrhlE",
+        "provider": "google",
+        "kind": "slides",
+        "title": "발표 1차 - Z조",
+        "url": "https://docs.google.com/presentation/d/1hcHgiqYfp3HOp7bSijaYZhECpo5Vkg2JpzTnKpHrhlE/edit?usp=drivesdk",
+        "mime_type": "application/vnd.google-apps.presentation",
+        "owner": "<OWNER_NAME>",
+        "created_at": "2026-10-03T16:41:47.554000Z",
+        "modified_at": "2026-10-03T16:41:47.554000Z",
+        "parent_folder_id": "1TPj4frzP4IrGuf6f2MHQOGKCxBryNcNZ",
+        "trashed": false,
+        "locked": false,
+        "text": null
+      },
+      "replaced": {},
+      "shares": [],
+      "error": "Slides 403 PERMISSION_DENIED: Google Slides API has not been used in project <PROJECT_NUMBER> before or it is disabled. Enable it by visiting https://console.developers.google.com/apis/api/slides.googleapis.com/overview?project=<PROJECT_NUMBER> then retry. If you enabled this API recently, wait a few minutes for the action to propagate to our systems and retry."
+    }
+  ]
+}

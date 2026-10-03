@@ -56,11 +56,21 @@ tests/<service>/          # pytest. 주 대상은 usecases.py와 mapper.py
 - 호출이 성공하면 요청·응답을 `samples/<service>/<scenario>.json`에 저장한다. 저장 전에 토큰, 이메일, 개인 식별 정보를 마스킹한다.
 - 시크릿은 `.env`에만 둔다. 코드, 샘플, 문서에 시크릿을 쓰지 않는다. 새 키를 추가하면 `.env.example`에도 이름을 추가한다.
 - 공통 모델은 `core/models.py`에서만 정의하고, 서비스별 필드는 mapper에서 매핑한다. 서비스 폴더 안에 별도 모델을 만들지 않는다.
-- 새 서비스는 기존 서비스 폴더를 복사해서 시작한다. `main.py`에는 `include_router` 한 줄만 추가한다.
+- 새 서비스는 기존 서비스 폴더(`google_docs`)를 복사해서 시작한다. 등록은 두 줄이다: `main.py`에 `include_router`, `core/oauth.py`의 `REGISTERED_SCOPE_MODULES`에 그 서비스의 `scopes` 모듈. 후자를 빠뜨리면 scope가 인가 요청에 들어가지 않는다.
 - Drive API 호출(파일 메타데이터 `files.get`, 폴더 지정, 목록·검색·삭제·공유, `files.export`, `changes.watch`)은 전부 `services/google_drive/client.py`에 둔다. Docs·Sheets·Slides·Forms 폴더 안에 Drive 호출을 넣지 않는다.
 - `Document` 공통 모델의 `owner` · `created_at` · `modified_at` · `url`은 Drive `files.get`에서 온다. 각 서비스의 usecases가 자기 API 응답과 Drive 메타데이터를 함께 mapper에 넘긴다.
 - Docs·Sheets·Slides·Forms를 앱이 직접 만드는 시나리오는 `drive.file` scope만으로 될 수 있다. 그 경우 해당 서비스의 `scopes.py`는 비거나 짧고, 인가는 Drive scope로 이루어진다. 정확한 동작은 각 서비스 1단계에서 공식 문서로 확인한다.
 - 서비스별 제약·함정(쿼터, 토큰 만료, 플랜 제한, 웹훅 방식)은 코드를 만지기 전에 `docs/<service>.md`의 8절·10절을 먼저 본다. 스펙 문서가 아직 없으면 `docs/PLAN.md`의 "서비스별 예외·특이사항" 표를 본다.
+
+## 실행
+
+```
+uv sync                                   # 의존성 (Python 3.12, uv 필요)
+cp .env.example .env                      # GOOGLE_CLIENT_ID / GOOGLE_CLIENT_SECRET 채우기 (콘솔 설정은 docs/google_docs.md 2절)
+uv run uvicorn app.main:app --port 8000 --reload
+```
+
+브라우저에서 `http://localhost:8000/auth/google/login`으로 로그인하면 토큰이 `.tokens/tokens.json`에 저장된다. `http://localhost:8000/docs`(Swagger)에서 엔드포인트를 눌러볼 수 있다. 테스트는 `uv run pytest`. 실측 때 만든 파일은 `POST /google/drive/move-to-trash/{id}`로 정리한다.
 
 ## 진행 절차
 

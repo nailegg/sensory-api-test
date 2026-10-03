@@ -1,0 +1,62 @@
+{
+  "scenario": "유즈케이스 2 에러 케이스: 긴 팀명 치환 → autofit 해제·넘침, 서식이 갈린 태그",
+  "captured_at": "2026-10-04",
+  "note": "presentations.get으로 템플릿과 사본의 shapeProperties.autofit 비교 + pdf 내보내기 육안 확인. 공식 문서대로 치환된 도형만 autofitType이 NONE이 된다",
+  "request": {
+    "method": "GET",
+    "url": "presentations.get (템플릿 1fGVNVDJ… vs B조 사본 1POkri4h…) + /google/slides/export/1POkri4hG3KF80KZD44QxIPXRdHwxkCN-VDlyf0-JjJs?fmt=pdf",
+    "body": null
+  },
+  "response_status": 200,
+  "response": {
+    "team_name": "정보통신공학과 융합캡스톤디자인 최우수 팀 이름이 아주 긴 B조",
+    "autofit_before_after": {
+      "p1_i3 표지 부제(SUBTITLE)": [
+        "TEXT_AUTOFIT",
+        "NONE"
+      ],
+      "p3_i2 3번 슬라이드 제목(TITLE)": [
+        "TEXT_AUTOFIT",
+        "NONE"
+      ],
+      "p4_i3 실험용 3in×0.6in 상자": [
+        "TEXT_AUTOFIT",
+        "NONE"
+      ],
+      "p2_i2·p2_i3 태그 없는 2번 슬라이드": [
+        "TEXT_AUTOFIT",
+        "TEXT_AUTOFIT (유지)"
+      ]
+    },
+    "pdf_visual": {
+      "slide1": "부제 상자가 커서 3줄로 줄바꿈되어 들어감(넘침 없음)",
+      "slide3": "제목이 3줄이 되며 슬라이드 위쪽 밖으로 넘쳐 첫 줄이 잘림",
+      "slide4": "좁은 상자 아래로 4줄 넘침. 글자 크기 그대로(자동 축소 없음)"
+    },
+    "split_tag": {
+      "template_runs": [
+        [
+          "split: {{team",
+          true
+        ],
+        [
+          "_name}}",
+          false
+        ]
+      ],
+      "after_runs": [
+        [
+          "split: ",
+          true
+        ],
+        [
+          "<team_name>",
+          true
+        ]
+      ],
+      "found": true,
+      "note": "서식이 갈린 태그도 찾았다. 치환 텍스트는 태그 첫 run의 서식(굵게)을 따른다"
+    },
+    "placeholders_after_pptx_conversion": "CENTERED_TITLE, SUBTITLE, TITLE, BODY 플레이스홀더 타입이 그대로 보존됨"
+  }
+}

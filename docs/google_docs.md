@@ -279,6 +279,8 @@ for document_id in [...]:
 doc = await docs_uc.read_document(docs, drive, document_id)
 ```
 
+유즈케이스 2의 공유와 3·4의 실제 구현은 Slides와 함께 쓰려고 `google_drive/usecases.py`로 옮겼다(2026-10-04). `docs_uc`에서 같은 이름으로 다시 내보내므로 위 코드는 그대로 동작한다.
+
 에러는 `DriveApiError`(`status`, `reason`, `message`, `is_rate_limit`)와 `DocsApiError`(`status`, `status_text`, `message`, `is_rate_limit`)로 올라온다. `is_rate_limit`이면 지수 백오프로 재시도하고, 그 외 4xx는 7절 표로 분기한다. 토큰 만료(401)는 client가 처리하지 않으므로 호출 전에 갱신한다.
 
 ## 12. 미확인 · 보류 항목

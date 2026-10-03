@@ -15,11 +15,13 @@ Drive는 단독 유즈케이스보다 Docs·Sheets·Slides·Forms가 공통으�
 | `Document`의 소유자·생성/수정 시각·URL 채우기 | `files.get` (`fields=id,name,owners,createdTime,modifiedTime,webViewLink`) | Docs, Sheets, Slides, Forms |
 | 특정 폴더에 문서 만들기 | `files.create` (`mimeType`, `parents`) 또는 생성 후 `files.update` (`addParents`) | Docs, Sheets, Slides |
 | Markdown·HTML·docx를 Docs로 변환해 만들기 | `files.create` 업로드 + `mimeType: application/vnd.google-apps.document` | Docs |
+| pptx를 Slides로 변환해 만들기 (Slides 템플릿 업로드) | `files.create` 업로드 + `mimeType: application/vnd.google-apps.presentation` | Slides |
+| 템플릿 통째로 복사 (Slides 유즈케이스 2) | `files.copy` (`name`, `parents`) | Slides |
 | PDF·docx·Markdown으로 내보내기 | `files.export` | Docs, Sheets, Slides |
 | 목록·검색 | `files.list` (`q=`) | 공통 |
 | 삭제(휴지통) | `files.update` (`trashed: true`) 또는 `files.delete` | 공통 |
-| 그룹원에게 편집 권한 부여 (Docs 유즈케이스 2) | `permissions.create` (`type=user, role=writer`, `sendNotificationEmail`) | Docs |
-| 마감 시 학생 권한 낮추기 (Docs 유즈케이스 3) | `permissions.list` → `permissions.update` (`role=commenter`) | Docs, 이후 Sheets·Slides |
+| 그룹원에게 편집 권한 부여 (Docs·Slides 유즈케이스 2) | `permissions.create` (`type=user, role=writer`, `sendNotificationEmail`) | Docs, Slides |
+| 마감 시 학생 권한 낮추기 (Docs·Slides 유즈케이스 3) | `permissions.list` → `permissions.update` (`role=commenter`) | Docs, Slides, 이후 Sheets |
 | (미채택) 문서 잠금 | `files.update` `contentRestrictions.readOnly` — 동작하나 소유자 API 편집도 막혀 제외 | — |
 | 액티비티 폴더 생성 (Docs 유즈케이스 1) | `files.create` (folder) | Docs |
 | 변경 감지 | `changes.getStartPageToken` → `changes.watch` 또는 `changes.list` | 공통 |
@@ -54,6 +56,7 @@ Base URL: `https://www.googleapis.com/drive/v3` (업로드는 `https://www.googl
 | `files.get` | 메타데이터 조회 | 5 | `fields`로 필요한 필드만 요청 |
 | `files.list` | 목록·검색 | 100 | 비싸다. `drive.file`이면 앱이 접근 가능한 파일만 나온다 |
 | `files.create` | 생성·업로드·변환 | 50 (편집으로 추정, 5단계 확인) | 5MB 이하는 multipart, 초과는 resumable |
+| `files.copy` | 파일 복사 (Slides 템플릿 → 그룹 사본) | 50 (편집으로 추정, 미확인) | `parents` 생략 시 원본의 부모를 물려받는다. `drive.file`이면 앱이 접근 가능한 원본만. 사본은 앱이 만든 파일이 된다(2026-10-04 실측: 사본을 Slides `batchUpdate`로 바로 편집 가능) |
 | `files.update` | 이름·폴더 이동(`addParents`/`removeParents`)·휴지통 | 50 | |
 | `files.export` | Google 문서 → 다른 형식 | 200 (다운로드) | **내보낸 결과는 10MB까지** |
 | `files.delete` | 영구 삭제 | 50 (추정) | 휴지통을 거치지 않는다 |
@@ -64,6 +67,8 @@ Base URL: `https://www.googleapis.com/drive/v3` (업로드는 `https://www.googl
 | `channels.stop` | 채널 중지 | 미확인 | |
 
 **Docs 내보내기 형식 (`files.export` mimeType)**: docx, odt, rtf, pdf, `text/plain`, `text/html`, zip(HTML), epub, **`text/markdown`**
+
+**Slides 내보내기 형식**: pptx, odp, pdf, `text/plain`. **이미지 형식 없음**(`image/png` 요청 시 400 `badRequest` "The requested conversion is not supported.", 2026-10-04 실측). 슬라이드 이미지는 Slides `pages.getThumbnail`.
 
 **Docs로 가져오기(변환) 가능한 원본**: Word, ODT, HTML, RTF, 일반 텍스트, **Markdown**. 이미지·PDF는 OCR로 변환(`ocrLanguage`).
 
@@ -174,7 +179,7 @@ Docs·Sheets·Slides 변경 감지는 모두 여기서 한다. 테스트는 이 
 
 ## 11. 샘플 코드 (`usecases.py`의 흐름을 기준으로)
 
-Drive 단독 흐름은 폴더 생성·메타데이터 조회·목록·휴지통뿐이고, 공유·권한·내보내기·Markdown 변환은 Docs 유즈케이스 안에서 `DriveClient`를 직접 부른다(`docs/google_docs.md` 11절). `DriveClient` 메서드와 대응 API:
+Drive 단독 흐름은 폴더 생성·메타데이터 조회·목록·휴지통이다. 여기에 더해 **Docs·Slides가 같이 쓰는 공통 흐름**(그룹원 공유 `share_file`, 마감 `close_submissions`·`downgrade_editors`·`restore_editors`, 내보내기 `export_file`, 제목 템플릿 `render_template`)도 `google_drive/usecases.py`에 있다(2026-10-04 Docs에서 옮김. `docs_uc.close_submissions` 같은 기존 이름도 그대로 동작). `DriveClient` 메서드와 대응 API:
 
 ```python
 from app.services.google_drive.client import DriveClient, DriveApiError, MIME_DOC, EXPORT_MIME
@@ -189,6 +194,7 @@ await drive_uc.move_to_trash(drive, file_id)                                    
 
 raw = await drive.create_from_content("제목", "# md", "text/markdown", MIME_DOC, folder.id)   # files.create multipart + 변환 (≤5MB)
 raw = await drive.move_file(file_id, to_folder_id)                                           # files.update addParents
+raw = await drive.copy_file(template_id, "발표 1차 - A조", folder.id)                          # files.copy (Slides 템플릿)
 perm = await drive.share_with_user(file_id, "s@gmail.com", role="writer", notify=False)      # permissions.create
 perms = await drive.list_permissions(file_id)                                                # permissions.list
 await drive.update_permission_role(file_id, perm["id"], "commenter")                         # permissions.update

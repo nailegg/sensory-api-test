@@ -3,11 +3,10 @@
 유즈케이스(docs/google_docs.md 1절, 2026-10-03 확정):
 1. 액티비티 폴더 생성 → google_drive.usecases.create_folder
 2. 템플릿으로 그룹마다 문서 생성 + 그룹원 편집 권한 → create_group_documents
-3. 마감 시 편집 비활성화 → close_submissions (문서마다 downgrade_editors). 문서 잠금(contentRestrictions) 방식은 교수자도 API 편집이 막혀 쓰지 않기로 함(2026-10-03)
+3. 마감 시 편집 비활성화 → close_submissions (문서마다 downgrade_editors, 둘 다 google_drive.usecases). 문서 잠금(contentRestrictions) 방식은 교수자도 API 편집이 막혀 쓰지 않기로 함(2026-10-03)
 4. 마감 시 파일로 내보내기 → export_document
 """
 
-import re
 from dataclasses import dataclass, field
 
 from app.core.models import Document
@@ -16,33 +15,21 @@ from app.services.google_docs.mapper import document_from_docs
 from app.services.google_drive.client import EXPORT_MIME, MIME_DOC, DriveApiError, DriveClient
 from app.services.google_drive.mapper import document_from_drive_file
 
-# ---------- 템플릿 ----------
-
-_PLACEHOLDER = re.compile(r"\{\{\s*(\w+)\s*\}\}")
-
-
-def render_template(template: str, variables: dict[str, str]) -> str:
-    """`{{team_name}}` 형태의 플레이스홀더를 치환한다. 없는 변수는 그대로 둔다 (Markdown의 다른 중괄호와 충돌 방지)."""
-
-    def _sub(m: re.Match) -> str:
-        key = m.group(1)
-        return str(variables[key]) if key in variables else m.group(0)
-
-    return _PLACEHOLDER.sub(_sub, template)
-
-
-@dataclass
-class GroupSpec:
-    team_name: str
-    member_emails: list[str] = field(default_factory=list)
-
-
-@dataclass
-class ShareResult:
-    email: str
-    ok: bool
-    permission_id: str | None = None
-    error: str | None = None
+# 유즈케이스 2 공유 · 3 · 4는 Drive 호출뿐이라 Slides와 함께 google_drive.usecases에 둔다.
+# 기존 호출부(docs_uc.close_submissions 등)가 그대로 동작하도록 여기서 다시 내보낸다.
+from app.services.google_drive.usecases import (  # noqa: F401
+    CloseResult,
+    ExportedFile,
+    GroupSpec,
+    ShareResult,
+    close_submissions,
+    downgrade_editors,
+    export_file,
+    group_variables,
+    render_template,
+    restore_editors,
+    share_file,
+)
 
 
 @dataclass
@@ -99,20 +86,6 @@ async def create_document_with_docs_api(
 # ---------- 유즈케이스 2 ----------
 
 
-async def share_document(
-    drive: DriveClient, document_id: str, emails: list[str], role: str = "writer", notify: bool = False, message: str | None = None
-) -> list[ShareResult]:
-    """그룹원마다 permissions.create. 한 명이 실패해도 나머지는 계속한다."""
-    results: list[ShareResult] = []
-    for email in emails:
-        try:
-            perm = await drive.share_with_user(document_id, email, role=role, notify=notify, message=message)
-            results.append(ShareResult(email=email, ok=True, permission_id=perm.get("id")))
-        except DriveApiError as e:
-            results.append(ShareResult(email=email, ok=False, error=f"{e.status} {e.reason}: {e.message}"))
-    return results
-
-
 async def create_group_documents(
     docs: DocsClient,
     drive: DriveClient,
@@ -132,7 +105,7 @@ async def create_group_documents(
     """
     results: list[GroupDocumentResult] = []
     for group in groups:
-        variables = {"team_name": group.team_name, "activity_name": activity_name, "due": due or ""}
+        variables = group_variables(group.team_name, activity_name, due)
         title = render_template(title_template, variables)
         body = render_template(body_template, variables)
         try:
@@ -143,78 +116,18 @@ async def create_group_documents(
         except (DriveApiError, DocsApiError) as e:
             results.append(GroupDocumentResult(team_name=group.team_name, document=None, error=str(e)))
             continue
-        shares = await share_document(drive, document.id, group.member_emails, notify=notify, message=share_message)
+        shares = await share_file(drive, document.id, group.member_emails, notify=notify, message=share_message)
         results.append(GroupDocumentResult(team_name=group.team_name, document=document, shares=shares))
     return results
 
 
 # ---------- 유즈케이스 3 ----------
-
-
-async def downgrade_editors(
-    drive: DriveClient, document_id: str, to_role: str = "commenter", keep_emails: list[str] | None = None
-) -> list[dict]:
-    """문서 하나의 writer 권한을 to_role로 낮춘다. 소유자(owner)는 조건에 안 걸려 그대로 남는다.
-    조교·공동 교수자처럼 writer를 유지해야 하는 사람은 keep_emails로 제외한다. 그룹원 수만큼 호출."""
-    keep = {e.lower() for e in keep_emails or []}
-    changed: list[dict] = []
-    for perm in await drive.list_permissions(document_id):
-        if perm.get("role") != "writer" or perm.get("type") not in {"user", "group"}:
-            continue
-        if (perm.get("emailAddress") or "").lower() in keep:
-            continue
-        changed.append(await drive.update_permission_role(document_id, perm["id"], to_role))
-    return changed
-
-
-@dataclass
-class CloseResult:
-    document_id: str
-    downgraded: list[dict] = field(default_factory=list)
-    error: str | None = None
-
-
-async def close_submissions(
-    drive: DriveClient, document_ids: list[str], to_role: str = "commenter", keep_emails: list[str] | None = None
-) -> list[CloseResult]:
-    """마감 처리. Synsory 스케줄러가 due 시각에 부른다. 문서마다 downgrade_editors를 실행하고,
-    한 문서가 실패해도 나머지를 계속한다. 재실행해도 안전하다(이미 낮춰진 권한은 건너뜀).
-    이 다음에 export_document를 호출해 제출본을 확보한다."""
-    results: list[CloseResult] = []
-    for document_id in document_ids:
-        try:
-            changed = await downgrade_editors(drive, document_id, to_role, keep_emails)
-            results.append(CloseResult(document_id=document_id, downgraded=changed))
-        except DriveApiError as e:
-            results.append(CloseResult(document_id=document_id, error=f"{e.status} {e.reason}: {e.message}"))
-    return results
-
-
-async def restore_editors(drive: DriveClient, document_id: str, emails: list[str]) -> list[dict]:
-    """되돌리기: 지정한 이메일의 권한을 다시 writer로."""
-    wanted = {e.lower() for e in emails}
-    changed: list[dict] = []
-    for perm in await drive.list_permissions(document_id):
-        if (perm.get("emailAddress") or "").lower() in wanted and perm.get("role") != "writer":
-            changed.append(await drive.update_permission_role(document_id, perm["id"], "writer"))
-    return changed
+# close_submissions · downgrade_editors · restore_editors → google_drive.usecases (위에서 다시 내보냄)
 
 
 # ---------- 유즈케이스 4 ----------
 
 
-@dataclass
-class ExportedFile:
-    document_id: str
-    filename: str
-    mime_type: str
-    content: bytes
-
-
 async def export_document(drive: DriveClient, document_id: str, fmt: str = "docx") -> ExportedFile:
-    """files.export. Turnitin 등으로의 전송은 호출자(서비스 레포) 책임. 결과는 10MB까지."""
-    if fmt not in EXPORT_MIME:
-        raise ValueError(f"지원하지 않는 형식: {fmt}. 가능: {sorted(EXPORT_MIME)}")
-    meta = await drive.get_file(document_id, fields="id,name")
-    content = await drive.export_file(document_id, EXPORT_MIME[fmt])
-    return ExportedFile(document_id=document_id, filename=f"{meta['name']}.{fmt}", mime_type=EXPORT_MIME[fmt], content=content)
+    """files.export. docx | pdf | txt | md | html. Turnitin 등으로의 전송은 호출자(서비스 레포) 책임. 결과는 10MB까지."""
+    return await export_file(drive, document_id, fmt, EXPORT_MIME)

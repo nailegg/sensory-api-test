@@ -47,7 +47,7 @@ Synsory가 나중에 붙일 SaaS API(Google Docs · Sheets · Slides · Forms, Z
 | Google Drive | 1~7 전체 | 별도 단계를 밟지 않는다. Drive는 단독 유즈케이스가 거의 없고 Docs·Sheets·Slides·Forms가 공통으로 기대는 레이어다(파일 메타데이터, 폴더 지정, 목록·검색·삭제·공유, `files.export`, `changes.watch`). Docs를 진행하면서 필요한 Drive 호출을 그때그때 `services/google_drive/`에 채우고, Docs 6단계를 마칠 때 `docs/google_drive.md`를 함께 마감한다. 이후 서비스에서 새 Drive 호출이 생기면 같은 폴더와 문서에 추가한다. scope는 `drive.file` 하나로 시작한다. |
 | Google Docs | 5 테스트 | 본문 편집은 `batchUpdate` 하나로 하고, 위치를 문자 인덱스로 지정한다. 삽입할수록 뒤쪽 인덱스가 밀리므로 뒤에서 앞으로 수정하는 순서를 샘플에 남긴다. "편집" 시나리오는 이 인덱스 문제를 반드시 에러 케이스로 다룬다. 인덱스는 UTF-16 코드 단위(이모지는 2)이므로 이모지 포함 케이스도 넣는다. `tabId`를 생략하면 대부분 첫 탭에만 적용되고(`replaceAllText` 등 일부는 모든 탭), `documents.get`도 `includeTabsContent=true` 없이는 첫 탭만 돌려준다. `documents.create`는 제목 외 필드를 무시해 폴더 지정은 Drive로 한다. 텍스트를 서식과 함께 넣는 시나리오는 Drive Markdown 변환 방식과 비교한다. 댓글·제안 API는 2026-07 Developer Preview라 유즈케이스에 넣을 때 사용 가능 여부부터 확인한다. 유즈케이스 3(마감)은 `permissions.update`로 학생 권한을 낮추는 방식으로 확정. `contentRestrictions.readOnly` 잠금은 소유자 API 편집도 막혀 제외, `expirationTime`은 개인 계정 불가. 공유·잠금 실측에는 교수자 계정 외 테스트용 Google 이메일이 필요하다. |
 | Google Sheets | 5 테스트 | 값 읽기/쓰기(`values.*`, A1 표기)와 서식·구조 변경(`batchUpdate`)이 다른 API다. 쓰기 쿼터가 낮다는 점을 감안해 한 행씩 append하지 말고 모아서 보내는 패턴을 샘플로 남긴다. 정확한 쿼터 수치는 5단계에서 공식 문서로 확인해 기록한다. |
-| Google Slides | 5 테스트 | Docs와 같은 `batchUpdate` 방식이지만 인덱스가 아니라 객체 ID(슬라이드, 도형)로 지정한다. 템플릿 복사 후 플레이스홀더 치환이 주 패턴이다. 썸네일(`pages.getThumbnail`)과 PDF 내보내기(Drive `files.export`)를 샘플에 포함한다. |
+| Google Slides | 5 테스트 | Docs와 같은 `batchUpdate` 방식이지만 인덱스가 아니라 객체 ID(슬라이드, 도형)로 지정한다. 템플릿 복사(Drive `files.copy` 또는 pptx 변환 업로드) 후 `replaceAllText`로 태그 치환이 주 패턴이고, 공식 가이드도 요소 ID 대신 텍스트 태그를 권장한다. 쿼터(2026-10-04 공식 문서 확인): 읽기 사용자당 분당 600, 쓰기 60, **썸네일은 "비싼 읽기"로 따로 60**. `drive.file`로 모든 Slides 메서드가 동작한다(Sheets 차트 연결만 `spreadsheets` scope 필요). 이미지 삽입은 공개 URL만(바이트 업로드 불가). 텍스트를 바꾸면 도형의 autofit이 꺼져 긴 치환 텍스트가 넘친다 → 긴 팀명을 에러 케이스로. 썸네일 URL은 30분 수명·요청자 계정 꼬리표라 서버가 받아 저장한다. `files.export`에 이미지 형식이 없어 슬라이드 이미지는 `getThumbnail`뿐. 세부는 `docs/google_slides.md` 8절·10절. |
 | Google Forms | 3 인증 | scope가 설문 본문(`forms.body`)과 응답(`forms.responses.readonly`)으로 나뉜다. 응답은 읽기만 되고 API로 응답을 제출하거나 수정할 수 없다. 이 제약을 2단계 유즈케이스에 반영한다. |
 | Google Forms | 5 테스트 | 응답 알림은 Forms `watches`로 받지만 Cloud Pub/Sub 토픽이 필요하다. 폴링으로 충분한지 먼저 판단하고, Pub/Sub은 필요할 때만 테스트한다. 설문 생성 후 질문 추가는 별도 `batchUpdate`다. |
 | Zoom | 3 인증 | Marketplace에서 General App(User-managed OAuth)으로 만든다. 액세스 토큰은 1시간, refresh token은 갱신할 때마다 새로 발급되고 이전 것은 무효가 된다. 갱신 직후 저장에 실패하면 재로그인해야 하므로 token_store를 먼저 확실히 만든다. scope는 세분화(granular) 방식으로 고른다. |
@@ -78,7 +78,7 @@ Google 앱 검증과 Zoom 앱 리뷰는 개발 중에는 필요 없다. 서비�
 | Google Drive | 6 문서화 | 1차 마감(2026-10-03) | `docs/google_drive.md` 전 절 작성. Sheets·Slides·Forms에서 새 Drive 호출이 생기면 추가 |
 | Google Docs | 6 문서화 | 완료 → 7 핸드오프 대기 | 유즈케이스 4개 실측·문서화 완료(2026-10-03). `docs/google_docs.md` 12절 전부 작성. 다음: 상대 개발자가 2절·11절만 보고 재현, 빠진 것 보충, 옮길 파일 4개 확정 |
 | Google Sheets | 0 시작 전 | 대기 | 3단계는 Docs 결과 재사용 |
-| Google Slides | 0 시작 전 | 대기 | 3단계는 Docs 결과 재사용 |
+| Google Slides | 6 문서화 | 완료(2026-10-04) → 7 핸드오프 대기 | 유즈케이스는 Docs와 같은 4개(상현 확정). 템플릿은 pptx 1회 변환 업로드 → 그룹마다 Drive `files.copy` → `replaceAllText`. 실측·샘플 10개, `docs/google_slides.md` 12절 전부 작성. 공유·마감·내보내기 함수는 `google_drive/usecases.py`로 옮겨 Docs와 공유. Drive `files.copy` 추가 |
 | Google Forms | 0 시작 전 | 대기 | 응답 쓰기 불가 제약을 2단계에 반영 |
 | Zoom | 0 시작 전 | 대기 | 녹화 시나리오 필요 시 플랜 결정 |
 

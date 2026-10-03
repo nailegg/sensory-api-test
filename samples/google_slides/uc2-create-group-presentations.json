@@ -1,0 +1,93 @@
+{
+  "scenario": "유즈케이스 2: 템플릿 복사 + 태그 치환 + 그룹원 공유 (그룹 2개, 긴 팀명 포함, Google 계정 아닌 이메일 1개)",
+  "captured_at": "2026-10-04",
+  "note": "그룹당 Drive files.copy 1 + Slides batchUpdate(replaceAllText 3개) 1 + 그룹원 수만큼 permissions.create. team_name 5회 = 표지 부제·발표자 노트·3번 슬라이드 제목·실험용 상자 2개(서식 갈린 태그 포함). 비Google 이메일은 Docs와 같은 400 invalidSharingRequest",
+  "request": {
+    "method": "POST",
+    "url": "/google/slides/create-group-presentations",
+    "body": {
+      "folder_id": "1TPj4frzP4IrGuf6f2MHQOGKCxBryNcNZ",
+      "activity_name": "발표 1차",
+      "template_presentation_id": "1fGVNVDJMVCWen2btkinxsPnWr3mEfv000OljeKdBDkw",
+      "groups": [
+        {
+          "team_name": "A조",
+          "member_emails": [
+            "<EMAIL>",
+            "not-a-google-account@example.invalid"
+          ]
+        },
+        {
+          "team_name": "정보통신공학과 융합캡스톤디자인 최우수 팀 이름이 아주 긴 B조"
+        }
+      ],
+      "due": "2026-10-10 23:59"
+    }
+  },
+  "response_status": 200,
+  "response": [
+    {
+      "team_name": "A조",
+      "document": {
+        "id": "13ztoGYzfAN6amtcO87xOBpx5IMrKmrT4OC899fXt_i4",
+        "provider": "google",
+        "kind": "slides",
+        "title": "발표 1차 - A조",
+        "url": "https://docs.google.com/presentation/d/13ztoGYzfAN6amtcO87xOBpx5IMrKmrT4OC899fXt_i4/edit?usp=drivesdk",
+        "mime_type": "application/vnd.google-apps.presentation",
+        "owner": "<OWNER_NAME>",
+        "created_at": "2026-10-03T16:51:03.402000Z",
+        "modified_at": "2026-10-03T16:51:03.402000Z",
+        "parent_folder_id": "1TPj4frzP4IrGuf6f2MHQOGKCxBryNcNZ",
+        "trashed": false,
+        "locked": false,
+        "text": null
+      },
+      "replaced": {
+        "team_name": 5,
+        "activity_name": 1,
+        "due": 1
+      },
+      "shares": [
+        {
+          "email": "<EMAIL>",
+          "ok": true,
+          "permission_id": "18249801426757446426",
+          "error": null
+        },
+        {
+          "email": "not-a-google-account@example.invalid",
+          "ok": false,
+          "permission_id": null,
+          "error": "400 invalidSharingRequest: Bad Request. User message: \"not-a-google-account@example.invalid님을 초대하려고 합니다. 이 이메일 계정에 연결된 Google 계정이 없기 때문에 이 수신자를 초대하려면 '이메일 알림 보내기'를 선택해야 합니다.\""
+        }
+      ],
+      "error": null
+    },
+    {
+      "team_name": "정보통신공학과 융합캡스톤디자인 최우수 팀 이름이 아주 긴 B조",
+      "document": {
+        "id": "1POkri4hG3KF80KZD44QxIPXRdHwxkCN-VDlyf0-JjJs",
+        "provider": "google",
+        "kind": "slides",
+        "title": "발표 1차 - 정보통신공학과 융합캡스톤디자인 최우수 팀 이름이 아주 긴 B조",
+        "url": "https://docs.google.com/presentation/d/1POkri4hG3KF80KZD44QxIPXRdHwxkCN-VDlyf0-JjJs/edit?usp=drivesdk",
+        "mime_type": "application/vnd.google-apps.presentation",
+        "owner": "<OWNER_NAME>",
+        "created_at": "2026-10-03T16:51:11.211000Z",
+        "modified_at": "2026-10-03T16:51:11.211000Z",
+        "parent_folder_id": "1TPj4frzP4IrGuf6f2MHQOGKCxBryNcNZ",
+        "trashed": false,
+        "locked": false,
+        "text": null
+      },
+      "replaced": {
+        "team_name": 5,
+        "activity_name": 1,
+        "due": 1
+      },
+      "shares": [],
+      "error": null
+    }
+  ]
+}
