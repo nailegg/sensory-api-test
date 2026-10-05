@@ -1,10 +1,10 @@
 # Zoom 연동 스펙
 
-상태: 5단계(기능 테스트) 완료 · 6단계(문서화) 정리 중
+상태: 6단계(스펙 문서화) 완료 · 7단계(핸드오프) 대기
 최종 수정: 2026-10-05 · 작성: 상현
-확인 기준: 공식 문서 2026-10-04(developers.zoom.us 가이드·공식 OpenAPI JSON, support.zoom.com, zoom.us/pricing). 실측 없음(3단계부터). Marketplace 앱도 아직 만들지 않았다.
+확인 기준: 공식 문서 2026-10-04~05(developers.zoom.us 가이드·공식 OpenAPI JSON, support.zoom.com, zoom.us/pricing). **실측 2026-10-05**: 개인 무료(Basic) 계정 + General App(User-managed, Development) + ngrok 고정 도메인. 실측한 것은 각 절에 날짜를 붙였다.
 
-옮기는 파일(예정): `app/services/zoom/{client,mapper,scopes,usecases}.py`와 이 문서. 웹훅 URL 검증 응답 생성과 서명 검증은 FastAPI 없는 순수 함수로 `usecases.py`에 두어 함께 옮기고, `router.py`는 그것을 부르기만 한다. Zoom은 Google처럼 공유 레이어(Drive)가 없으므로 이 문서 하나가 Zoom 전부를 다룬다. Base URL: `https://api.zoom.us/v2`(토큰 응답의 `api_url`이 다르면 그 값).
+옮기는 파일: `app/services/zoom/{client,mapper,scopes,usecases}.py`와 이 문서. 웹훅 URL 검증 응답 생성과 서명 검증은 FastAPI 없는 순수 함수로 `usecases.py`에 두어 함께 옮기고, `router.py`는 그것을 부르기만 한다. Zoom은 Google처럼 공유 레이어(Drive)가 없으므로 이 문서 하나가 Zoom 전부를 다룬다. Base URL: `https://api.zoom.us/v2`(토큰 응답의 `api_url`이 다르면 그 값).
 
 ---
 
@@ -41,7 +41,7 @@
 - **무료(Basic) 호스트 미팅은 40분 제한.** 1:1도 포함("1 host, 1 or more participants"). 호스트 혼자 있을 때만 예외. 유료 라이선스는 30시간. 참가자 상한은 Basic·Pro 모두 100명.
 - **Basic에서 안 되는 API**: 과거 미팅 상세·참가자, 클라우드 녹화 전부, 트랜스크립트, AI 요약 API, 등록·폴, 미팅 삭제 웹훅(`meeting.deleted`는 Pro 전제). 가격 페이지의 "Basic 월 3회 요약"은 UI 기능이고 요약 API 전제는 Pro 이상이다.
 - **미팅 `status`에 `ended`가 없다.** 종료는 웹훅 `meeting.ended`로 받거나 `GET /past_meetings/{id}`(유료)로 확인한다. `meeting.ended`의 `duration`은 **예정 길이**이고 실제 길이는 `end_time - start_time`으로 계산한다.
-- **참가자 이메일은 호스트 계정 밖이면 빈 문자열.** 학생이 개인 Zoom 계정이거나 로그인 없이 들어오면 `user_email`·`email`이 비어 있다("with some exceptions", 규칙 미확인). 학생 식별은 이름, 사전 등록(`registrant_id`, Pro), 또는 Synsory가 발급한 참가 링크 설계로 풀어야 한다(2단계 쟁점).
+- **참가자 이메일은 호스트 계정 밖이면 빈 문자열.** 학생이 개인 Zoom 계정이거나 로그인 없이 들어오면 `user_email`·`email`이 비어 있다("with some exceptions", 규칙 미확인). 학생 식별은 이름, 사전 등록(`registrant_id`, Pro), 또는 Synsory가 발급한 참가 링크 설계로 풀어야 한다. → 2026-10-05 표시 이름의 학번 매칭으로 결정(1절 6번).
 - **미팅 생성·수정은 사용자당 하루 100회(UTC 00:00 리셋).** 그룹 100개 넘는 수업을 하루에 만들 수 없다.
 - **리다이렉트 URI는 https 필수.** `http://localhost`는 등록 불가. 루프백 `http://127.0.0.1:…`은 **PKCE 공개 클라이언트 전용**이고 client secret을 쓰는 서버형 앱은 "Do not use". → Zoom만 ngrok https 주소(CLAUDE.md 전제 확인). 웹훅 수신 URL도 공개 https FQDN 필수.
 - **미공개 앱은 개발자 본인 계정 사용자만 인가 가능.** 다른 Zoom 계정(다른 교수자)이 연결하려면 Beta 공유 승인(3~4영업일, 4주 한시) 또는 게시 심사(public/unlisted)가 필요하다. 테스트 중에는 상현 계정 하나로만 로그인된다.
@@ -51,19 +51,13 @@
 - `start_url`은 호스트 로그인과 같다. 저장·노출하지 않고 필요할 때 `GET /meetings/{id}`로 다시 받는다.
 - 녹화 저장 용량은 Pro 라이선스당 10GB(계정 풀링). 휴지통 30일. Pro $16.99/월(월납) · $14.16/월(연납), USD만 표기.
 
-**Synsory 관점에서 유즈케이스 후보 (2단계 참고용, 확정 아님)**
-
-- **교수자가 액티비티(또는 그룹)마다 미팅을 예약하고 Synsory가 `join_url`을 학생에게 배포한다.** `POST /users/me/meetings`(type 2, 또는 매주 반복 type 8) 1회. 학생은 Zoom 계정 없이 링크로 입장 가능(`meeting_authentication=false`). 그룹별 소회의실 사전 배정은 학생 이메일이 Zoom 계정 이메일과 같아야 동작한다. 하루 100회 한도 안에서 그룹 수를 센다. Basic으로 실측 가능하나 40분 제한.
-- **미팅 시작·종료를 웹훅으로 받아 액티비티 상태를 갱신한다.** `meeting.started` · `meeting.ended`. Basic으로 실측 가능. 교수자가 Zoom 웹에서 직접 만든 미팅도 호스트가 앱을 인가한 사용자면 이벤트가 온다.
-- **출석 기록.** ① `meeting.participant_joined/left` 웹훅을 Synsory가 누적(Basic 가능. `participant_user_id`도 호스트 계정 밖 사용자면 빈 값이라 개인 계정 학생은 이름으로만 식별) ② 종료 후 `GET /past_meetings/{uuid}/participants`로 한 번에 받기(Pro). 둘 다 이메일 공백 문제가 있어 식별 설계가 선행되어야 한다.
-- **종료 후 녹화·트랜스크립트·AI 요약을 가져와 Synsory에 보관하거나 Turnitin 등으로 보낸다.** `recording.completed` → `download_url` + `download_token`(24시간) 다운로드, `recording.transcript_completed`/`meeting.aic_transcript_completed`, `meeting.summary_completed` → `summary_content`. **전부 Pro 이상**이라 실측하려면 Pro 1개월 결제가 필요하다(PLAN.md 열린 질문).
-- 미팅 취소·정리: `DELETE /meetings/{id}`(Basic 가능), 녹화 휴지통 이동(Pro).
+**유즈케이스**: 2단계에서 확정한 6개는 1절. 위 "할 수 있는 일 — Pro 이상"(녹화·트랜스크립트·요약·과거 미팅 참가자·사전 등록)은 Pro 결제가 결정될 때까지 보류다.
 
 ---
 
 ## 1. 이 서비스로 하는 일 (유즈케이스)
 
-2026-10-05 상현 확정. **무료(Basic) 계정으로 실측할 수 있는 것만** 먼저 한다(4.1절 API만 사용). 후보였던 "마감 시각에 강제 종료"(`PUT …/status` `end`)와 "시작·종료 웹훅으로 상태 추적"(`meeting.started`/`ended`)은 필요 없다고 보고 뺐다. 출석은 처음에 보류했다가 **표시 이름의 학번 매칭 방식으로 6번에 넣었다**(모두 2026-10-05 상현). 웹훅은 6번만 쓴다. 전제는 Google과 같다: **OAuth로 연결하는 사용자는 교수자(호스트)**이고, 학생은 Zoom 계정 없이 `join_url`로 입장한다. Zoom은 학생에게 메일을 보내지 않으므로 `join_url` 배포는 Synsory 몫이다.
+2026-10-05 상현 확정. **무료(Basic) 계정으로 실측할 수 있는 것만** 먼저 한다(4.1절 API만 사용). 1단계에서 후보였던 "마감 시각에 강제 종료"(`PUT …/status` `end`)와 "시작·종료 웹훅으로 상태 추적"(`meeting.started`/`ended`)은 필요 없다고 보고 뺐다. 출석은 처음에 보류했다가 **표시 이름의 학번 매칭 방식으로 6번에 넣었다**(모두 2026-10-05 상현). 웹훅은 6번만 쓴다. 전제는 Google과 같다: **OAuth로 연결하는 사용자는 교수자(호스트)**이고, 학생은 Zoom 계정 없이 `join_url`로 입장한다. Zoom은 학생에게 메일을 보내지 않으므로 `join_url` 배포는 Synsory 몫이다.
 
 | # | 유즈케이스 | 호출 순서 | usecases 함수 |
 | --- | --- | --- | --- |
@@ -89,7 +83,7 @@
 
 OAuth 2.0 인가 코드 방식(사용자 동의). Zoom Marketplace **General App · User-managed**. 코드는 `app/core/oauth.py`의 `PROVIDERS["zoom"]`(이미 `client_auth_in_header=True`로 배관됨, 옮기지 않음). 공식 문서(2026-10-04)로 확인한 절차와 제약:
 
-**2.1 Marketplace 설정 (3단계에서 수행 예정)**
+**2.1 Marketplace 설정 (2026-10-05 실제 수행)**
 
 | 순서 | 메뉴 | 값 | 비고 |
 | --- | --- | --- | --- |
@@ -123,7 +117,7 @@ Zoom은 2026-04부터 "public client" 옵션(secret 없는 별도 client ID)과 
 
 **2.5 `.env` 키**
 
-`ZOOM_CLIENT_ID`, `ZOOM_CLIENT_SECRET`(Development 자격증명), `ZOOM_PUBLIC_BASE_URL`(ngrok https 주소. Zoom 리다이렉트 URI와 웹훅 URL의 base), `ZOOM_WEBHOOK_SECRET_TOKEN`(Event Subscriptions의 Secret Token. 유즈케이스 6). 뒤의 두 키는 1단계에서 `.env.example`과 `config.py`에 이름만 추가했고, `redirect_uri("zoom")`이 이 값을 쓰도록 하는 배선은 3단계에서 한다.
+`ZOOM_CLIENT_ID`, `ZOOM_CLIENT_SECRET`(Development 자격증명), `ZOOM_PUBLIC_BASE_URL`(ngrok https 주소. Zoom 리다이렉트 URI와 웹훅 URL의 base), `ZOOM_WEBHOOK_SECRET_TOKEN`(Event Subscriptions의 Secret Token. 유즈케이스 6). `redirect_uri("zoom")`은 `ZOOM_PUBLIC_BASE_URL`을 쓰고, 비어 있으면 오류를 낸다(Google은 `APP_BASE_URL` = localhost). OAuth 리다이렉트와 웹훅이 같은 ngrok 고정 도메인을 쓴다.
 
 ## 3. scope 표
 
@@ -150,7 +144,7 @@ Granular scope(새 General App 기본). 형식은 `<리소스>:<동작>:<대상>
 | `meeting:read:list_summaries` | `GET /users/me/meeting_summaries` | 요약 | **Pro** |
 | `report:read:list_meeting_participants:admin` | `GET /report/meetings/{id}/participants` | 쓰지 않는다. admin 전용이라 User-managed 앱에 안 맞음. `past_meetings` 참가자로 대체 | — |
 
-- 웹훅 이벤트별 필요 scope: 공식 가이드가 예시로 든 두 개(`participant_joined` → `meeting:read:participant`, `recording.completed` → `cloud_recording:read:recording`) 외에 `meeting.started` · `meeting.ended` · `recording.transcript_completed`의 정확한 scope는 OpenAPI JSON에 없다. 빌드 플로우에서 이벤트를 체크하면 필요한 scope가 표시되므로 **3단계에서 캡처해 이 표에 추가**한다(12절).
+- 웹훅 이벤트별 필요 scope: 공식 가이드가 예시로 든 두 개(`participant_joined` → `meeting:read:participant`, `recording.completed` → `cloud_recording:read:recording`) 외에 `meeting.started` · `meeting.ended` · `recording.transcript_completed`의 정확한 scope는 OpenAPI JSON에 없다. 2026-10-05 Event Types 화면은 이벤트마다 "Required Meeting's Read Scopes"라고만 보여 주고 scope 이름은 표시하지 않았다. `started`·`ended`는 추가해도 새 scope가 붙지 않았다(12절).
 - scope를 늘리면 기존 사용자는 재인가해야 한다(새 인가 화면). 처음부터 유즈케이스에 필요한 것을 다 넣는 편이 낫다.
 - `services/zoom/scopes.py`는 1절 유즈케이스 1~6에 필요한 6개(`user:read:user`, `meeting:write:meeting`, `meeting:read:meeting`, `meeting:update:meeting`, `meeting:delete:meeting`, `meeting:read:participant`)로 시작한다(2026-10-05 확정). `meeting:read:list_meetings`는 동기화 유즈케이스가 생기면, 녹화·요약 scope는 Pro 결제가 결정되면 추가한다.
 
@@ -333,7 +327,7 @@ Pro 전제 웹훅(`meeting.deleted` · `recording.completed` · `recording.trans
 | 녹화 보존 | — | 자동 삭제 설정(30·60·90·120일), 휴지통 30일, 용량 초과 시 새 녹화 불가 | KB0065362, KB0066493, KB0060832 |
 | Education 번들 | School and Campus는 라이선스당 5GB, 최소 20석, 온라인 구매 불가 | | KB0057711 |
 
-**호출 수 감각 (유즈케이스 확정 전 추정)**
+**호출 수 감각** (2026-10-05 실측: 생성 5회(그룹 2 · 소회의실 2 · 정기 1) + 수정 3회 = 하루 100회 중 8회)
 
 | 작업 | 호출 수 |
 | --- | --- |
@@ -350,7 +344,7 @@ Zoom은 **웹훅이 1급 기능**이다(Google과 반대). 공식 웹훅 가이�
 
 **수신 URL 요건**: 공개 **https**, TLS 1.2+, CA 인증서, **FQDN**, JSON POST 수신, **3초 안에 200/204**. → 로컬은 ngrok(`https://<ngrok>/zoom/webhook`). ngrok 주소가 바뀌면 Marketplace에서 URL을 바꾸고 재검증한다.
 
-**URL 검증(CRC)**: 저장 시, 그리고 **72시간마다** Zoom이 `{"event":"endpoint.url_validation","payload":{"plainToken":"…"}}`를 POST한다. 응답은 3초 안에 200 + `{"plainToken": <그대로>, "encryptedToken": hex(HMAC_SHA256(secret_token, plainToken))}`. **6회 연속 실패하면 구독이 꺼진다**(ngrok을 내려둔 채 3일이 지나면 꺼질 수 있다 → 5단계 실측 때 주의).
+**URL 검증(CRC)**: 저장 시, 그리고 **72시간마다** Zoom이 `{"event":"endpoint.url_validation","payload":{"plainToken":"…"}}`를 POST한다. 응답은 3초 안에 200 + `{"plainToken": <그대로>, "encryptedToken": hex(HMAC_SHA256(secret_token, plainToken))}`. **6회 연속 실패하면 구독이 꺼진다**(ngrok을 내려둔 채 3일이 지나면 꺼질 수 있다. 2026-10-05에는 저장할 때도 이 요청이 오지 않았다, 2.1절 6행).
 
 **서명 검증**(모든 이벤트): 헤더 `x-zm-request-timestamp`, `x-zm-signature`. `message = f"v0:{timestamp}:{raw_body}"`, `expected = "v0=" + hex(HMAC_SHA256(secret_token, message))`, `x-zm-signature`와 상수 시간 비교. **raw body**로 계산해야 하므로 FastAPI에서 `await request.body()`를 먼저 읽고 그 바이트로 검증한 뒤 JSON 파싱한다. 리플레이 허용 시간창은 공식 문서에 없다(12절, 5분 정도를 앱에서 정한다).
 
@@ -381,7 +375,7 @@ Zoom은 **웹훅이 1급 기능**이다(Google과 반대). 공식 웹훅 가이�
 
 ## 10. 함정과 권장 패턴
 
-공식 문서 기준(미실측). 5단계에서 확인된 것은 날짜를 붙여 갱신한다.
+공식 문서 기준. 실측(2026-10-05)으로 확인된 것에는 날짜를 붙였다.
 
 1. **리다이렉트·웹훅 URL 둘 다 https FQDN.** 테스트 서버는 ngrok 하나로 `https://<ngrok>/auth/zoom/callback`과 `https://<ngrok>/zoom/webhook`을 받는다. 무료 ngrok은 재시작마다 주소가 바뀌어 Marketplace 설정과 `.env`를 같이 바꿔야 하므로 고정 도메인(ngrok 무료 static domain 1개) 사용을 3단계에서 검토한다.
 2. **`localhost`는 안 되고 `127.0.0.1` 루프백은 PKCE 전용.** 서버형 앱에 루프백을 등록하지 않는다(2.4).
@@ -397,7 +391,7 @@ Zoom은 **웹훅이 1급 기능**이다(Google과 반대). 공식 웹훅 가이�
 12. **무료 계정의 일일 쿼터.** Light 6,000/일이라 평소엔 넉넉하지만 폴링 설계(예: 미팅 상태를 10초마다 `GET`)는 금방 소진된다. 상태는 웹훅으로.
 13. **40분 제한은 호스트 플랜을 따른다.** 교수자가 Basic이면 학생이 Pro여도 40분. `participant_left.leave_reason`에 "Exceeded free meeting minutes limit."이 온다. Synsory가 교수자 플랜(`/users/me` `type`)을 보고 40분 넘는 예약에 경고를 띄울 수 있다.
 14. **녹화·트랜스크립트·요약은 전부 Pro 이상.** 실측하려면 상현 계정을 Pro로 1개월 올려야 한다($16.99). 그 전까지 관련 유즈케이스는 보류로 두고, Basic으로 되는 예약·`/users/me`를 먼저 끝낸다.
-15. **`recording.completed`와 트랜스크립트는 따로 온다.** 녹화 완료 때 `TRANSCRIPT`가 `processing`이거나 없을 수 있다. `recording.transcript_completed`(또는 AI Companion 쪽 `meeting.aic_transcript_completed`)를 별도로 구독한다. 트랜스크립트 소스가 둘(클라우드 녹화 VTT vs AI Companion 트랜스크립트)이라 어느 쪽을 쓸지 2단계에서 정한다.
+15. **`recording.completed`와 트랜스크립트는 따로 온다.** 녹화 완료 때 `TRANSCRIPT`가 `processing`이거나 없을 수 있다. `recording.transcript_completed`(또는 AI Companion 쪽 `meeting.aic_transcript_completed`)를 별도로 구독한다. 트랜스크립트 소스가 둘(클라우드 녹화 VTT vs AI Companion 트랜스크립트)이라 어느 쪽을 쓸지는 Pro 결제 결정 때 정한다.
 16. **요약 API는 `uuid`만 받고 `summary_content`(Markdown)를 쓴다.** `summary_overview`·`summary_details`·`next_steps`는 deprecated. 계정 설정 "Only share meeting summaries by email"이 켜져 있으면 403 2305.
 17. **웹훅은 받자마자 2xx, 처리는 뒤에서.** 3초 제한. 4xx를 돌려주면 재시도조차 없으므로 서명 실패가 아닌 한 400을 내지 않는다. 멱등 키는 `event_ts + object.uuid(+participant_uuid)`.
 18. **CRC 재검증 72시간·6회 실패 시 구독 중지.** 로컬 ngrok을 내려둔 채 3일 넘기면 구독이 꺼질 수 있다. 꺼지면 Marketplace에서 다시 켠다. 서비스 레포에서는 상시 서버라 문제 없음.
@@ -456,28 +450,43 @@ summary = zoom_uc.summarize_attendance(
 
 ## 12. 미확인 · 보류 항목
 
-| 항목 | 확인 방법 · 시점 |
-| --- | --- |
-| `http://127.0.0.1:8000/…`를 PKCE 없이 등록하면 UI가 거부하는지 | ngrok으로 결정해 확인하지 않음. 문서상 금지("Do not use loopback for simple OAuth apps") |
-| 이전 refresh token의 유예 시간 | 2026-10-05 실측: 갱신 직후에는 이전 refresh·access token 모두 동작. 몇 분 뒤에도 되는지는 미확인. 항상 최신 것만 쓰므로 영향은 작다 |
-| 처음 이벤트가 안 오던 원인이 재설치인지 구독 재저장인지 | 2026-10-05: ngrok 도메인은 원인이 아님을 확인(되돌려도 수신). 재설치와 재저장 중 무엇인지는 미분리. 재현되면 재저장만 먼저 해 본다 |
-| URL 검증(CRC)·72시간 재검증이 실제로 오는지 | 2026-10-05까지 한 번도 받지 않음(서버 로그 기준). 72시간 뒤 서버 로그에 `endpoint.url_validation`이 찍히는지 확인 |
-| 웹훅 `meeting.started`·`meeting.ended`·`recording.transcript_completed`의 구독 scope 이름 | 유즈케이스 6은 `participant_joined/left`만 쓰고 그 scope(`meeting:read:participant`)는 공식 가이드에 있다. 나머지는 해당 유즈케이스가 생기면 Event Subscriptions 화면에서 캡처 |
-| `recording.transcript_completed` 전제 "Business 이상" vs 트랜스크립트 설정 "Pro 이상" 상충 | Pro 결제 시 실측. 상충하면 AI Companion 트랜스크립트(`meeting.aic_transcript_completed`)로 대체 검토 |
-| 참가자 이메일 표시 규칙("Email address display rules")의 예외, `meeting_authentication` 시 외부 계정 이메일이 채워지는지 | 출석 유즈케이스가 확정되면 5단계. 테스트 Google 계정(koreaji8)처럼 **학생 역할 Zoom 계정 1개**가 필요 |
-| 하루 100회 규칙의 DELETE 포함 여부, 101번째 요청의 코드·메시지 | 5단계에서 일부러 넘기긴 비용이 크므로 보류. 포럼은 429라고 함 |
-| 429 응답의 헤더(`Retry-After` 등) | 정상 응답은 `x-ratelimit-category`만 있음(2026-10-05). 429는 일부러 만들지 않고 만나면 기록 |
-| "미팅 ID는 마지막 사용 30일 후 만료"(비반복 미팅) | 기억값. 공식 원문 미확보. 종료 후 오래 지난 `GET /meetings/{id}`가 3001을 내는지 5단계 |
-| 웹훅 중복 전달(at-least-once) 여부, 서명 리플레이 허용 시간창 | 공식 문서 없음. 멱등 처리 + 5분 창을 앱 규칙으로. `x-zm-request-timestamp` 단위(초/밀리초)는 헤더를 기록하지 않아 아직 미확인(`event_ts`는 밀리초). 확인 뒤 시간창 검사를 `verify_signature`에 추가한다(2026-10-05 현재 미구현) |
-| 참가자 이름 변경을 Zoom 설정으로 막을 수 있는지("Allow participants to rename themselves") | 유즈케이스 6. 5단계에서 포털 설정을 끄고 게스트로 이름 변경 시도 |
-| 트랜스크립트 언어(KB0065911 "영어만" vs KB0064927 한국어 포함 19개) | Pro 결제 시 한국어 미팅으로 실측 |
-| 소회의실 사전 배정(유즈케이스 2-B)이 로그인한 학생을 실제로 자동 배정하는지 | Basic에서 생성까지는 실측. 자동 배정은 학생 역할 Zoom 계정이 생기면 |
-| `GET /past_meetings/{id}/instances`가 Basic에서 되는지 | OpenAPI에 플랜 전제 문구 없음. 4.2에 상세와 같이 두었다. Basic 상태에서 1회 호출해 400 code 200인지 확인(5단계, 비용 0) |
-| Basic 계정의 "월 3회 요약"이 `GET /meetings/{uuid}/meeting_summary`로 읽히는지 | API 전제는 Pro. Basic 상태에서 1회 호출해 400 code 200인지 확인(5단계, 비용 0) |
-| 클라우드 녹화 최대 파일 크기, 자동 삭제 설정 가능 일수의 전체 범위 | 녹화 유즈케이스 확정 시 |
-| Zoom 앱 리뷰 실제 소요 | 공식: 첫 응답 72시간 SLA, 전체 기간은 "varies". Beta 공유는 3~4영업일. 7단계 메모 |
+2026-10-05 6단계 정리 기준. **지금 유즈케이스 1~6의 동작을 막는 항목은 없다.**
 
-## 출처 (2026-10-04 확인)
+**유즈케이스 1~6에 관련된 것**
+
+| 항목 | 현재 상태 · 확인 방법 |
+| --- | --- |
+| 서명 헤더 `x-zm-request-timestamp`의 단위(초/밀리초)와 리플레이 시간창 | 헤더를 기록하지 않아 미확인(`event_ts`는 밀리초). 서비스 레포에서 첫 수신 때 헤더를 로그로 확인한 뒤 `verify_signature`에 5분 창 검사를 추가한다. 현재는 서명만 검증 |
+| URL 검증(CRC)·72시간 재검증 요청이 실제로 오는지 | 2026-10-05에는 한 번도 받지 않음(2.1절 6행). 수신 코드는 준비돼 있다. 서비스 레포에서 서버 로그에 `endpoint.url_validation`이 찍히는지 본다 |
+| 처음 이벤트가 안 오던 원인(재설치 vs 구독 재저장) | ngrok 도메인은 원인이 아님을 확인. 재현되면 재저장만 먼저 해 본다. 권장 순서는 2.1절 6행 |
+| 웹훅 중복 전달(at-least-once) 여부 | 공식 문서 없음. 2026-10-05 실측에서는 중복 없음. 집계는 `participant_uuid` 단위로 덮어쓰므로 중복이 와도 결과가 같다 |
+| 참가자 이름 변경을 Zoom 설정으로 막을 수 있는지("Allow participants to rename themselves") | 미실측. 이름 변경 이벤트가 없어 입장 때 이름만 쓰므로, 막지 못해도 집계는 입장 시 이름 기준이다 |
+| 소회의실 사전 배정(2-B)이 로그인한 학생을 실제로 자동 배정하는지 | 설정 저장까지만 실측. 학생 역할 Zoom 계정(개인 계정 1개)이 생기면 확인 |
+| 하루 100회 규칙의 DELETE 포함 여부, 101번째 요청의 코드·메시지 | 일부러 넘기지 않음. 포럼은 429라고 함. 2026-10-05 실측은 생성·수정 8회 |
+| 429 응답의 헤더(`Retry-After` 등) | 정상 응답에는 `x-ratelimit-category`만 있음. 429는 만나면 기록 |
+| 이전 refresh token의 유예 시간 | 갱신 직후에는 이전 토큰도 동작. 항상 최신 것만 쓰므로 영향 없음 |
+| "미팅 ID는 마지막 사용 30일 후 만료"(비반복 미팅) | 공식 원문 미확보. 오래 지난 미팅의 `GET /meetings/{id}`가 3001을 내는지는 시간이 지나야 확인 가능 |
+
+**보류한 유즈케이스에 관련된 것 (Pro 결제·학생 계정 결정 뒤)**
+
+| 항목 | 현재 상태 · 확인 방법 |
+| --- | --- |
+| `GET /past_meetings/{id}/instances`·`GET /meetings/{uuid}/meeting_summary`가 Basic에서 400 code 200인지 | 호출하려면 scope(`meeting:read:past_meeting`·`meeting:read:summary`)를 추가하고 재인가해야 해서 보류. 현재 앱에는 없는 scope다 |
+| `recording.transcript_completed` 전제 "Business 이상" vs 트랜스크립트 설정 "Pro 이상" 상충 | Pro 결제 시 실측. 상충하면 AI Companion 트랜스크립트(`meeting.aic_transcript_completed`)로 대체 검토 |
+| 트랜스크립트 언어(KB0065911 "영어만" vs KB0064927 한국어 포함 19개) | Pro 결제 시 한국어 미팅으로 실측 |
+| 참가자 이메일 표시 규칙의 예외, `meeting_authentication` 시 외부 계정 이메일이 채워지는지 | 로그인 기반 출석 식별을 검토할 때. 학생 역할 Zoom 계정 필요 |
+| 웹훅 `meeting.started`·`ended`·`recording.transcript_completed`의 구독 scope 이름 | `started`·`ended`는 2026-10-05 추가해 보니 새 scope 없이 구독됨. 녹화 쪽은 Pro 결정 뒤 |
+| 클라우드 녹화 최대 파일 크기, 자동 삭제 설정 가능 일수의 전체 범위 | 녹화 유즈케이스 확정 시 |
+| `http://127.0.0.1:8000/…`를 PKCE 없이 등록하면 UI가 거부하는지 | ngrok으로 결정해 확인하지 않음(2.4절) |
+
+**핸드오프(7단계)에서 볼 것**
+
+| 항목 | 메모 |
+| --- | --- |
+| 다른 교수자 계정 연결 | 미공개 앱은 개발자 계정 사용자만 인가 가능. Beta "Request to Share"(3~4영업일, 4주 한시) 또는 게시 심사(첫 응답 72시간 SLA, 전체 기간 "varies") |
+| 서비스 레포의 웹훅 이벤트 저장 | 이 레포는 `.webhooks/zoom_events.jsonl` 파일. 서비스 레포는 DB·큐로 바꾸고 `summarize_attendance`에 이벤트 목록을 넘긴다 |
+
+## 출처 (2026-10-04~05 확인)
 
 - OAuth 가이드(redirect·loopback·PKCE·토큰 수명·revoke) — https://developers.zoom.us/docs/integrations/oauth/
 - General App 생성·관리 유형·Dev/Prod 자격증명 — https://developers.zoom.us/docs/integrations/create/ , https://developers.zoom.us/docs/build-flow/create-oauth-apps/ , https://developers.zoom.us/docs/build-flow/basic-info/app-credentials/
@@ -491,3 +500,5 @@ summary = zoom_uc.summarize_attendance(
 - 웹훅 가이드(요건·CRC·서명·재시도) — https://developers.zoom.us/docs/api/webhooks/ ; 이벤트 레퍼런스 — https://developers.zoom.us/docs/api/meetings/events/
 - 시간 제한 — https://support.zoom.com/hc/en/article?id=zm_kb&sysparm_article=KB0067966 ; 참가자 수 — …KB0068002 ; 클라우드 녹화 전제 — …KB0063923 ; 저장 용량 — …KB0067670 ; 용량 한도 — …KB0060832 ; 자동 삭제 — …KB0065362 ; 휴지통 — …KB0066493 ; 오디오 트랜스크립트 — …KB0065911 , …KB0064927 ; AI 요약 — …KB0057960 , …KB0058013 ; 스마트 녹화 — …KB0061101 ; Education — …KB0057711
 - 가격 — https://zoom.us/en/pricing , https://zoom.us/ko/pricing
+- 웹훅 미수신 사례(2026, 해결책 없음) — https://devforum.zoom.us/t/event-subscription-webhook-meeting-participant-joined-never-delivered-in-development-mode-even-after-fixing-tls-chain-still-zero-delivery-attempts/145728 , https://devforum.zoom.us/t/meeting-participant-joined-webhook-never-trigger-evenet-types-checked-scopes-verified-0-attempts-in-events-dashboard/144850 , https://devforum.zoom.us/t/webhook-events-not-received-meeting-participant-joined-meeting-participant-left/142049
+- 사용자 설정 `breakout_room_schedule`·scope `user:read:settings` — Users OpenAPI JSON(위)
