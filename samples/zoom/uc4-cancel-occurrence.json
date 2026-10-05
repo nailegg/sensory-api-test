@@ -1,0 +1,16 @@
+{
+  "scenario": "반복 미팅의 한 회차만 취소",
+  "captured_at": "2026-10-05",
+  "note": "occurrence_id가 없으면 시리즈 전체가 지워진다",
+  "request": {
+    "method": "POST",
+    "url": "/zoom/cancel/86227091180?occurrence_id=1792393200000",
+    "body": null
+  },
+  "status": 200,
+  "response": {
+    "meeting_id": "86227091180",
+    "occurrence_id": "1792393200000",
+    "deleted": true
+  }
+}

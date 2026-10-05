@@ -1,0 +1,14 @@
+{
+  "scenario": "호스트 시작 링크로 리다이렉트",
+  "captured_at": "2026-10-05",
+  "note": "본문 없이 307. Location 호스트는 us05web.zoom.us, 경로는 /s/<미팅번호>(호스트 시작 링크). 호스트 권한·2시간 만료라 전체 값은 기록하지 않음",
+  "request": {
+    "method": "GET",
+    "url": "/zoom/start/<meeting_id>",
+    "body": null
+  },
+  "status": 307,
+  "response": {
+    "location": "https://us05web.zoom.us/s/<MEETING_ID>…(<MASKED>)"
+  }
+}

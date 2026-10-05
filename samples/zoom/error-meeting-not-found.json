@@ -1,0 +1,19 @@
+{
+  "scenario": "없는 미팅 시작 링크 요청",
+  "captured_at": "2026-10-05",
+  "note": "Zoom 404 code 3001",
+  "request": {
+    "method": "GET",
+    "url": "/zoom/start/1",
+    "body": null
+  },
+  "status": 404,
+  "response": {
+    "detail": {
+      "api": "ZoomApiError",
+      "code": 3001,
+      "message": "Meeting does not exist: 1.",
+      "rate_limit": false
+    }
+  }
+}

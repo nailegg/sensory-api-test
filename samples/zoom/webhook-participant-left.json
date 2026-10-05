@@ -1,0 +1,42 @@
+{
+  "scenario": "웹훅 meeting.participant_left 수신 본문",
+  "captured_at": "2026-10-05",
+  "note": "POST /zoom/webhook으로 받은 그대로(received_at은 우리 서버가 붙인 값). 식별 정보·IP 마스킹",
+  "request": {
+    "method": "POST",
+    "url": "/zoom/webhook",
+    "body": {
+      "received_at": "2026-10-05T13:44:56.569257+00:00",
+      "payload": {
+        "account_id": "<ACCOUNT_ID>",
+        "object": {
+          "uuid": "<MEETING_UUID>",
+          "participant": {
+            "leave_time": "2026-10-05T13:44:55Z",
+            "public_ip": "<IP>",
+            "user_id": "<MEETING_USER_ID>",
+            "user_name": "20231234 홍길동",
+            "registrant_id": "",
+            "participant_user_id": "",
+            "id": "",
+            "leave_reason": "left the meeting. Reason : left the meeting",
+            "email": "",
+            "private_ip": "<IP>",
+            "participant_uuid": "<PARTICIPANT_UUID>"
+          },
+          "id": "<PMI>",
+          "type": 4,
+          "topic": "<TOPIC>",
+          "host_id": "<HOST_ID>",
+          "duration": 0,
+          "start_time": "2026-10-05T13:43:46Z",
+          "timezone": "Asia/Seoul"
+        }
+      },
+      "event_ts": 1791207896354,
+      "event": "meeting.participant_left"
+    }
+  },
+  "status": 204,
+  "response": null
+}

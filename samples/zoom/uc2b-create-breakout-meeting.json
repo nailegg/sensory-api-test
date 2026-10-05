@@ -1,0 +1,40 @@
+{
+  "scenario": "미팅 하나 + 그룹별 소회의실 사전 배정(B 방식)",
+  "captured_at": "2026-10-05",
+  "note": "계정 설정 '예약 시 참가자를 소회의실에 할당'을 켠 뒤 생성. 꺼져 있으면 200인데 breakout_room이 조용히 버려진다(2026-10-05 실측). 학생 이메일은 예시 값",
+  "request": {
+    "method": "POST",
+    "url": "/zoom/create-breakout-meeting",
+    "body": {
+      "topic": "과제1 - 소회의실",
+      "start_time": "2026-10-12T15:00:00+09:00",
+      "duration_minutes": 40,
+      "timezone": "Asia/Seoul",
+      "rooms": {
+        "A조": [
+          "a1@example.com",
+          "a2@example.com"
+        ],
+        "B조": [
+          "b1@example.com"
+        ]
+      }
+    }
+  },
+  "status": 200,
+  "response": {
+    "id": "89531319461",
+    "provider": "zoom",
+    "topic": "과제1 - 소회의실",
+    "status": "scheduled",
+    "start_time": "2026-10-12T06:00:00Z",
+    "duration_minutes": 40,
+    "timezone": "Asia/Seoul",
+    "join_url": "https://us05web.zoom.us/j/89531319461?pwd=<MASKED>",
+    "host_id": "<HOST_ID>",
+    "uuid": "MPdStfKpT6mWzmMwRgnq1Q==",
+    "occurrences": [],
+    "has_recording": false,
+    "has_transcript": false
+  }
+}

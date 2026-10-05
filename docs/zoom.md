@@ -1,6 +1,6 @@
 # Zoom 연동 스펙
 
-상태: 2단계(유즈케이스 확정) 완료 · 3단계(인증) 대기
+상태: 5단계(기능 테스트) 완료 · 6단계(문서화) 정리 중
 최종 수정: 2026-10-05 · 작성: 상현
 확인 기준: 공식 문서 2026-10-04(developers.zoom.us 가이드·공식 OpenAPI JSON, support.zoom.com, zoom.us/pricing). 실측 없음(3단계부터). Marketplace 앱도 아직 만들지 않았다.
 
@@ -72,12 +72,12 @@
 | 3 | 정기 회의(매주 반복 수업)를 만든다 | `POST /users/me/meetings`(type 8, `recurrence{type 2 매주, repeat_interval, weekly_days, end_date_time 또는 end_times≤60}`) 1회 → `Meeting` + 회차 목록(`occurrences[]`) | `create_recurring_meeting` |
 | 4 | 일정을 바꾸거나 취소한다(반복 미팅은 한 회차만 또는 시리즈 전체) | 변경: `PATCH /meetings/{id}`(회차면 `occurrence_id`, 204) → `GET /meetings/{id}`로 바뀐 값 반환. 취소: `DELETE /meetings/{id}`(회차면 `occurrence_id`, 204) | `reschedule_meeting`, `cancel_meeting` |
 | 5 | 교수자가 Synsory에서 "시작"을 누르면 호스트로 미팅을 연다 | 누를 때마다 `GET /meetings/{id}` → `start_url` → 라우터가 302 리다이렉트. 저장하지 않음 | `get_start_url` |
-| 6 | 미팅 출석을 자동으로 집계한다(학생 표시 이름의 학번으로 수강생과 매칭) | 웹훅 `POST /zoom/webhook`: 서명 검증 → `endpoint.url_validation`이면 확인 응답, 아니면 `meeting.participant_joined`/`left` 저장 → 미팅이 끝나면 표시 이름에서 학번 추출 → 명단 매칭 → 학생별 접속 구간 합산(재입장·여러 기기) → 출석·지각 판정 값과 미확인 접속 목록 반환 | `verify_signature`, `url_validation_response`(구현됨), 집계 함수는 5단계 |
+| 6 | 미팅 출석을 자동으로 집계한다(학생 표시 이름의 학번으로 수강생과 매칭) | 웹훅 `POST /zoom/webhook`: 서명 검증 → `endpoint.url_validation`이면 확인 응답, 아니면 `meeting.participant_joined`/`left` 저장 → 미팅이 끝나면 표시 이름에서 학번 추출 → 명단 매칭 → 학생별 접속 구간 합산(재입장·여러 기기) → 출석·지각 판정 값과 미확인 접속 목록 반환 | `verify_signature`, `url_validation_response`, `summarize_attendance` |
 
 **유즈케이스별 메모**
 
 - 1: Synsory가 예약 화면에서 `type == 1`이면 "40분에 끊김" 경고를 띄우는 근거다. 응답 `timezone`은 2·3의 기본 `timezone`으로 쓴다. 반환값을 담을 공통 모델이 필요한지는 구현 때 정한다(서비스 폴더에 모델을 두지 않는 규칙).
-- 2: 주제 템플릿은 Docs와 같은 플레이스홀더(`{{activity_name}}`, `{{team_name}}`)를 쓴다. A는 그룹 수만큼 호출하므로 **하루 100회(생성+수정 합산, UTC)** 안에서 그룹 수를 센다. 학생은 로그인 없이 들어온다(`meeting_authentication=false`). B는 호출 1회지만 학생이 **그 이메일의 Zoom 계정으로 로그인해야** 자동 배정된다(10절 10항). Basic에서는 미팅 생성까지만 실측하고, 자동 배정은 학생 역할 Zoom 계정이 생기면 확인한다(12절). Docs 유즈케이스 2처럼 A를 기본으로, B를 비교용으로 함께 구현한다.
+- 2: 주제 템플릿은 Docs와 같은 플레이스홀더(`{{activity_name}}`, `{{team_name}}`)를 쓴다. A는 그룹 수만큼 호출하므로 **하루 100회(생성+수정 합산, UTC)** 안에서 그룹 수를 센다. 학생은 로그인 없이 들어온다(`meeting_authentication=false`). B는 호출 1회지만 학생이 **그 이메일의 Zoom 계정으로 로그인해야** 자동 배정된다(10절 10항). **B는 계정 설정 "예약 시 참가자를 소회의실에 할당"이 켜져 있어야 저장된다**(꺼져 있으면 200인데 조용히 버려짐, 10절 10항). 2026-10-05 설정을 켠 뒤 방 목록 저장까지 실측했다. 자동 배정은 학생 역할 Zoom 계정이 생기면 확인한다(12절). Docs 유즈케이스 2처럼 A를 기본으로, B를 비교용으로 함께 구현한다.
 - 3: 매주 반복 수업을 미팅 하나로 만든다. `join_url`이 학기 내내 같고 호출도 1회다. `weekly_days`는 1=일요일 … 7=토요일(`"2,4"` = 월·수). 회차마다 40분 제한(Basic). 그룹별 정기 회의가 필요하면 2-A에 `recurrence`를 넘기는 확장으로 처리한다(호출 수는 그룹 수 그대로).
 - 4: `PATCH`도 하루 100회에 들어간다. 반복 미팅의 한 회차만 바꾸면 수정 가능한 필드가 제한된다(4.1절). `DELETE`에 `occurrence_id`가 없으면 **시리즈 전체**가 지워진다. 그래서 함수에서 회차 취소와 전체 취소를 인자로 명시하게 한다.
 - 5: `start_url`은 2시간이면 만료되고 받은 사람은 누구나 호스트로 들어간다(10절 5항). 그래서 DB·로그·샘플에 남기지 않고 누를 때마다 새로 받는다. 이 레포의 라우터는 리다이렉트만 한다.
@@ -192,7 +192,7 @@ Base URL `https://api.zoom.us/v2`(또는 토큰 응답 `api_url`). 공식 OpenAP
 | 메서드 | 경로 | 용도 | 등급 | 비고 |
 | --- | --- | --- | --- | --- |
 | `GET` | `/users/me` | 프로필·플랜 | LIGHT | `type` 1 Basic · 2 Licensed · 4 Unassigned, `account_id`, `pmi`, `timezone`, `personal_meeting_url`, `status` |
-| `GET` | `/users/me/settings` | 설정 | (라벨 미확인) | `recording.cloud_recording`, `recording.auto_recording`, `recording.recording_audio_transcript`, `recording.auto_delete_cmr(_days 30·60·90·120)`, `in_meeting.meeting_summary_with_ai_companion.{enable, auto_enable, who_will_receive_summary}`, `feature.meeting_capacity`. Basic에서도 읽히지만 녹화·AI 값은 Pro에서만 의미가 있다 |
+| `GET` | `/users/me/settings` | 설정 | MEDIUM | `recording.cloud_recording`, `recording.auto_recording`, `recording.recording_audio_transcript`, `recording.auto_delete_cmr(_days 30·60·90·120)`, `in_meeting.meeting_summary_with_ai_companion.{enable, auto_enable, who_will_receive_summary}`, `feature.meeting_capacity`. Basic에서도 읽히지만 녹화·AI 값은 Pro에서만 의미가 있다 |
 
 Basic에서 되는 웹훅(`meeting.started` · `meeting.ended` · `meeting.participant_joined/left` · `meeting.created/updated`)은 9절.
 
@@ -238,29 +238,45 @@ Pro 전제 웹훅(`meeting.deleted` · `recording.completed` · `recording.trans
 
 ## 5. 요청·응답 샘플
 
-5단계에서 `samples/zoom/`에 채운다. 1단계에서는 없음. 저장 전 마스킹 대상: 토큰·`start_url`·`password`·`encrypted_password`·`download_url`·`download_token`·이메일·`host_id`·`account_id`·참가자 이름.
+2026-10-05 실측. `samples/zoom/`. 마스킹: 토큰·`start_url`(전체 값 미기록)·참가 링크 `pwd=`·`host_id`·`host_email`·`account_id`·미팅 `uuid`·참가자 이름·학번·IP. 테스트 미팅은 실측 후 전부 삭제했다(유즈케이스 4).
+
+| 파일 | 유즈케이스 | 내용 |
+| --- | --- | --- |
+| `uc1-host-profile.json` | 1 | `plan_type 1`, `has_40_minute_limit true` |
+| `uc2-create-group-meetings.json` | 2-A | 그룹 2개 → POST 2회. `14:00+09:00` → `05:00Z` 변환, 대기실 설정 |
+| `uc2b-create-breakout-meeting.json` | 2-B | 계정 설정을 켠 뒤 생성(그 전에는 방 목록이 버려졌다) |
+| `uc3-create-recurring-meeting.json` | 3 | 월·수 4회, `occurrences[].id` |
+| `uc4-reschedule.json` · `uc4-reschedule-occurrence.json` | 4 | 단일 미팅 변경 / 한 회차만 변경 |
+| `uc4-cancel-occurrence.json` · `uc4-after-cancel-occurrence.json` | 4 | 한 회차 취소 → 목록에 `deleted: true`로 남음 |
+| `uc4-cancel-series.json` | 4 | `occurrence_id` 없이 시리즈 전체 삭제 |
+| `uc5-start.json` | 5 | 307 → `us05web.zoom.us/s/<미팅번호>` |
+| `uc6-attendance.json` | 6 | 실제 웹훅 4건으로 집계(재입장 2회 합산) |
+| `webhook-{started,ended,participant-joined,participant-left}.json` | 6 | 수신 본문 원형 |
+| `error-meeting-not-found.json` | — | 404 `code 3001` |
 
 ## 6. 공통 모델 매핑
 
-`core/models.py`의 `Meeting` 초안(2026-10-02)과 1단계에서 본 응답의 대응. **필드 확정은 2단계 유즈케이스 뒤**에 하고, 아래는 제안이다.
+2026-10-05 확정(`core/models.py`). 변환은 `mapper.meeting_from_zoom`.
 
 | Meeting 필드 | 출처 | 비고 |
 | --- | --- | --- |
-| `id` | `id`(int64) → `str` | 미팅 번호. 10자리 초과 가능하므로 문자열로 보관 |
+| `id` | `id`(int64) → `str` | 미팅 번호. 10자리 초과 가능 |
 | `topic` | `topic` | |
-| `status` | `GET /meetings` `status` `waiting`→`SCHEDULED`, `started`→`STARTED`; 웹훅 `meeting.ended` 또는 `past_meetings` 조회 성공→`ENDED` | API에 `ended`가 없어 **상태 전이는 Synsory가 저장**해야 한다 |
-| `start_time` | `start_time`(UTC) | 즉시 미팅은 없음. 실제 시작은 `past_meetings.start_time`·`meeting.started` |
-| `duration_minutes` | `duration` | 예정 길이. 실제 길이는 `past_meetings.duration` 또는 `end_time - start_time` |
-| `join_url` | `join_url` | 학생 배포용 |
+| `status` | `status` `waiting`→`SCHEDULED`, `started`→`STARTED`, 그 밖→`UNKNOWN` | API에 `ended`가 없다. 종료는 웹훅으로만 알므로 상태 전이는 Synsory가 저장한다 |
+| `start_time` | `start_time`(UTC) | 즉시 미팅은 없음 |
+| `duration_minutes` | `duration` | **예정 길이**. 실제 길이는 `meeting.ended.end_time - meeting.started.start_time` |
+| `timezone` | `timezone` | 표시용. 시각 자체는 UTC로 저장·전송 |
+| `join_url` | `join_url` | 학생 배포용. `pwd=`가 들어 있어 링크만으로 입장 가능 |
 | `host_id` | `host_id` | |
-| `has_recording` | `GET /meetings/{id}/recordings` 200 여부 또는 `recording.completed` 수신 | Pro |
-| `has_transcript` | 녹화 파일에 `file_type == TRANSCRIPT` 또는 `recording.transcript_completed` / `GET …/transcript` `can_download` | Pro |
+| `uuid` | `uuid` | 인스턴스 식별자. 반복 미팅·40분 끊김 뒤 재시작마다 새로 생김 |
+| `occurrences[]` | `occurrences[]{occurrence_id, start_time, duration, status}` → `MeetingOccurrence{id, start_time, duration_minutes, deleted}` | 취소한 회차는 사라지지 않고 `status: deleted`로 남는다 |
+| `has_recording` · `has_transcript` | (Pro) | 현재 유즈케이스에서 채우지 않음 |
 
-추가 제안(2단계에서 결정): `uuid`(인스턴스 식별·요약 API 키), `password`(초대문에 필요), `timezone`, `end_time`·`actual_duration_minutes`·`participants_count`(종료 후), `has_summary`(`past_meetings.has_meeting_summary`), `recurrence`/`occurrence_id`(반복 미팅일 때). **`start_url`은 모델에 넣지 않는다**(2시간 만료 + 호스트 권한). 출석·녹화 파일은 `Meeting`에 넣기 어색하므로 `Participant`·`RecordingFile` 같은 공통 모델 추가가 필요한지 2단계에서 본다(서비스 폴더에 모델을 두지 않는 규칙).
+**`start_url`은 모델에 넣지 않는다**(2시간 만료 + 호스트 권한). 유즈케이스 결과 묶음은 공통 모델이 아니라 `usecases.py` dataclass다: `HostProfile`(1), `GroupMeetingResult`(2-A), `AttendanceSummary{entries: AttendanceEntry[], unmatched: UnmatchedSession[]}`(6). 출석이 Meet 등 다른 서비스에도 생기면 `core/models.py`로 올린다.
 
 ## 7. 에러와 예외 케이스
 
-공식 OpenAPI JSON·에러 가이드에서 확인한 것(미실측). 본문 형식은 `{"code": <int>, "message": "…"}`. 5단계에서 실측 표를 추가한다.
+공식 OpenAPI JSON·에러 가이드에서 확인한 것. 본문 형식은 `{"code": <int>, "message": "…"}`. **2026-10-05 실측**: 없는 미팅 404 `code 3001` "Meeting does not exist: 1."(`error-meeting-not-found.json`), 앱 제거 뒤 기존 토큰 401 `code 124` "Invalid access token.". 소회의실 설정이 꺼진 계정의 `breakout_room`은 **에러가 아니라 200 + 무시**다(10절 10항).
 
 | 상황 | HTTP | code | 메시지(원문) |
 | --- | --- | --- | --- |
@@ -376,7 +392,7 @@ Zoom은 **웹훅이 1급 기능**이다(Google과 반대). 공식 웹훅 가이�
 7. **`status`에 `ended`가 없다.** 상태 머신은 Synsory가 들고, 전이는 웹훅(`started`/`ended`)으로 한다. 웹훅 유실 대비로 `GET /meetings/{id}`가 404(3001)이거나 `past_meetings`가 200이면 종료로 본다(후자는 Pro).
 8. **`meeting.ended.duration`은 예정 길이.** 실제는 `end_time - start_time`. 출석 "체류 시간"은 `participant_left.leave_time - participant_joined.join_time`을 `participant_uuid`(또는 `user_id`)로 짝지어 계산하고, 재입장은 새 `user_id`가 되므로 합산한다.
 9. **참가자 이메일 공백.** 호스트 계정 밖 사용자는 `email`·`user_email`이 빈 문자열("with some exceptions"). 학생이 개인 Zoom 계정이면 거의 전부 빈 값이다. 식별 후보: ① Synsory가 학생별로 다른 표시 이름을 안내(약함), ② 사전 등록(`registrant_id`, Pro + 등록 켜기, 학생이 등록 링크를 거쳐야 함), ③ `meeting_authentication` + `authentication_domains`(KAIST 도메인 계정 강제. 이메일이 채워지는지는 미확인). **2단계에서 출석 유즈케이스를 넣는다면 이 결정이 먼저다.**
-10. **소회의실 사전 배정은 이메일 매칭.** `rooms[].participants`의 이메일로 로그인한 참가자만 자동 배정된다. ⑨와 같은 문제. 학생이 Zoom 계정 없이 들어오면 호스트가 수동 배정해야 한다.
+10. **소회의실 사전 배정은 계정 설정이 켜져 있어야 저장된다.** 웹 설정 → 회의 → 회의 중(고급) → 소회의실 아래 **"예약 시 참가자를 소회의실에 할당"**이 꺼져 있으면 `POST /users/me/meetings`가 200을 주면서 `settings.breakout_room`을 조용히 버린다(다시 읽으면 `{"enable": false}`). 2026-10-05 실측: 개인 무료 계정 기본값은 꺼짐, 켠 뒤에는 방 목록까지 저장됨. 생성 직후 `GET /meetings/{id}`로 `breakout_room.rooms`가 있는지 확인하는 것이 안전하다. 이 설정 값은 `GET /users/me/settings`의 `in_meeting.breakout_room_schedule`(scope `user:read:settings`, MEDIUM, 현재 미신청. 2026-10-05 OpenAPI 확인)로 미리 읽을 수 있다. 소회의실 사전 배정은 이메일 매칭이기도 하다. `rooms[].participants`의 이메일로 로그인한 참가자만 자동 배정된다. ⑨와 같은 문제. 학생이 Zoom 계정 없이 들어오면 호스트가 수동 배정해야 한다.
 11. **하루 100회 생성·수정.** 수업 하나의 그룹 수가 100을 넘기 어렵지만, "전체 그룹 시간 변경"을 `PATCH`로 돌리면 금방 소진된다. 반복 미팅(type 8) 하나로 여러 회차를 만들면 호출 1회다. 한도 초과 시 다음 날 UTC 00:00(KST 09:00)까지 대기.
 12. **무료 계정의 일일 쿼터.** Light 6,000/일이라 평소엔 넉넉하지만 폴링 설계(예: 미팅 상태를 10초마다 `GET`)는 금방 소진된다. 상태는 웹훅으로.
 13. **40분 제한은 호스트 플랜을 따른다.** 교수자가 Basic이면 학생이 Pro여도 40분. `participant_left.leave_reason`에 "Exceeded free meeting minutes limit."이 온다. Synsory가 교수자 플랜(`/users/me` `type`)을 보고 40분 넘는 예약에 경고를 띄울 수 있다.
@@ -387,11 +403,56 @@ Zoom은 **웹훅이 1급 기능**이다(Google과 반대). 공식 웹훅 가이�
 18. **CRC 재검증 72시간·6회 실패 시 구독 중지.** 로컬 ngrok을 내려둔 채 3일 넘기면 구독이 꺼질 수 있다. 꺼지면 Marketplace에서 다시 켠다. 서비스 레포에서는 상시 서버라 문제 없음.
 19. **scope를 나중에 늘리면 재인가.** Zoom은 scope가 앱 설정에 있어 추가 즉시 기존 사용자 토큰으론 새 API가 401/4700이 난다. 2단계에서 정한 scope를 한 번에 넣는다.
 20. **SDK 없이 REST.** 쓰는 엔드포인트가 10개 안팎이고 전부 JSON이다. httpx로 충분. 예외 근거 없음. 토큰 응답의 `api_url`을 base URL로 받아 client를 만든다.
-21. **Google과 다른 점 정리.** 자격증명은 Basic 헤더 · refresh token 90일·회전 · scope는 앱 설정(인가 URL 아님) · 미공개 앱은 자기 계정만 · 웹훅이 기본이고 서명 검증 필수 · 플랜(Basic/Pro)이 API 가용성을 가른다 · 쿼터가 계정 단위 초당+일일.
+21. **취소한 회차는 목록에 남는다.** `DELETE …?occurrence_id=`는 회차를 지우지 않고 `occurrences[].status`를 `deleted`로 바꾼다. 화면에 회차를 그릴 때 `MeetingOccurrence.deleted`를 거른다(2026-10-05 실측).
+22. **출석 집계는 이벤트 안의 시각으로.** 웹훅은 도착 순서가 바뀔 수 있고(9절), 퇴장 이벤트가 없을 수 있다(수업 중 서버 정지·네트워크). `summarize_attendance`는 접속(`participant_uuid`)마다 입장·퇴장을 짝짓고, 퇴장이 없으면 그 회차의 `meeting.ended`로 닫고, 같은 학생의 겹친 접속은 합쳐 센다. 대리 출석은 막지 못하고 `overlapping_sessions`로 표시만 한다.
+23. **Google과 다른 점 정리.** 자격증명은 Basic 헤더 · refresh token 90일·회전 · scope는 앱 설정(인가 URL 아님) · 미공개 앱은 자기 계정만 · 웹훅이 기본이고 서명 검증 필수 · 플랜(Basic/Pro)이 API 가용성을 가른다 · 쿼터가 계정 단위 초당+일일.
 
 ## 11. 샘플 코드 (`usecases.py`의 흐름을 기준으로)
 
-5단계에서 `app/services/zoom/usecases.py`를 구현한 뒤 작성한다. 구조는 Google과 같다: `ZoomClient(access_token, base_url=api_url)`, 유즈케이스 함수는 FastAPI 없이 동작, 에러는 `ZoomApiError(status, code, message, is_rate_limit)`. 웹훅은 `verify_signature(secret, timestamp, raw_body, signature) -> bool`, `url_validation_response(secret, plain_token) -> dict`를 `usecases.py`에 순수 함수로 둔다(2026-10-05 구현).
+`app/services/zoom/usecases.py` 기준. `ZoomClient(access_token)`(base URL 고정 `https://api.zoom.us/v2`. 토큰 응답 `api_url`이 다르면 `base_url=`로 넘긴다), 함수는 FastAPI 없이 동작, 실패는 `ZoomApiError(status, code, message)` + `is_rate_limit`.
+
+```python
+from datetime import datetime
+from zoneinfo import ZoneInfo
+from app.services.zoom.client import ZoomClient
+from app.services.zoom import usecases as zoom_uc
+
+zoom = ZoomClient(access_token)
+KST = ZoneInfo("Asia/Seoul")
+
+# 1. 플랜 확인 → Basic이면 40분 경고
+profile = await zoom_uc.get_host_profile(zoom)          # profile.has_40_minute_limit
+
+# 2. 그룹마다 미팅. 실패한 그룹은 error에 담고 나머지는 계속
+results = await zoom_uc.create_group_meetings(
+    zoom, ["A조", "B조"], "{{activity_name}} - {{team_name}}",
+    datetime(2026, 10, 12, 14, 0, tzinfo=KST), 40, "Asia/Seoul", activity_name="과제1",
+    settings={"waiting_room": True},
+)                                                       # results[i].meeting.join_url → 학생에게
+
+# 3. 매주 월·수 4회
+course = await zoom_uc.create_recurring_meeting(
+    zoom, "정기 수업", datetime(2026, 10, 12, 16, 0, tzinfo=KST), 40, "Asia/Seoul", weekly_days=[2, 4], end_times=4,
+)
+
+# 4. 한 회차만 옮기기 / 한 회차만 취소 / 전체 취소(occurrence_id=None을 꼭 적는다)
+await zoom_uc.reschedule_meeting(zoom, course.id, start_time=datetime(2026, 10, 14, 17, 0, tzinfo=KST), occurrence_id=course.occurrences[1].id)
+await zoom_uc.cancel_meeting(zoom, course.id, occurrence_id=course.occurrences[2].id)
+await zoom_uc.cancel_meeting(zoom, course.id, occurrence_id=None)
+
+# 5. "시작" 버튼: 받자마자 리다이렉트, 저장 금지
+start_url = await zoom_uc.get_start_url(zoom, results[0].meeting.id)
+
+# 6. 웹훅 수신(라우터): 서명 검증 → URL 확인이면 응답, 아니면 저장 후 204
+ok = zoom_uc.verify_signature(secret, headers["x-zm-request-timestamp"], raw_body, headers["x-zm-signature"])
+#    수업이 끝나면 저장한 이벤트로 집계
+summary = zoom_uc.summarize_attendance(
+    events, roster={"20231234": "홍길동"}, meeting_id=meeting_id,
+    meeting_start=datetime(2026, 10, 12, 14, 0, tzinfo=KST), min_minutes=20, late_after_minutes=10,
+)                                                       # summary.entries[i].status, summary.unmatched
+```
+
+서비스 레포에서 바꿀 곳: 웹훅 이벤트 저장(`router.EVENT_LOG_PATH` 파일 → DB), 시작 링크 리다이렉트, 스케줄러(due 시각 집계)는 서비스 쪽 책임이다.
 
 ## 12. 미확인 · 보류 항목
 
@@ -412,7 +473,6 @@ Zoom은 **웹훅이 1급 기능**이다(Google과 반대). 공식 웹훅 가이�
 | 트랜스크립트 언어(KB0065911 "영어만" vs KB0064927 한국어 포함 19개) | Pro 결제 시 한국어 미팅으로 실측 |
 | 소회의실 사전 배정(유즈케이스 2-B)이 로그인한 학생을 실제로 자동 배정하는지 | Basic에서 생성까지는 실측. 자동 배정은 학생 역할 Zoom 계정이 생기면 |
 | `GET /past_meetings/{id}/instances`가 Basic에서 되는지 | OpenAPI에 플랜 전제 문구 없음. 4.2에 상세와 같이 두었다. Basic 상태에서 1회 호출해 400 code 200인지 확인(5단계, 비용 0) |
-| `GET /users/me/settings`의 Rate Limit Label | OpenAPI JSON에서 추출 실패. 5단계 |
 | Basic 계정의 "월 3회 요약"이 `GET /meetings/{uuid}/meeting_summary`로 읽히는지 | API 전제는 Pro. Basic 상태에서 1회 호출해 400 code 200인지 확인(5단계, 비용 0) |
 | 클라우드 녹화 최대 파일 크기, 자동 삭제 설정 가능 일수의 전체 범위 | 녹화 유즈케이스 확정 시 |
 | Zoom 앱 리뷰 실제 소요 | 공식: 첫 응답 72시간 SLA, 전체 기간은 "varies". Beta 공유는 3~4영업일. 7단계 메모 |

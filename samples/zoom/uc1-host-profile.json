@@ -1,0 +1,16 @@
+{
+  "scenario": "교수자 플랜 확인",
+  "captured_at": "2026-10-05",
+  "note": "개인 무료 계정. type 1 = Basic → 40분 제한",
+  "request": {
+    "method": "GET",
+    "url": "/zoom/host-profile",
+    "body": null
+  },
+  "status": 200,
+  "response": {
+    "plan_type": 1,
+    "timezone": "Asia/Seoul",
+    "has_40_minute_limit": true
+  }
+}

@@ -52,16 +52,28 @@ class MeetingStatus(StrEnum):
     UNKNOWN = "unknown"
 
 
-class Meeting(BaseModel):
-    """Zoom 미팅 공통 표현. Zoom 1단계 이후 필드를 확정한다."""
+class MeetingOccurrence(BaseModel):
+    """반복 미팅의 한 회차. 회차만 바꾸거나 취소할 때 `id`(Zoom occurrence_id)를 쓴다."""
 
     id: str
+    start_time: datetime | None = None
+    duration_minutes: int | None = None
+    deleted: bool = False
+
+
+class Meeting(BaseModel):
+    """Zoom 미팅 공통 표현. 필드는 docs/zoom.md 6절. `start_url`은 2시간 만료 + 호스트 권한이라 넣지 않는다."""
+
+    id: str = Field(description="미팅 번호. 10자리를 넘을 수 있어 문자열로 둔다")
     provider: Provider = Provider.ZOOM
     topic: str
     status: MeetingStatus = MeetingStatus.UNKNOWN
     start_time: datetime | None = None
-    duration_minutes: int | None = None
+    duration_minutes: int | None = Field(default=None, description="예정 길이. 실제 길이가 아니다")
+    timezone: str | None = None
     join_url: str | None = None
     host_id: str | None = None
+    uuid: str | None = Field(default=None, description="미팅 인스턴스 식별자. 반복 미팅은 회차마다 새로 생긴다")
+    occurrences: list[MeetingOccurrence] = Field(default_factory=list, description="반복 미팅(type 8)의 회차. 최대 50개")
     has_recording: bool = False
     has_transcript: bool = False

@@ -1,0 +1,53 @@
+{
+  "scenario": "회차 취소 뒤 미팅 조회",
+  "captured_at": "2026-10-05",
+  "note": "주제만 같은 값으로 PATCH해 GET 결과를 받는다. 취소된 회차가 목록에 남는지 보는 용도",
+  "request": {
+    "method": "POST",
+    "url": "/zoom/reschedule/86227091180",
+    "body": {
+      "topic": "정기 수업"
+    }
+  },
+  "status": 200,
+  "response": {
+    "id": "86227091180",
+    "provider": "zoom",
+    "topic": "정기 수업",
+    "status": "scheduled",
+    "start_time": null,
+    "duration_minutes": null,
+    "timezone": "Asia/Seoul",
+    "join_url": "https://us05web.zoom.us/j/86227091180?pwd=<MASKED>",
+    "host_id": "<HOST_ID>",
+    "uuid": "ysZbtjUxS3yoq4t5oft9mA==",
+    "occurrences": [
+      {
+        "id": "1791788400000",
+        "start_time": "2026-10-12T07:00:00Z",
+        "duration_minutes": 40,
+        "deleted": false
+      },
+      {
+        "id": "1791961200000",
+        "start_time": "2026-10-14T08:00:00Z",
+        "duration_minutes": 40,
+        "deleted": false
+      },
+      {
+        "id": "1792393200000",
+        "start_time": "2026-10-19T07:00:00Z",
+        "duration_minutes": 40,
+        "deleted": true
+      },
+      {
+        "id": "1792566000000",
+        "start_time": "2026-10-21T07:00:00Z",
+        "duration_minutes": 40,
+        "deleted": false
+      }
+    ],
+    "has_recording": false,
+    "has_transcript": false
+  }
+}

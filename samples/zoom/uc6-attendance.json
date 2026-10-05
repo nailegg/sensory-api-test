@@ -1,0 +1,45 @@
+{
+  "scenario": "웹훅으로 쌓은 참가자 이벤트로 출석 집계",
+  "captured_at": "2026-10-05",
+  "note": "개인 PMI 미팅에 비로그인 게스트(휴대폰)로 2회 입장·퇴장. 표시 이름은 \"학번 이름\". 실측이 짧아 min_minutes=0. 학번·이름은 마스킹",
+  "request": {
+    "method": "POST",
+    "url": "/zoom/attendance",
+    "body": {
+      "meeting_id": "<PMI>",
+      "meeting_start": "2026-10-05T13:43:46Z",
+      "roster": {
+        "<STUDENT_ID_1>": "<NAME_1>",
+        "20231234": "홍길동"
+      },
+      "min_minutes": 0,
+      "late_after_minutes": 5
+    }
+  },
+  "status": 200,
+  "response": {
+    "entries": [
+      {
+        "student_id": "<STUDENT_ID_1>",
+        "name": "<NAME_1>",
+        "status": "present",
+        "attended_seconds": 3,
+        "first_join": "2026-10-05T13:44:53+00:00",
+        "display_names": [
+          "<STUDENT_ID_1> <NAME_1>"
+        ],
+        "overlapping_sessions": false
+      },
+      {
+        "student_id": "20231234",
+        "name": "홍길동",
+        "status": "absent",
+        "attended_seconds": 0,
+        "first_join": null,
+        "display_names": [],
+        "overlapping_sessions": false
+      }
+    ],
+    "unmatched": []
+  }
+}
