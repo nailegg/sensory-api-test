@@ -26,6 +26,7 @@ from app.services.google_docs import scopes as google_docs_scopes
 from app.services.google_drive import scopes as google_drive_scopes
 from app.services.google_sheets import scopes as google_sheets_scopes
 from app.services.google_slides import scopes as google_slides_scopes
+from app.services.zoom import scopes as zoom_scopes
 
 # 서비스가 추가되면 여기에 scopes 모듈만 추가한다.
 REGISTERED_SCOPE_MODULES: list[ModuleType] = [
@@ -33,6 +34,7 @@ REGISTERED_SCOPE_MODULES: list[ModuleType] = [
     google_docs_scopes,
     google_slides_scopes,
     google_sheets_scopes,
+    zoom_scopes,
 ]
 
 
@@ -154,7 +156,7 @@ async def get_valid_token(provider: str, store: TokenStore, settings: Settings) 
         raise HTTPException(401, f"{provider}: 저장된 토큰이 없습니다. /auth/{provider}/login 으로 로그인하세요")
     if token.is_expired():
         token = await refresh(provider, token, settings)
-        store.save(token)  # Zoom은 이전 refresh token이 즉시 무효가 되므로 바로 저장
+        store.save(token)  # Zoom은 갱신마다 refresh token이 바뀐다. 항상 최신 것을 쓰도록 바로 저장
     return token
 
 

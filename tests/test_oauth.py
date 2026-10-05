@@ -1,5 +1,8 @@
 from datetime import UTC, datetime, timedelta
 
+import pytest
+
+from app.core.config import Settings
 from app.core.oauth import collect_scopes
 from app.core.token_store import TokenSet, TokenStore
 
@@ -8,6 +11,27 @@ def test_collect_google_scopes_includes_drive_file():
     scopes = collect_scopes("google")
     assert "https://www.googleapis.com/auth/drive.file" in scopes
     assert all(reason for reason in scopes.values())
+
+
+def test_collect_zoom_scopes():
+    scopes = collect_scopes("zoom")
+    assert set(scopes) == {
+        "user:read:user",
+        "meeting:write:meeting",
+        "meeting:read:meeting",
+        "meeting:update:meeting",
+        "meeting:delete:meeting",
+        "meeting:read:participant",
+    }
+    assert all(reason for reason in scopes.values())
+
+
+def test_redirect_uri_zoom_uses_public_base_url():
+    s = Settings(_env_file=None, zoom_public_base_url="https://x.ngrok-free.app/")
+    assert s.redirect_uri("google") == "http://localhost:8000/auth/google/callback"
+    assert s.redirect_uri("zoom") == "https://x.ngrok-free.app/auth/zoom/callback"
+    with pytest.raises(ValueError):
+        Settings(_env_file=None).redirect_uri("zoom")
 
 
 def test_collect_unknown_provider_is_empty():

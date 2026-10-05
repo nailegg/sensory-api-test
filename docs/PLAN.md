@@ -50,12 +50,12 @@ Synsory가 나중에 붙일 SaaS API(Google Docs · Sheets · Slides · Forms, Z
 | Google Slides | 5 테스트 | Docs와 같은 `batchUpdate` 방식이지만 인덱스가 아니라 객체 ID(슬라이드, 도형)로 지정한다. 템플릿 복사(Drive `files.copy` 또는 pptx 변환 업로드) 후 `replaceAllText`로 태그 치환이 주 패턴이고, 공식 가이드도 요소 ID 대신 텍스트 태그를 권장한다. 쿼터(2026-10-04 공식 문서 확인): 읽기 사용자당 분당 600, 쓰기 60, **썸네일은 "비싼 읽기"로 따로 60**. `drive.file`로 모든 Slides 메서드가 동작한다(Sheets 차트 연결만 `spreadsheets` scope 필요). 이미지 삽입은 공개 URL만(바이트 업로드 불가). 텍스트를 바꾸면 도형의 autofit이 꺼져 긴 치환 텍스트가 넘친다 → 긴 팀명을 에러 케이스로. 썸네일 URL은 30분 수명·요청자 계정 꼬리표라 서버가 받아 저장한다. `files.export`에 이미지 형식이 없어 슬라이드 이미지는 `getThumbnail`뿐. 세부는 `docs/google_slides.md` 8절·10절. |
 | Google Forms | 3 인증 | scope가 설문 본문(`forms.body`)과 응답(`forms.responses.readonly`)으로 나뉜다. 응답은 읽기만 되고 API로 응답을 제출하거나 수정할 수 없다. 이 제약을 2단계 유즈케이스에 반영한다. |
 | Google Forms | 5 테스트 | 응답 알림은 Forms `watches`로 받지만 Cloud Pub/Sub 토픽이 필요하다. 폴링으로 충분한지 먼저 판단하고, Pub/Sub은 필요할 때만 테스트한다. 설문 생성 후 질문 추가는 별도 `batchUpdate`다. |
-| Zoom | 3 인증 | Marketplace에서 General App(User-managed OAuth)으로 만든다. 액세스 토큰은 1시간, refresh token은 갱신할 때마다 새로 발급되고 이전 것은 무효가 된다. 갱신 직후 저장에 실패하면 재로그인해야 하므로 token_store를 먼저 확실히 만든다. scope는 세분화(granular) 방식으로 고른다. |
-| Zoom | 4 환경 | 개인 무료 계정은 클라우드 녹화와 트랜스크립트가 없고 미팅이 40분으로 제한된다. 녹화·트랜스크립트 시나리오가 필요하면 Pro 플랜을 한 달 결제해 테스트하거나 그 시나리오를 보류로 표시한다. 플랜 결정은 2단계에서 한다. |
-| Zoom | 5 테스트 | 웹훅(미팅 종료, 녹화 완료)은 앱 설정의 Event Subscriptions에서 켜고, 공개 URL이 필요하므로 ngrok으로 로컬 FastAPI를 노출한다. 등록 시 Zoom이 보내는 URL 검증 챌린지에 응답해야 하고, 이후 모든 이벤트는 서명을 검증한다. 이 두 처리를 라우터로 남긴다. rate limit은 엔드포인트별 등급(Light/Medium/Heavy)이 다르므로 쓰는 엔드포인트마다 등급을 적는다. |
-| Zoom | 7 핸드오프 | 문서에 "다른 Zoom 계정 사용자에게 열려면 앱 리뷰가 필요"하다는 점과 예상 소요를 명시한다. 리뷰 전까지는 개발자 계정만 인가할 수 있다. |
+| Zoom | 3 인증 | Marketplace에서 General App(User-managed)으로 만든다. Development/Production 자격증명이 따로 발급된다. **리다이렉트 URI는 https 필수**: `http://localhost`는 등록 불가, `http://127.0.0.1` 루프백은 PKCE 공개 클라이언트 전용이라 서버형 앱은 ngrok https 주소를 쓴다(2026-10-04 공식 문서 확인. 대안 PKCE는 `docs/zoom.md` 2.4). 자격증명은 토큰 요청의 Basic 헤더로. 액세스 토큰 1시간, **refresh token 90일**, 갱신마다 새 refresh token이 오고 "항상 최신 것을 쓰라"가 공식 문구(이전 토큰 즉시 무효화 문장은 미확인). 갱신 즉시 저장. scope는 granular가 새 앱 기본이고 **인가 URL이 아니라 앱 설정**에 들어간다(`scope` 파라미터 처리 방식은 3단계 확인). 미공개 앱은 개발자 본인 계정 사용자만 인가 가능. |
+| Zoom | 4 환경 | 개인 무료(Basic) 계정: 미팅 **40분**(1:1 포함, 호스트 혼자만 예외), 100명, 클라우드 녹화·트랜스크립트·AI 요약 API·과거 미팅 상세·참가자·등록·폴 **전부 불가**(400 code 200). 되는 것은 미팅 생성·조회·수정·삭제, `/users/me`, 미팅 시작·종료·참가자 입퇴장 웹훅. Pro는 $16.99/월(월납), 30시간, 녹화 10GB/라이선스(2026-10-04 확인). 녹화·트랜스크립트·요약 시나리오가 필요하면 Pro 1개월 결제 또는 보류. 플랜 결정은 2단계. 출석·소회의실 유즈케이스를 넣으려면 학생 역할 Zoom 계정 1개도 필요. |
+| Zoom | 5 테스트 | 웹훅은 Event Subscriptions에서 켜고 수신 URL은 공개 https FQDN이어야 하므로 ngrok. 저장 시와 **72시간마다** URL 검증(CRC: `plainToken` → HMAC-SHA256 `encryptedToken`, 3초 내 응답, 6회 연속 실패 시 구독 중지). 모든 이벤트는 `x-zm-signature`(`v0=` + HMAC-SHA256(secret, `v0:{ts}:{raw body}`))로 검증하고 3초 내 2xx, 처리는 비동기. 재시도는 5xx·네트워크 오류만 3회(5·20·60분). 검증·서명 함수는 `usecases.py` 순수 함수로, 라우터는 호출만. 미팅 **생성·수정은 사용자당 하루 100회**(UTC). rate limit은 계정 단위 등급(Light/Medium/Heavy/Resource-intensive, 무료는 초당 4/2/1 + 일일 6,000/2,000/1,000)이라 쓰는 엔드포인트마다 등급을 적는다(`docs/zoom.md` 4절). 토큰·`download_url`은 헤더로만, 쿼리스트링은 거부. `status`에 `ended`가 없어 종료는 웹훅으로. 참가자 이메일은 호스트 계정 밖이면 빈 문자열. |
+| Zoom | 7 핸드오프 | 미공개(private) 앱은 **개발자 계정 사용자만** 인가 가능(user-level 최대 100명). 다른 Zoom 계정 사용자에게 열려면 ① Beta "Request to Share"(심사팀 응답 3~4영업일, 공유 URL 4주 한시, 소수 외부 사용자) 또는 ② 게시(public/unlisted) 심사(첫 응답 72시간 SLA, 전체 기간은 앱에 따라 다름. 약관·개인정보처리방침·지원 URL·기술 설계 문서 필요). 게시 앱만 `app_deauthorized` 이벤트를 받는다. Data Compliance API는 deprecated라 심사 요건 아님(2026-10-04 확인). |
 
-공통 주의: 위 제약 중 플랜·쿼터·토큰 만료 수치는 기억에 의존한 값이다. 각 서비스의 1단계(API 탐색)에서 공식 문서로 확인하고 틀리면 이 표를 고친다. Google 공통·Drive·Docs 행은 2026-09-30에, Sheets 행은 2026-10-04에 공식 문서로 확인했다(출처는 각 `docs/<service>.md` 끝). Slides·Forms·Zoom 행은 아직 미확인이다.
+공통 주의: 위 제약 중 플랜·쿼터·토큰 만료 수치는 기억에 의존한 값이다. 각 서비스의 1단계(API 탐색)에서 공식 문서로 확인하고 틀리면 이 표를 고친다. Google 공통·Drive·Docs 행은 2026-09-30에, Sheets·Zoom 행은 2026-10-04에 공식 문서로 확인했다(출처는 각 `docs/<service>.md` 끝). Slides·Forms 행은 아직 미확인이다.
 
 ## 참고: 심사 절차
 
@@ -80,9 +80,10 @@ Google 앱 검증과 Zoom 앱 리뷰는 개발 중에는 필요 없다. 서비�
 | Google Sheets | 6 문서화 | 완료(2026-10-04) → 7 핸드오프 대기 | 유즈케이스 Docs·Slides와 같은 4개 + 마감 후 값 읽기(상현 확정). 템플릿은 xlsx 1회 변환 업로드 → `files.copy` → `findReplace`(수식 안 태그 포함) 실측·채택. 실측·샘플 11개, `docs/google_sheets.md` 12절 전부 작성. 발견: 복사본 `sheetId`≠0, 보호 범위 `editors` 생략 시 학생도 편집 가능(항상 명시), 소유자 API 쓰기는 보호 무시, `RAW`/`USER_ENTERED` 학번 0 소실, csv 내보내기 첫 시트만. **성적표 동기화는 검토 후 보류**(성적 원본은 Synsory DB, 1.2~1.3절). 다음: 상대 개발자 재현, 옮길 파일 4개 확정 |
 | Google Slides | 6 문서화 | 완료(2026-10-04) → 7 핸드오프 대기 | 유즈케이스는 Docs와 같은 4개(상현 확정). 템플릿은 pptx 1회 변환 업로드 → 그룹마다 Drive `files.copy` → `replaceAllText`. 실측·샘플 10개, `docs/google_slides.md` 12절 전부 작성. 공유·마감·내보내기 함수는 `google_drive/usecases.py`로 옮겨 Docs와 공유. Drive `files.copy` 추가 |
 | Google Forms | 0 시작 전 | 대기 | 응답 쓰기 불가 제약을 2단계에 반영 |
-| Zoom | 0 시작 전 | 대기 | 녹화 시나리오 필요 시 플랜 결정 |
+| Zoom | 3 인증 | 완료(2026-10-05) → 5 기능 테스트 대기 | 상현 확정: **무료(Basic) 계정으로 실측 가능한 6개** — 플랜 확인, 그룹별 미팅 예약(A 그룹마다 미팅 / B 소회의실 비교용), 정기(매주 반복) 회의, 일정 변경·취소, 호스트 시작 링크, 출석 자동 집계(참가자 웹훅 + 표시 이름 학번 매칭)(`docs/zoom.md` 1절). 제외: 마감 시 강제 종료, 시작·종료 웹훅 상태 추적. 보류: 로그인·사전 등록 기반 출석 식별, 녹화·트랜스크립트·요약(Pro). scope 6개. 3단계 진행 중(2026-10-05): ngrok 고정 도메인(학교망 차단 → 우회 후 online), General App 생성(무료 계정 가능, ngrok 리다이렉트 등록 가능), 웹훅 수신 코드(`POST /zoom/webhook`) 구현, **로그인·`GET /users/me`(type 1)·refresh 실측 성공**. **웹훅 4종 수신 성공**(무료 계정, 게스트 표시 이름 그대로·이메일 빈 값 확인). 처음 40분 0건이었다가 앱 재설치 + 구독 재저장 뒤 수신. ngrok 주소로 되돌려도 수신돼 도메인은 원인이 아님(`docs/zoom.md` 2.1절). OAuth·웹훅 모두 ngrok 고정 도메인 하나로 받는다. 다음: 5단계(유즈케이스 1~6 구현·실측). 다음: 3단계 Marketplace General App 생성, 리다이렉트는 ngrok + client secret 방식으로 결정(2026-10-05, PKCE 미사용) |
 
 ## 열린 질문
 
 - 상대 레포의 Python 버전·패키지 도구·SDK 사용 여부 (확인 전까지 Python 3.12 + uv + httpx)
-- Zoom 녹화 시나리오 필요 시 Pro 플랜 결제 여부
+- Zoom 녹화·트랜스크립트·AI 요약 시나리오 필요 시 Pro 플랜 1개월 결제 여부($16.99). Basic으로는 예약·웹훅만 실측 가능 — 2026-10-05 보류(무료 계정 유즈케이스부터)
+- Zoom 출석 유즈케이스의 학생 식별 방식 — 2026-10-05 표시 이름 학번 매칭으로 결정(`docs/zoom.md` 1절 6번). 로그인·사전 등록 방식은 학교 계정·Pro 확인 뒤

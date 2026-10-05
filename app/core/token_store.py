@@ -1,7 +1,8 @@
 """토큰 저장. 테스트 단계에서는 로컬 JSON 파일 하나에 provider별로 최신 토큰 한 벌만 둔다.
 
 Google refresh token은 계정 × 클라이언트 ID당 100개까지라 항상 최신 것으로 덮어쓴다.
-Zoom refresh token은 갱신할 때마다 새로 발급되고 이전 것은 무효가 되므로, 갱신 직후 반드시 저장한다.
+Zoom refresh token은 갱신할 때마다 새로 발급된다. 공식 문서가 최신 것만 쓰라고 하므로 갱신 직후 반드시 저장한다
+(이전 것이 즉시 무효는 아니었다. 2026-10-05 실측, docs/zoom.md 2.2절).
 """
 
 import json

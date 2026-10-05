@@ -21,11 +21,19 @@ class Settings(BaseSettings):
 
     zoom_client_id: str = ""
     zoom_client_secret: str = ""
+    # Zoom 리다이렉트 URL은 https 공개 주소여야 한다(ngrok 고정 도메인). redirect_uri("zoom")가 쓴다. docs/zoom.md 2절
+    zoom_public_base_url: str = ""
+    zoom_webhook_secret_token: str = ""
 
     token_store_path: Path = Path(".tokens/tokens.json")
 
     def redirect_uri(self, provider: str) -> str:
-        return f"{self.app_base_url}/auth/{provider}/callback"
+        base = self.app_base_url
+        if provider == "zoom":
+            if not self.zoom_public_base_url:
+                raise ValueError("ZOOM_PUBLIC_BASE_URL(ngrok https 주소)이 .env에 없습니다")
+            base = self.zoom_public_base_url.rstrip("/")
+        return f"{base}/auth/{provider}/callback"
 
     def picker_app_id(self) -> str:
         """Picker setAppId 값 = Cloud 프로젝트 번호. 웹 클라이언트 ID는 `<프로젝트 번호>-xxxx.apps.googleusercontent.com` 꼴이라
