@@ -1,0 +1,466 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>SaaS API 검증 현황</title>
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans+KR:wght@400;500;700&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+/* ===========================================
+   THEME — 색·글꼴은 여기서만 바꾼다
+   =========================================== */
+:root {
+    --stage-bg: #e8e8e8;
+    --slide-bg: #ffffff;
+    --ink: #111111;
+    --sub: #555555;
+    --muted: #8a8a8a;
+    --line: #dddddd;
+    --accent: #1f4fd1;     /* 상태 표시에만 쓰는 단 하나의 색 */
+    --wait: #b26a00;
+    --font: 'IBM Plex Sans KR', sans-serif;
+    --mono: 'IBM Plex Mono', monospace;
+}
+
+* { margin: 0; padding: 0; box-sizing: border-box; }
+
+/* ===========================================
+   FIXED 16:9 STAGE: MANDATORY BASE STYLES
+   =========================================== */
+html, body { width: 100%; height: 100%; margin: 0; overflow: hidden; background: var(--stage-bg, #000); }
+.deck-viewport { position: fixed; inset: 0; overflow: hidden; background: var(--stage-bg, #000); }
+.deck-stage { position: absolute; left: 0; top: 0; width: 1920px; height: 1080px; overflow: hidden; transform-origin: 0 0; background: var(--slide-bg, #fff); }
+.slide { position: absolute; inset: 0; width: 1920px; height: 1080px; overflow: hidden; display: block; visibility: hidden; opacity: 0; pointer-events: none; background: var(--slide-bg, #fff); }
+.slide.active, .slide.visible { visibility: visible; opacity: 1; pointer-events: auto; z-index: 1; }
+img, video, canvas, svg { max-width: 100%; max-height: 100%; }
+.deck-controls { position: fixed; left: 50%; bottom: 22px; transform: translateX(-50%); z-index: 1000; }
+@media print {
+    html, body { width: 1920px; height: auto; overflow: visible; background: #fff; }
+    .deck-viewport { position: static; overflow: visible; background: #fff; }
+    .deck-stage { position: static; width: auto; height: auto; transform: none !important; background: none; }
+    .slide { position: relative; display: block !important; visibility: visible !important; opacity: 1 !important; pointer-events: auto !important; width: 1920px; height: 1080px; break-after: page; page-break-after: always; }
+    .slide:last-child { break-after: auto; page-break-after: auto; }
+    .deck-controls { display: none !important; }
+}
+@media (prefers-reduced-motion: reduce) {
+    *, *::before, *::after { animation-duration: 0.01ms !important; transition-duration: 0.2s !important; }
+}
+
+/* ===========================================
+   SLIDE LAYOUT — 머리줄 / 제목 / 본문 / 쪽 번호
+   =========================================== */
+body { font-family: var(--font); color: var(--ink); word-break: keep-all; }
+.slide { padding: 88px 120px 80px; }
+.slide { transition: opacity .25s ease; }
+.kicker { font-family: var(--mono); font-size: 20px; letter-spacing: .08em; color: var(--muted); margin-bottom: 18px; }
+h2 { font-size: 52px; font-weight: 700; letter-spacing: -.01em; line-height: 1.25; margin-bottom: 14px; }
+.lead { font-size: 26px; color: var(--sub); line-height: 1.55; margin-bottom: 40px; max-width: 1500px; }
+.pageno { position: absolute; right: 120px; bottom: 48px; font-family: var(--mono); font-size: 18px; color: var(--muted); }
+code, .m { font-family: var(--mono); font-size: .88em; }
+
+/* 표 — 본문 대부분이 표다 */
+table { width: 100%; border-collapse: collapse; font-size: 23px; line-height: 1.45; }
+th { text-align: left; font-weight: 500; font-size: 19px; color: var(--muted); padding: 0 20px 12px 0; border-bottom: 2px solid var(--ink); }
+td { padding: 14px 20px 14px 0; border-bottom: 1px solid var(--line); vertical-align: top; }
+td.n { font-family: var(--mono); color: var(--muted); width: 56px; }
+td.c { color: var(--sub); }
+.ok { color: var(--accent); font-weight: 500; white-space: nowrap; }
+.wait { color: var(--wait); font-weight: 500; white-space: nowrap; }
+
+/* 2단 목록 */
+.cols { display: grid; grid-template-columns: 1fr 1fr; gap: 64px; }
+.col h3 { font-size: 24px; font-weight: 700; padding-bottom: 12px; border-bottom: 2px solid var(--ink); margin-bottom: 8px; }
+ul.list { list-style: none; }
+ul.list li { font-size: 23px; line-height: 1.5; padding: 13px 0; border-bottom: 1px solid var(--line); }
+ul.list li b { font-weight: 700; }
+ul.list li span { display: block; color: var(--sub); font-size: 21px; margin-top: 2px; }
+
+/* 흐름(단계) 한 줄 */
+.flow { display: flex; gap: 0; margin-bottom: 44px; }
+.flow div { flex: 1; border-top: 2px solid var(--ink); padding: 16px 24px 0 0; font-size: 23px; line-height: 1.45; }
+.flow div i { display: block; font-style: normal; font-family: var(--mono); font-size: 18px; color: var(--muted); margin-bottom: 6px; }
+
+/* ===========================================
+   INLINE EDITING — E 키 또는 왼쪽 위 모서리
+   =========================================== */
+.edit-hotzone { position: fixed; top: 0; left: 0; width: 80px; height: 80px; z-index: 10000; cursor: pointer; }
+.edit-toggle { position: fixed; top: 16px; left: 16px; z-index: 10001; font: 500 14px var(--font); padding: 8px 14px; border: 1px solid #999; background: #fff; border-radius: 4px; opacity: 0; pointer-events: none; transition: opacity .3s; }
+.edit-toggle.show, .edit-toggle.active { opacity: 1; pointer-events: auto; }
+.edit-toggle.active { background: var(--ink); color: #fff; }
+body.editing [contenteditable="true"] { outline: 1px dashed #bbb; }
+</style>
+</head>
+<body>
+<div class="edit-hotzone"></div>
+<button class="edit-toggle" id="editToggle" title="편집 모드 (E)">편집</button>
+
+<div class="deck-viewport">
+<main class="deck-stage" id="deckStage">
+
+<!-- ===========================================
+     1. 한눈에 보기
+     =========================================== -->
+<section class="slide">
+    <p class="kicker">SYNSORY SAAS API 검증 · 2026-10-06 기준</p>
+    <h2>한눈에 보기</h2>
+    <p class="lead">교수자가 자기 Google·Zoom 계정을 OAuth로 연결하는 구조로, 서비스 6개를 실제 호출로 확인했습니다. 실측 유즈케이스 31개, 요청·응답 샘플 86개, 테스트 90개 통과.</p>
+    <table>
+        <tr><th>서비스</th><th>단계</th><th>유즈케이스</th><th>샘플</th><th>한 줄 요약</th></tr>
+        <tr><td>Google Drive</td><td class="ok">6 문서화</td><td>공통 기반</td><td>9</td><td class="c">폴더·복사·공유·마감·내보내기·Picker. 나머지 Google 서비스가 모두 의존</td></tr>
+        <tr><td>Google Docs</td><td class="ok">6 → 7 대기</td><td>4 / 4</td><td>16</td><td class="c">그룹별 문서 생성 → 마감 시 권한 낮추기 → 파일로 내보내기</td></tr>
+        <tr><td>Google Sheets</td><td class="ok">6 → 7 대기</td><td>5 / 5</td><td>12</td><td class="c">Docs와 같은 4개 + 마감 후 값 읽기</td></tr>
+        <tr><td>Google Slides</td><td class="ok">6 → 7 대기</td><td>4 / 4</td><td>12</td><td class="c">Docs와 같은 4개, pptx 템플릿 복사 + 텍스트 치환</td></tr>
+        <tr><td>Google Forms</td><td class="ok">5 완료 → 6 진행 중</td><td>12 / 13</td><td>21</td><td class="c">설문·퀴즈·동료평가 생성부터 응답 집계·시트 내보내기까지</td></tr>
+        <tr><td>Zoom</td><td class="ok">6 → 7 대기</td><td>6 / 6</td><td>16</td><td class="c">무료 계정 기준. 그룹별 미팅 예약, 반복 회의, 출석 자동 집계</td></tr>
+        <tr><td>Google Meet</td><td class="wait">2 초안</td><td>—</td><td>—</td><td class="c">유즈케이스 초안 4개, 확인 대기</td></tr>
+        <tr><td>Google Calendar</td><td class="wait">1 탐색 · 보류</td><td>—</td><td>—</td><td class="c">Meet 단독으로 쓰기로 해 보류</td></tr>
+    </table>
+    <p class="pageno">01</p>
+</section>
+
+<!-- ===========================================
+     2. 인증과 권한
+     =========================================== -->
+<section class="slide">
+    <p class="kicker">공통 전제</p>
+    <h2>인증과 권한</h2>
+    <p class="lead">연결하는 사람은 교수자 한 명입니다. 파일·미팅은 교수자 계정 소유로 만들어지고, 학생은 Synsory에 계정을 연결할 필요 없이 Google 이메일만 있으면 됩니다.</p>
+    <div class="cols">
+        <div class="col">
+            <h3>Google — scope 1개</h3>
+            <ul class="list">
+                <li><b><code>drive.file</code> 하나로 Docs·Sheets·Slides·Forms 전부 동작</b><span>앱이 만들었거나 사용자가 고른 파일만 접근. 제한 scope(<code>drive</code>)가 아니라 CASA 보안 평가가 없음</span></li>
+                <li><b>기존 파일은 Google Picker로 고르게 함</b><span>교수자가 브라우저에서 고르면 그 파일에 접근이 생김. scope 추가 없음</span></li>
+                <li><b>테스트 상태 앱은 refresh token이 7일 뒤 만료</b><span>재로그인이 필요한 것을 오류로 착각하지 않기</span></li>
+            </ul>
+        </div>
+        <div class="col">
+            <h3>Zoom — scope 6개</h3>
+            <ul class="list">
+                <li><b>General App (User-managed) + client secret</b><span>무료 계정으로 앱 생성 가능</span></li>
+                <li><b><code>user:read</code>, <code>meeting:write/read/update/delete</code>, <code>meeting:read:participant</code></b><span>플랜 확인, 미팅 CRUD, 참가자 조회</span></li>
+                <li><b>OAuth 리다이렉트와 웹훅을 ngrok 고정 도메인 하나로 받음</b><span>refresh 직후 이전 토큰도 유효, 앱을 제거하면 토큰이 바로 401</span></li>
+            </ul>
+        </div>
+    </div>
+    <p class="pageno">02</p>
+</section>
+
+<!-- ===========================================
+     3. Google Drive 기반 기능
+     =========================================== -->
+<section class="slide">
+    <p class="kicker">GOOGLE DRIVE · 공통 기반</p>
+    <h2>Drive가 맡는 일</h2>
+    <p class="lead">목록·복사·공유·권한·내보내기는 Docs·Sheets·Slides API가 아니라 Drive API입니다. 공통 함수로 만들어 각 서비스가 같이 씁니다.</p>
+    <table>
+        <tr><th>기능</th><th>Drive 호출</th><th>쓰는 곳</th></tr>
+        <tr><td>액티비티 폴더 만들기</td><td><code>files.create</code> (folder)</td><td class="c">Docs · Sheets · Slides</td></tr>
+        <tr><td>템플릿 복사 → 태그 치환 → 그룹원 공유</td><td><code>files.copy</code> → 각 API 치환 → <code>permissions.create</code></td><td class="c">Slides · Docs (Sheets 전환 가능)</td></tr>
+        <tr><td>마감: 학생 편집권을 댓글권으로 낮추기</td><td><code>permissions.list</code> → <code>permissions.update</code> (<code>commenter</code>)</td><td class="c">Docs · Sheets · Slides</td></tr>
+        <tr><td>파일로 내보내기 (10MB 상한)</td><td><code>files.export</code></td><td class="c">Docs · Sheets · Slides</td></tr>
+        <tr><td>소유자·생성/수정 시각·URL 채우기</td><td><code>files.get</code></td><td class="c">전부 (공통 모델 <code>Document</code>)</td></tr>
+        <tr><td>기존 파일을 템플릿으로 쓰기</td><td>Google Picker (브라우저) → 이후 <code>files.copy</code></td><td class="c">Slides 실측, Docs·Sheets·Forms 경로</td></tr>
+        <tr><td>정리용 목록·휴지통</td><td><code>files.list</code>, <code>files.update</code> (<code>trashed</code>)</td><td class="c">공통</td></tr>
+    </table>
+    <p class="pageno">03</p>
+</section>
+
+<!-- ===========================================
+     4. Docs · Sheets · Slides 공통 흐름
+     =========================================== -->
+<section class="slide">
+    <p class="kicker">DOCS · SHEETS · SLIDES</p>
+    <h2>그룹 과제 파일의 한 사이클</h2>
+    <p class="lead">세 서비스의 유즈케이스는 같은 흐름을 따릅니다. 차이는 템플릿을 어떻게 만들고 치환하느냐뿐입니다.</p>
+    <div class="flow">
+        <div><i>UC 1</i>액티비티 폴더 생성</div>
+        <div><i>UC 2</i>템플릿으로 그룹마다 파일 생성 + 그룹원에게 편집 권한</div>
+        <div><i>UC 3</i>마감 시각에 학생 권한을 commenter로 낮춤 (연장 시 복구)</div>
+        <div><i>UC 4</i>같은 시각에 파일로 내보내 Turnitin 등으로 전달</div>
+    </div>
+    <table>
+        <tr><th></th><th>템플릿 준비</th><th>그룹별 생성</th><th>내보내기 형식</th></tr>
+        <tr><td>Docs</td><td>Markdown 본문 (또는 Picker로 고른 Google Doc)</td><td>Markdown 업로드 + Docs 변환</td><td class="c">docx · pdf</td></tr>
+        <tr><td>Sheets</td><td>xlsx 1회 변환 업로드</td><td><code>files.copy</code> → <code>findReplace</code> (수식 안 태그 포함)</td><td class="c">xlsx · pdf · csv · ods · tsv · zip</td></tr>
+        <tr><td>Slides</td><td>pptx 1회 변환 업로드 (또는 Picker)</td><td><code>files.copy</code> → <code>replaceAllText</code></td><td class="c">pptx · pdf · txt · odp</td></tr>
+    </table>
+    <p class="lead" style="margin-top:32px;margin-bottom:0">Sheets만 UC 5가 더 있습니다: 마감 후 그룹 시트의 값(동료평가 점수, 체크리스트)을 읽어 Synsory DB에 반영.</p>
+    <p class="pageno">04</p>
+</section>
+
+<!-- ===========================================
+     5. Docs · Sheets · Slides 실측 발견
+     =========================================== -->
+<section class="slide">
+    <p class="kicker">DOCS · SHEETS · SLIDES</p>
+    <h2>실측에서 확인한 것</h2>
+    <p class="lead">공식 문서만 봐서는 알 수 없었던 동작들입니다.</p>
+    <div class="cols">
+        <div class="col">
+            <h3>공통 · Docs · Slides</h3>
+            <ul class="list">
+                <li><b><code>drive.file</code>로도 사용자 폴더 ID만 알면 그 안에 생성·이동 가능</b><span>안 되는 건 그 폴더·파일의 조회뿐</span></li>
+                <li><b>마감은 "잠금"이 아니라 "권한 낮추기"로</b><span><code>contentRestrictions.readOnly</code>는 소유자의 API 편집까지 막아 제외</span></li>
+                <li><b>권한에 만료일을 거는 공유는 실패</b><span>마감은 스케줄러가 시각에 맞춰 호출</span></li>
+                <li><b>Picker 전 404 → Picker 후 복사·치환·공유 성공</b><span>토큰 refresh·서버 재시작 뒤에도 접근 유지</span></li>
+                <li><b>Slides: 치환하면 autofit이 꺼져 긴 팀명이 상자를 넘침</b><span>치환 한 번으로 본문·표·발표자 노트까지 모두 바뀜</span></li>
+            </ul>
+        </div>
+        <div class="col">
+            <h3>Sheets</h3>
+            <ul class="list">
+                <li><b>복사본의 <code>sheetId</code>는 0이 아님</b><span>항상 <code>spreadsheets.get</code>으로 확인</span></li>
+                <li><b>보호 범위에서 <code>editors</code>를 빼면 학생도 편집 가능</b><span>항상 명시</span></li>
+                <li><b>소유자의 API 쓰기는 보호 범위를 무시</b></li>
+                <li><b>학번 앞자리 0이 사라질 수 있음</b><span><code>RAW</code>·<code>USER_ENTERED</code> 차이 비교 샘플 있음</span></li>
+                <li><b>csv 내보내기는 첫 시트만</b></li>
+            </ul>
+        </div>
+    </div>
+    <p class="pageno">05</p>
+</section>
+
+<!-- ===========================================
+     6. Forms 1 — 만들고 배포하기
+     =========================================== -->
+<section class="slide">
+    <p class="kicker">GOOGLE FORMS · 1 / 3</p>
+    <h2>폼을 만들고 배포하기</h2>
+    <p class="lead">폼은 Synsory 템플릿(질문 목록)으로 만들고, 응답자는 수강생으로 제한합니다. 마감은 권한이 아니라 게시 설정으로 합니다.</p>
+    <table>
+        <tr><th>#</th><th>유즈케이스</th><th>핵심 호출</th><th>상태</th></tr>
+        <tr><td class="n">1</td><td>설문을 만들어 게시하고 응답 링크를 학생에게 줌</td><td><code>create</code>(미게시) → <code>batchUpdate</code> → <code>setPublishSettings</code></td><td class="ok">실측</td></tr>
+        <tr><td class="n">2</td><td>정답·배점을 넣은 퀴즈</td><td><code>isQuiz</code>를 배치 맨 앞에, 문항마다 <code>grading</code></td><td class="ok">실측</td></tr>
+        <tr><td class="n">3</td><td>조마다 동료평가 폼, 그 조원만 응답</td><td>격자 질문(행=조원, 열=척도) + 조원별 응답자 권한</td><td class="ok">실측</td></tr>
+        <tr><td class="n">4</td><td>예전 폼을 Picker로 골라 이번 액티비티용으로 복사</td><td>Picker → Drive <code>files.copy</code> → <code>batchUpdate</code></td><td class="ok">실측</td></tr>
+        <tr><td class="n">5</td><td>응답자를 수강생으로 제한 + 로그인 이메일 수집</td><td><code>VERIFIED</code> + <code>view=published</code> 권한, <code>anyoneWithLink</code> 삭제</td><td class="ok">실측</td></tr>
+        <tr><td class="n">7</td><td>마감 시각에 응답 중단, 연장하면 다시 열기</td><td><code>setPublishSettings(isAcceptingResponses)</code></td><td class="ok">실측</td></tr>
+        <tr><td class="n">8</td><td>수업 중 미니 퀴즈를 정한 시각에 열고 닫기</td><td>미게시로 만들어 두고 7과 같은 호출</td><td class="c">구현 (7과 같은 호출)</td></tr>
+    </table>
+    <p class="pageno">06</p>
+</section>
+
+<!-- ===========================================
+     7. Forms 2 — 응답 수집·집계
+     =========================================== -->
+<section class="slide">
+    <p class="kicker">GOOGLE FORMS · 2 / 3</p>
+    <h2>응답을 가져와 쓰기</h2>
+    <p class="lead">응답의 원본은 폼에 있고, Synsory는 <code>responses.list</code>로 폴링해 가져옵니다. 6·9~13은 모두 같은 호출 위에 서로 다른 집계를 얹은 것입니다.</p>
+    <table>
+        <tr><th>#</th><th>유즈케이스</th><th>결과</th><th>상태</th></tr>
+        <tr><td class="n">6</td><td>제출 현황을 명단과 비교</td><td class="c">제출·미제출 학생 목록</td><td class="ok">실측</td></tr>
+        <tr><td class="n">9</td><td>응답 수집 + 문항별 분포·평균</td><td class="c">응답 목록, 문항별 집계 (증분 조회)</td><td class="ok">실측</td></tr>
+        <tr><td class="n">10</td><td>퀴즈 자동 채점 점수</td><td class="c">학생 이메일별 총점·문항별 점수</td><td class="ok">실측</td></tr>
+        <tr><td class="n">11</td><td>동료평가를 학생별 평균으로 집계</td><td class="c">평가자·피평가자·항목별 점수 → 학생별 평균</td><td class="ok">실측</td></tr>
+        <tr><td class="n">12</td><td>응답을 CSV·xlsx 파일로</td><td class="c">Synsory 서버가 파일 생성 (추가 Google 호출 없음)</td><td class="ok">실측</td></tr>
+        <tr><td class="n">13</td><td>응답을 교수자 Drive의 스프레드시트로 사본</td><td class="c">Sheets 생성·쓰기 함수 재사용, 액티비티 폴더로 이동</td><td class="ok">실측</td></tr>
+    </table>
+    <p class="lead" style="margin-top:32px;margin-bottom:0">응답 알림(Pub/Sub)은 쓰지 않고 폴링합니다. <code>responses.list</code>는 사용자당 분당 180회라 활성 폼만, 분 단위로 조회합니다.</p>
+    <p class="pageno">07</p>
+</section>
+
+<!-- ===========================================
+     8. Forms 3 — 실측 발견
+     =========================================== -->
+<section class="slide">
+    <p class="kicker">GOOGLE FORMS · 3 / 3</p>
+    <h2>실측에서 확인한 것</h2>
+    <p class="lead">Forms는 공식 문서와 실제 동작이 다른 곳이 가장 많았습니다.</p>
+    <div class="cols">
+        <div class="col">
+            <h3>문서와 다른 동작</h3>
+            <ul class="list">
+                <li><b>API로 만든 폼의 기본값은 "게시"</b><span>문서는 미게시라고 함. 항상 <code>unpublished=true</code>로 만들고 질문을 다 넣은 뒤 게시</span></li>
+                <li><b>"링크가 있는 모든 사용자" 응답 권한이 자동으로 붙음</b><span>학생을 응답자로 추가해도 이걸 지워야 제한됨</span></li>
+                <li><b>퀴즈에서 틀린 답과 채점 안 하는 문항이 둘 다 <code>grade: {}</code></b><span>점수 집계는 폼의 배점(<code>pointValue</code>)을 함께 봐야 함</span></li>
+                <li><b>증분 조회 <code>timestamp &gt;= X</code>는 경계 응답을 다시 줌</b><span><code>responseId</code> 기준으로 덮어쓰며 저장</span></li>
+            </ul>
+        </div>
+        <div class="col">
+            <h3>복사 · 내보내기 · API 한계</h3>
+            <ul class="list">
+                <li><b>복사본: 질문 ID 유지, 미게시, 응답자 제한 해제, 응답 없음</b></li>
+                <li><b>Forms UI에서 만든 폼도 Picker로 고르면 복사 가능</b><span>목록에서 클릭해 골라야 함. 원본은 수정하지 않음</span></li>
+                <li><b>시트 사본은 전부 텍스트</b><span>학번 0은 지켜지지만 점수도 문자열. 숫자 계산이 필요하면 점수 열만 <code>USER_ENTERED</code></span></li>
+                <li><b>API에 없는 것</b><span>응답 1회 제한 등 설정 대부분, 시트 연결, 파일 업로드 질문 생성. 응답 제출도 API로 못 해 수집 실측은 사람이 제출</span></li>
+            </ul>
+        </div>
+    </div>
+    <p class="pageno">08</p>
+</section>
+
+<!-- ===========================================
+     9. Zoom 유즈케이스
+     =========================================== -->
+<section class="slide">
+    <p class="kicker">ZOOM · 무료(BASIC) 계정</p>
+    <h2>미팅 예약부터 출석 집계까지</h2>
+    <p class="lead">무료 계정으로 실측할 수 있는 범위를 유즈케이스로 정했습니다. 6개 모두 구현·실측했습니다.</p>
+    <table>
+        <tr><th>#</th><th>유즈케이스</th><th>핵심 호출</th></tr>
+        <tr><td class="n">1</td><td>교수자 플랜 확인 (Basic이면 40분 넘는 예약에 경고)</td><td class="c"><code>GET /users/me</code> → <code>type</code></td></tr>
+        <tr><td class="n">2</td><td>그룹마다 미팅을 예약하고 참가 링크 반환</td><td class="c">A안 그룹마다 미팅 (기본) · B안 소회의실 (비교용)</td></tr>
+        <tr><td class="n">3</td><td>매주 반복 수업 회의</td><td class="c">type 8 + <code>recurrence</code>, 회차 목록 함께 반환</td></tr>
+        <tr><td class="n">4</td><td>일정 변경·취소 (회차 하나 또는 시리즈 전체)</td><td class="c"><code>PATCH</code> / <code>DELETE</code>, 회차면 <code>occurrence_id</code></td></tr>
+        <tr><td class="n">5</td><td>Synsory에서 "시작"을 누르면 호스트로 미팅 열기</td><td class="c">누를 때마다 <code>start_url</code> 조회 → 302. 저장하지 않음</td></tr>
+        <tr><td class="n">6</td><td>출석 자동 집계 (표시 이름의 학번으로 수강생 매칭)</td><td class="c">참가자 입장·퇴장 웹훅 → 접속 짝짓기·겹침 합산 → 출석·지각·결석·미확인</td></tr>
+    </table>
+    <p class="pageno">09</p>
+</section>
+
+<!-- ===========================================
+     10. Zoom 실측 발견과 범위
+     =========================================== -->
+<section class="slide">
+    <p class="kicker">ZOOM</p>
+    <h2>실측에서 확인한 것과 범위</h2>
+    <p class="lead">조용히 실패하는 설정 하나와 웹훅 수신 문제를 주의해야 합니다.</p>
+    <div class="cols">
+        <div class="col">
+            <h3>실측 발견</h3>
+            <ul class="list">
+                <li><b>소회의실 사전 배정이 200인데 조용히 버려짐</b><span>계정 설정 "예약 시 참가자를 소회의실에 할당"이 꺼져 있을 때. 켠 뒤 저장 확인</span></li>
+                <li><b>취소한 회차는 사라지지 않고 <code>deleted</code>로 남음</b></li>
+                <li><b>웹훅이 처음 40분간 0건</b><span>앱 재설치 + 구독 재저장 뒤 수신. 도메인 문제 아님</span></li>
+                <li><b>웹훅 도착 순서가 뒤바뀔 수 있음</b><span>집계는 도착 순서가 아니라 이벤트 안의 시각으로 정렬. 퇴장 이벤트가 빠질 수도 있음</span></li>
+                <li><b>게스트는 표시 이름 그대로, 이메일은 빈 값</b><span>그래서 출석 식별을 학번 매칭으로 정함</span></li>
+            </ul>
+        </div>
+        <div class="col">
+            <h3>제외 · 보류</h3>
+            <ul class="list">
+                <li><b>제외: 마감 시 강제 종료</b></li>
+                <li><b>제외: 시작·종료 웹훅으로 상태 추적</b></li>
+                <li><b>보류: 녹화·트랜스크립트·AI 요약</b><span>Pro 플랜 필요 (월 $16.99)</span></li>
+                <li><b>보류: 로그인·사전 등록 기반 출석 식별</b><span>학교 계정·Pro 확인 뒤</span></li>
+                <li><b>운영 메모: 학교망에서 ngrok이 차단됨</b><span>우회 후 사용</span></li>
+            </ul>
+        </div>
+    </div>
+    <p class="pageno">10</p>
+</section>
+
+<!-- ===========================================
+     11. 아직 검증 전
+     =========================================== -->
+<section class="slide">
+    <p class="kicker">남은 일</p>
+    <h2>아직 검증 전이거나 보류한 것</h2>
+    <p class="lead">실측이 끝난 서비스는 다음 단계가 핸드오프(7단계)입니다. 상대 개발자가 문서만 보고 재현하고, 옮길 파일 4개(<code>client</code> · <code>mapper</code> · <code>scopes</code> · <code>usecases</code>)를 확정합니다.</p>
+    <table>
+        <tr><th>대상</th><th>상태</th><th>내용</th></tr>
+        <tr><td>Google Meet</td><td class="wait">2단계 초안</td><td class="c">Meet 단독(Calendar 없음), 출석 포함. 초안 4개: 그룹별 링크, 명단으로 잠금, 회의 후 출석 집계, 링크 회수. 개인 Gmail에서 API 동작·무료 회의 참가자 데이터 여부부터 확인</td></tr>
+        <tr><td>Google Calendar</td><td class="wait">보류</td><td class="c">Meet 예약 수단으로 조사만. 학생 캘린더가 필요 없어 보류</td></tr>
+        <tr><td>Picker 후 실측</td><td class="wait">보류</td><td class="c">Docs·Sheets 템플릿을 Picker로 고른 뒤 복사, 태그 든 원본 재복사</td></tr>
+        <tr><td>Forms 미확인</td><td class="wait">12절</td><td class="c">로그아웃 사용자 제출 가능 여부, <code>timestamp</code> 필터 기준 시각, 퀴즈 점수 공개 기본값, UI에서 연결한 응답 시트 접근</td></tr>
+        <tr><td>Sheets 성적표 동기화</td><td class="wait">보류</td><td class="c">성적 원본은 Synsory DB에 둠</td></tr>
+        <tr><td>공통</td><td class="wait">열린 질문</td><td class="c">상대 레포의 Python 버전·패키지 도구·HTTP 클라이언트 확인 (지금은 Python 3.12 + uv + httpx)</td></tr>
+    </table>
+    <p class="pageno">11</p>
+</section>
+
+</main>
+</div>
+
+<script>
+/* ===========================================
+   SLIDE PRESENTATION CONTROLLER
+   방향키·스페이스·PageUp/Down·휠·스와이프
+   =========================================== */
+class SlidePresentation {
+    constructor() {
+        this.slides = document.querySelectorAll('.slide');
+        this.current = 0;
+        this.stage = document.getElementById('deckStage');
+        this.setupStageScale();
+        this.setupNav();
+        const saved = parseInt(location.hash.slice(1), 10);
+        this.show(Number.isFinite(saved) ? saved - 1 : 0);
+    }
+    setupStageScale() {
+        const scale = () => {
+            const k = Math.min(innerWidth / 1920, innerHeight / 1080);
+            this.stage.style.transform = `translate(${(innerWidth - 1920 * k) / 2}px, ${(innerHeight - 1080 * k) / 2}px) scale(${k})`;
+        };
+        scale();
+        addEventListener('resize', scale);
+    }
+    setupNav() {
+        document.addEventListener('keydown', (e) => {
+            if (document.body.classList.contains('editing')) return;
+            if (['ArrowRight', 'ArrowDown', ' ', 'PageDown'].includes(e.key)) { e.preventDefault(); this.show(this.current + 1); }
+            if (['ArrowLeft', 'ArrowUp', 'PageUp'].includes(e.key)) { e.preventDefault(); this.show(this.current - 1); }
+            if (e.key === 'Home') this.show(0);
+            if (e.key === 'End') this.show(this.slides.length - 1);
+        });
+        let lock = false;
+        addEventListener('wheel', (e) => {
+            if (lock || document.body.classList.contains('editing')) return;
+            lock = true; setTimeout(() => lock = false, 600);
+            this.show(this.current + (e.deltaY > 0 ? 1 : -1));
+        }, { passive: true });
+        let x0 = null;
+        addEventListener('touchstart', (e) => x0 = e.touches[0].clientX, { passive: true });
+        addEventListener('touchend', (e) => {
+            if (x0 === null) return;
+            const dx = e.changedTouches[0].clientX - x0;
+            if (Math.abs(dx) > 50) this.show(this.current + (dx < 0 ? 1 : -1));
+            x0 = null;
+        });
+    }
+    show(i) {
+        this.current = Math.max(0, Math.min(i, this.slides.length - 1));
+        this.slides.forEach((s, n) => {
+            s.classList.toggle('active', n === this.current);
+            s.classList.toggle('visible', n === this.current);
+        });
+        try { history.replaceState(null, '', '#' + (this.current + 1)); } catch (e) {}
+    }
+}
+new SlidePresentation();
+
+/* ===========================================
+   INLINE EDITOR — E 키로 켜고 끔, 편집 내용은 localStorage에 저장
+   =========================================== */
+const editor = {
+    isActive: false,
+    key: 'synsory-verification-overview',
+    targets: () => document.querySelectorAll('.slide h2, .slide p, .slide td, .slide th, .slide li, .flow div'),
+    restore() {
+        try {
+            const saved = JSON.parse(localStorage.getItem(this.key) || 'null');
+            if (saved) this.targets().forEach((el, i) => { if (saved[i] != null) el.innerHTML = saved[i]; });
+        } catch (e) {}
+    },
+    save() {
+        try { localStorage.setItem(this.key, JSON.stringify([...this.targets()].map(el => el.innerHTML))); } catch (e) {}
+    },
+    toggleEditMode() {
+        this.isActive = !this.isActive;
+        document.body.classList.toggle('editing', this.isActive);
+        this.targets().forEach(el => el.contentEditable = this.isActive);
+        toggle.classList.toggle('active', this.isActive);
+        toggle.textContent = this.isActive ? '편집 끝' : '편집';
+        if (!this.isActive) this.save();
+    }
+};
+editor.restore();
+
+const toggle = document.getElementById('editToggle');
+const hotzone = document.querySelector('.edit-hotzone');
+let hideTimeout = null;
+toggle.addEventListener('click', () => editor.toggleEditMode());
+hotzone.addEventListener('click', () => editor.toggleEditMode());
+hotzone.addEventListener('mouseenter', () => { clearTimeout(hideTimeout); toggle.classList.add('show'); });
+hotzone.addEventListener('mouseleave', () => { hideTimeout = setTimeout(() => { if (!editor.isActive) toggle.classList.remove('show'); }, 400); });
+toggle.addEventListener('mouseenter', () => clearTimeout(hideTimeout));
+toggle.addEventListener('mouseleave', () => { hideTimeout = setTimeout(() => { if (!editor.isActive) toggle.classList.remove('show'); }, 400); });
+document.addEventListener('keydown', (e) => {
+    if ((e.key === 'e' || e.key === 'E') && !e.target.isContentEditable) editor.toggleEditMode();
+    if ((e.ctrlKey || e.metaKey) && e.key === 's') { e.preventDefault(); editor.save(); }
+});
+</script>
+</body>
+</html>

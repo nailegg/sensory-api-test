@@ -12,7 +12,7 @@ Synsory 서비스가 나중에 붙일 SaaS API(Google Drive · Docs · Sheets ·
 
 ## 이름 규칙
 
-- `<service>` = 서비스 폴더 이름이다: `google_drive`, `google_docs`, `google_sheets`, `google_slides`, `google_forms`, `zoom`. `samples/<service>/`, `tests/<service>/`, `docs/<service>.md`에 모두 이 이름을 쓴다(예: `docs/google_docs.md`).
+- `<service>` = 서비스 폴더 이름이다: `google_drive`, `google_docs`, `google_sheets`, `google_slides`, `google_forms`, `google_meet`, `zoom`. `samples/<service>/`, `tests/<service>/`, `docs/<service>.md`에 모두 이 이름을 쓴다(예: `docs/google_docs.md`).
 - URL prefix만 `/google/docs`, `/google/drive`, `/zoom`처럼 provider/서비스로 나눈다.
 
 ## 폴더 구조
