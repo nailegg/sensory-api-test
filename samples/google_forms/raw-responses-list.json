@@ -1,0 +1,126 @@
+{
+  "captured_at": "2026-10-06",
+  "scenario": "참고: forms.responses.list 원본 응답(설문, 퀴즈)",
+  "note": "퀴즈 폼은 모든 답에 grade가 붙는다. 맞힌 문항만 {score, correct:true}이고, 틀린 문항(REST의 R은? → resources)과 채점 대상이 아닌 문항은 똑같이 빈 객체 {}다. 그래서 mapper는 폼의 grading(배점)으로 채점 문항을 가려 빈 grade를 0점·오답으로 본다. totalScore는 퀴즈일 때만. VERIFIED 폼이라 respondentEmail이 온다(제출자는 소유자 계정)",
+  "request": {
+    "method": "GET",
+    "url": "https://forms.googleapis.com/v1/forms/{formId}/responses"
+  },
+  "response_status": 200,
+  "response": {
+    "survey": {
+      "responses": [
+        {
+          "responseId": "ACYDBNjJcCmSXaajc6HFZCehWXGhrPZwKgIeXT0YLlybdDOY8_YORwJ5Ycwo4WiEUjxJRac",
+          "createTime": "2026-10-05T17:37:19.791Z",
+          "lastSubmittedTime": "2026-10-05T17:37:19.791497Z",
+          "respondentEmail": "<EMAIL>",
+          "answers": {
+            "55cc6533": {
+              "questionId": "55cc6533",
+              "textAnswers": {
+                "answers": [
+                  {
+                    "value": "기획"
+                  }
+                ]
+              }
+            },
+            "042500b9": {
+              "questionId": "042500b9",
+              "textAnswers": {
+                "answers": [
+                  {
+                    "value": "다"
+                  }
+                ]
+              }
+            }
+          }
+        }
+      ]
+    },
+    "quiz": {
+      "responses": [
+        {
+          "responseId": "ACYDBNglO5OEbnUIuaFSNd8FNXQzlDlq6jVf1gj0T8GO-t6h5nCYxm1JT1aaKjBoWEgXEp4",
+          "createTime": "2026-10-05T17:38:44.478Z",
+          "lastSubmittedTime": "2026-10-05T17:38:44.478332Z",
+          "respondentEmail": "<EMAIL>",
+          "answers": {
+            "15e71ec8": {
+              "questionId": "15e71ec8",
+              "grade": {
+                "score": 2,
+                "correct": true
+              },
+              "textAnswers": {
+                "answers": [
+                  {
+                    "value": "찾을 수 없음"
+                  }
+                ]
+              }
+            },
+            "5ea52623": {
+              "questionId": "5ea52623",
+              "grade": {},
+              "textAnswers": {
+                "answers": [
+                  {
+                    "value": "5"
+                  }
+                ]
+              }
+            },
+            "69fdc30d": {
+              "questionId": "69fdc30d",
+              "grade": {},
+              "textAnswers": {
+                "answers": [
+                  {
+                    "value": "resources"
+                  }
+                ]
+              }
+            },
+            "4dcd6321": {
+              "questionId": "4dcd6321",
+              "grade": {},
+              "textAnswers": {
+                "answers": [
+                  {
+                    "value": "2"
+                  }
+                ]
+              }
+            },
+            "578d37b1": {
+              "questionId": "578d37b1",
+              "grade": {},
+              "textAnswers": {
+                "answers": [
+                  {
+                    "value": "<STUDENT_ID>"
+                  }
+                ]
+              }
+            },
+            "2e209323": {
+              "questionId": "2e209323",
+              "grade": {},
+              "textAnswers": {
+                "answers": [
+                  {
+                    "value": "2"
+                  }
+                ]
+              }
+            }
+          },
+          "totalScore": 2
+        }
+      ]
+    }
+  }
+}

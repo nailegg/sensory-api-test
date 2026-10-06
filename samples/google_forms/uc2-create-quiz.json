@@ -1,0 +1,174 @@
+{
+  "scenario": "유즈케이스 1·2: 템플릿 질문으로 퀴즈 생성 → 게시 → 폴더 이동",
+  "captured_at": "2026-10-06",
+  "note": "create 1 + batchUpdate 1(updateSettings 퀴즈·VERIFIED → updateFormInfo 설명 → createItem 5개) + setPublishSettings 1 + Drive files.update 1 + forms.get 1 + files.get 1. 퀴즈 설정과 grading 문항을 같은 배치에 넣어도 된다(퀴즈 설정이 앞). 격자 질문은 행마다 questionId가 생긴다. 이 캡처는 수정 전 코드(create를 기본값으로 호출)이며, 수정 후에는 unpublished=true로 만든 뒤 게시한다",
+  "request": {
+    "method": "POST",
+    "url": "/google/forms/create-form",
+    "body": {
+      "title": "실측 UC2 퀴즈",
+      "folder_id": "1kHaiJLfnjolxixY3KI13RPadzvMRCqxv",
+      "description": "전제 확인용 퀴즈",
+      "items": [
+        {
+          "title": "학번",
+          "questionItem": {
+            "question": {
+              "required": true,
+              "textQuestion": {
+                "paragraph": false
+              }
+            }
+          }
+        },
+        {
+          "title": "HTTP 상태 코드 404의 의미는?",
+          "questionItem": {
+            "question": {
+              "required": true,
+              "grading": {
+                "pointValue": 2,
+                "correctAnswers": {
+                  "answers": [
+                    {
+                      "value": "찾을 수 없음"
+                    }
+                  ]
+                },
+                "whenRight": {
+                  "text": "정답입니다."
+                },
+                "whenWrong": {
+                  "text": "404는 리소스를 찾을 수 없다는 뜻입니다."
+                }
+              },
+              "choiceQuestion": {
+                "type": "RADIO",
+                "options": [
+                  {
+                    "value": "권한 없음"
+                  },
+                  {
+                    "value": "찾을 수 없음"
+                  },
+                  {
+                    "value": "서버 오류"
+                  }
+                ]
+              }
+            }
+          }
+        },
+        {
+          "title": "REST의 R은?",
+          "questionItem": {
+            "question": {
+              "required": false,
+              "grading": {
+                "pointValue": 1,
+                "correctAnswers": {
+                  "answers": [
+                    {
+                      "value": "Representational"
+                    },
+                    {
+                      "value": "representational"
+                    }
+                  ]
+                },
+                "generalFeedback": {
+                  "text": "Representational State Transfer"
+                }
+              },
+              "textQuestion": {
+                "paragraph": false
+              }
+            }
+          }
+        },
+        {
+          "title": "수업 만족도",
+          "questionItem": {
+            "question": {
+              "scaleQuestion": {
+                "low": 1,
+                "high": 5,
+                "lowLabel": "낮음",
+                "highLabel": "높음"
+              }
+            }
+          }
+        },
+        {
+          "title": "동료 평가",
+          "questionGroupItem": {
+            "grid": {
+              "columns": {
+                "type": "RADIO",
+                "options": [
+                  {
+                    "value": "1"
+                  },
+                  {
+                    "value": "2"
+                  },
+                  {
+                    "value": "3"
+                  }
+                ]
+              }
+            },
+            "questions": [
+              {
+                "rowQuestion": {
+                  "title": "학생 A"
+                }
+              },
+              {
+                "rowQuestion": {
+                  "title": "학생 B"
+                }
+              }
+            ]
+          }
+        }
+      ],
+      "email_collection": "VERIFIED",
+      "quiz": true,
+      "publish": true
+    }
+  },
+  "response_status": 200,
+  "response": {
+    "document": {
+      "id": "1E0zN4Sh09Ht6KV6iEKEMFFzcvYCP_iSHq83xKehj4jQ",
+      "provider": "google",
+      "kind": "form",
+      "title": "실측 UC2 퀴즈",
+      "url": "https://docs.google.com/forms/d/1E0zN4Sh09Ht6KV6iEKEMFFzcvYCP_iSHq83xKehj4jQ/edit?usp=drivesdk",
+      "mime_type": "application/vnd.google-apps.form",
+      "owner": "<OWNER_NAME>",
+      "created_at": "2026-10-05T16:49:54.974000Z",
+      "modified_at": "2026-10-05T16:49:56.128000Z",
+      "parent_folder_id": "1kHaiJLfnjolxixY3KI13RPadzvMRCqxv",
+      "trashed": false,
+      "locked": false,
+      "text": null
+    },
+    "responder_url": "https://docs.google.com/forms/d/e/1FAIpQLSf0vCi3Z8ddqiWDt7hqU9uZVcJsT24Y57ziDfLOYi03GlBhXw/viewform",
+    "published": true,
+    "accepting_responses": true,
+    "email_collection": "VERIFIED",
+    "is_quiz": true,
+    "linked_sheet_id": null,
+    "question_ids": {
+      "578d37b1": "학번",
+      "15e71ec8": "HTTP 상태 코드 404의 의미는?",
+      "69fdc30d": "REST의 R은?",
+      "5ea52623": "수업 만족도",
+      "2e209323": "동료 평가 [학생 A]",
+      "4dcd6321": "동료 평가 [학생 B]"
+    },
+    "revision_id": "00000004"
+  }
+}

@@ -1,0 +1,68 @@
+{
+  "scenario": "유즈케이스 5: 응답자를 특정 학생으로 제한",
+  "captured_at": "2026-10-06",
+  "note": "① 학생을 응답자로 추가(permissions.create type=user role=reader view=published)해도 anyoneWithLink가 남아 있으면 로그아웃 상태로 계속 응답 가능(200). ② anyoneWithLink를 지워야(permissions.delete) 로그아웃 상태가 401 로그인 화면으로 막힌다. 따라서 restrict_responders는 추가 후 anyoneWithLink 삭제까지 해야 한다",
+  "request": {
+    "steps": [
+      {
+        "method": "POST",
+        "url": "/google/forms/restrict-responders/{form_id}",
+        "body": {
+          "emails": [
+            "<EMAIL>"
+          ]
+        }
+      },
+      {
+        "method": "POST",
+        "url": "/google/forms/remove-anyone/{form_id}"
+      }
+    ]
+  },
+  "response_status": 200,
+  "response": {
+    "after_add": [
+      {
+        "email": "<EMAIL>",
+        "ok": true,
+        "permission": {
+          "id": "18249801426757446426",
+          "type": "user",
+          "emailAddress": "<EMAIL>",
+          "role": "reader",
+          "view": "published",
+          "displayName": "<NAME>",
+          "pendingOwner": false
+        },
+        "error": null
+      }
+    ],
+    "after_remove_anyone": {
+      "responders": [
+        {
+          "id": "18249801426757446426",
+          "displayName": "<NAME>",
+          "type": "user",
+          "emailAddress": "<EMAIL>",
+          "role": "reader",
+          "view": "published",
+          "pendingOwner": false
+        }
+      ],
+      "others": [
+        {
+          "id": "02252346710657344069",
+          "displayName": "<OWNER_NAME>",
+          "type": "user",
+          "emailAddress": "<EMAIL>",
+          "role": "owner",
+          "pendingOwner": false
+        }
+      ]
+    }
+  },
+  "anonymous_probe": {
+    "after_add": "200, form rendered",
+    "after_remove_anyone": "401, form NOT rendered"
+  }
+}

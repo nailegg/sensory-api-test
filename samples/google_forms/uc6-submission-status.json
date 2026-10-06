@@ -1,0 +1,29 @@
+{
+  "captured_at": "2026-10-06",
+  "scenario": "유즈케이스 6: 제출 현황(명단 대조)",
+  "note": "responses.list에 fields=responses(responseId,respondentEmail,lastSubmittedTime). 소유자 응답은 명단에 없어 not_in_roster, 테스트 계정은 missing",
+  "request": {
+    "method": "POST",
+    "url": "/google/forms/submission-status/16OWHxB7DA4CJ0JlTH0TxLuJgpOgFlZh14Dm35Un0xos",
+    "body": {
+      "roster_emails": [
+        "<EMAIL>",
+        "student2@example.com"
+      ]
+    }
+  },
+  "response_status": 200,
+  "response": {
+    "form_id": "16OWHxB7DA4CJ0JlTH0TxLuJgpOgFlZh14Dm35Un0xos",
+    "submitted": [],
+    "missing": [
+      "<EMAIL>",
+      "student2@example.com"
+    ],
+    "not_in_roster": [
+      "<EMAIL>"
+    ],
+    "without_email": 0,
+    "resubmitted": {}
+  }
+}

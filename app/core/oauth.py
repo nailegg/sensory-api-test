@@ -24,6 +24,7 @@ from app.core.config import Settings, get_settings
 from app.core.token_store import TokenSet, TokenStore
 from app.services.google_docs import scopes as google_docs_scopes
 from app.services.google_drive import scopes as google_drive_scopes
+from app.services.google_forms import scopes as google_forms_scopes
 from app.services.google_sheets import scopes as google_sheets_scopes
 from app.services.google_slides import scopes as google_slides_scopes
 from app.services.zoom import scopes as zoom_scopes
@@ -34,6 +35,7 @@ REGISTERED_SCOPE_MODULES: list[ModuleType] = [
     google_docs_scopes,
     google_slides_scopes,
     google_sheets_scopes,
+    google_forms_scopes,
     zoom_scopes,
 ]
 

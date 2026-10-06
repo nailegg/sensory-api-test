@@ -1,0 +1,32 @@
+{
+  "captured_at": "2026-10-06",
+  "scenario": "유즈케이스 7·8: 마감과 재개",
+  "note": "close = setPublishSettings(게시 유지, 응답 받기 false). 로그아웃으로 응답 링크를 열면 /closedform으로 리다이렉트되어 '양식에서 더 이상 응답을 받지 않습니다' 화면. reopen 후 /viewform 정상",
+  "request": {
+    "steps": [
+      {
+        "method": "POST",
+        "url": "/google/forms/close/1E0zN4Sh09Ht6KV6iEKEMFFzcvYCP_iSHq83xKehj4jQ"
+      },
+      {
+        "method": "POST",
+        "url": "/google/forms/reopen/1E0zN4Sh09Ht6KV6iEKEMFFzcvYCP_iSHq83xKehj4jQ"
+      }
+    ]
+  },
+  "response_status": 200,
+  "response": {
+    "close": {
+      "published": true,
+      "accepting_responses": false
+    },
+    "reopen": {
+      "published": true,
+      "accepting_responses": true
+    }
+  },
+  "anonymous_probe": {
+    "after_close": "200 → /closedform",
+    "after_reopen": "200 → /viewform"
+  }
+}

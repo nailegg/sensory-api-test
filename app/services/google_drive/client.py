@@ -49,7 +49,7 @@ SHEETS_EXPORT_MIME = {
 MIME_XLSX = SHEETS_EXPORT_MIME["xlsx"]
 MIME_CSV = "text/csv"
 
-PERMISSION_FIELDS = "id,type,role,emailAddress,displayName,expirationTime,pendingOwner"
+PERMISSION_FIELDS = "id,type,role,emailAddress,displayName,expirationTime,pendingOwner,view"
 
 
 class DriveApiError(Exception):
@@ -119,6 +119,15 @@ class DriveClient:
         resp = await self._request(
             "POST", f"{BASE_URL}/files", params={"fields": DOCUMENT_META_FIELDS}, json=metadata
         )
+        return resp.json()
+
+    async def create_empty_native_file(self, name: str, mime_type: str, parent_folder_id: str | None = None) -> dict:
+        """files.create 메타데이터만으로 빈 Google 네이티브 파일 생성 (쿼터 50). 폴더 안에 바로 만든다.
+        Forms(MIME_FORM)도 되지만 미게시 + "제목 없는 질문" 1개가 들어가 forms.create보다 이점이 없다(2026-10-06 실측)."""
+        metadata: dict = {"name": name, "mimeType": mime_type}
+        if parent_folder_id:
+            metadata["parents"] = [parent_folder_id]
+        resp = await self._request("POST", f"{BASE_URL}/files", params={"fields": DOCUMENT_META_FIELDS}, json=metadata)
         return resp.json()
 
     async def rename_file(self, file_id: str, name: str) -> dict:
@@ -220,10 +229,23 @@ class DriveClient:
         resp = await self._request("POST", f"{BASE_URL}/files/{file_id}/permissions", params=params, json=body)
         return resp.json()
 
-    async def list_permissions(self, file_id: str) -> list[dict]:
-        resp = await self._request(
-            "GET", f"{BASE_URL}/files/{file_id}/permissions", params={"fields": f"permissions({PERMISSION_FIELDS})"}
-        )
+    async def share_as_responder(self, file_id: str, email: str | None = None, notify: bool = False) -> dict:
+        """Forms 응답자 권한. permissions.create(role=reader, view=published). email이 없으면 "링크가 있는 모든 사용자".
+        편집 공유(view 없음)와 다르다. docs/google_forms.md 10절 4항."""
+        body: dict = {"role": "reader", "view": "published"}
+        body.update({"type": "user", "emailAddress": email} if email else {"type": "anyone"})
+        params: dict = {"fields": PERMISSION_FIELDS}
+        if email:
+            params["sendNotificationEmail"] = str(notify).lower()
+        resp = await self._request("POST", f"{BASE_URL}/files/{file_id}/permissions", params=params, json=body)
+        return resp.json()
+
+    async def list_permissions(self, file_id: str, include_published_view: bool = False) -> list[dict]:
+        """permissions.list. include_published_view=True면 Forms 응답자 권한(view=published)도 함께 온다."""
+        params: dict = {"fields": f"permissions({PERMISSION_FIELDS})"}
+        if include_published_view:
+            params["includePermissionsForView"] = "published"
+        resp = await self._request("GET", f"{BASE_URL}/files/{file_id}/permissions", params=params)
         return resp.json().get("permissions", [])
 
     async def update_permission_role(self, file_id: str, permission_id: str, role: str) -> dict:

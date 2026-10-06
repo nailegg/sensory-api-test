@@ -1,0 +1,84 @@
+{
+  "scenario": "유즈케이스 4: Drive files.copy로 폼 복사",
+  "captured_at": "2026-10-06",
+  "note": "200. 질문·질문 ID(원본과 같은 값)·grading·설정(퀴즈, VERIFIED)이 복사된다. 게시 상태는 미게시로 돌아가고, 원본의 응답자 제한은 따라오지 않으며 anyoneWithLink가 새로 붙는다. 복사 후 게시·응답자 제한을 다시 해야 한다. 응답은 따라오지 않는다(응답 1건인 퀴즈를 복사하니 복사본 응답 0건, 2026-10-06)",
+  "request": {
+    "method": "POST",
+    "url": "/google/forms/copy-form/{form_id}",
+    "body": {
+      "name": "실측 E7 퀴즈 사본",
+      "folder_id": "1kHaiJLfnjolxixY3KI13RPadzvMRCqxv"
+    }
+  },
+  "response_status": 200,
+  "response": {
+    "quiz_copy": {
+      "document": {
+        "id": "1Iha7VhagaLlVW3VZ8JItDFHR6VWhKmbCWlSQj4v94ms",
+        "provider": "google",
+        "kind": "form",
+        "title": "실측 UC2 퀴즈",
+        "url": "https://docs.google.com/forms/d/1Iha7VhagaLlVW3VZ8JItDFHR6VWhKmbCWlSQj4v94ms/edit?usp=drivesdk",
+        "mime_type": "application/vnd.google-apps.form",
+        "owner": "<OWNER_NAME>",
+        "created_at": "2026-10-05T16:50:24.093000Z",
+        "modified_at": "2026-10-05T16:50:24.093000Z",
+        "parent_folder_id": "1kHaiJLfnjolxixY3KI13RPadzvMRCqxv",
+        "trashed": false,
+        "locked": false,
+        "text": null
+      },
+      "responder_url": "https://docs.google.com/forms/d/e/1FAIpQLSdnLqRvlNr3Y42CA67OqEylS0shEIv60dIMbSblRAxLGfQchg/viewform",
+      "published": false,
+      "accepting_responses": false,
+      "email_collection": "VERIFIED",
+      "is_quiz": true,
+      "linked_sheet_id": null,
+      "question_ids": {
+        "578d37b1": "학번",
+        "15e71ec8": "HTTP 상태 코드 404의 의미는?",
+        "69fdc30d": "REST의 R은?",
+        "5ea52623": "수업 만족도",
+        "2e209323": "동료 평가 [학생 A]",
+        "4dcd6321": "동료 평가 [학생 B]"
+      },
+      "revision_id": "00000001"
+    },
+    "restricted_form_copy": {
+      "document": {
+        "id": "1GP4mfq55CWz-RzVc5CSws2nZzAmpcsQIgb1W01L9TnY",
+        "provider": "google",
+        "kind": "form",
+        "title": "실측 E1 기본값",
+        "url": "https://docs.google.com/forms/d/1GP4mfq55CWz-RzVc5CSws2nZzAmpcsQIgb1W01L9TnY/edit?usp=drivesdk",
+        "mime_type": "application/vnd.google-apps.form",
+        "owner": "<OWNER_NAME>",
+        "created_at": "2026-10-05T16:50:50.804000Z",
+        "modified_at": "2026-10-05T16:50:50.804000Z",
+        "parent_folder_id": "1kHaiJLfnjolxixY3KI13RPadzvMRCqxv",
+        "trashed": false,
+        "locked": false,
+        "text": null
+      },
+      "responder_url": "https://docs.google.com/forms/d/e/1FAIpQLScxiX21MotQp-1e__WWAmpGW8F3R5BmYnZE8YYBvdHilpxsbg/viewform",
+      "published": false,
+      "accepting_responses": false,
+      "email_collection": "VERIFIED",
+      "is_quiz": false,
+      "linked_sheet_id": null,
+      "question_ids": {},
+      "revision_id": "00000001"
+    },
+    "copy_permissions": [
+      {
+        "type": "anyone",
+        "role": "reader",
+        "view": "published"
+      },
+      {
+        "type": "user",
+        "role": "owner"
+      }
+    ]
+  }
+}

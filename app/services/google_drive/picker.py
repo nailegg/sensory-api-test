@@ -71,6 +71,7 @@ PICKER_HTML = r"""<!doctype html>
   <button onclick="openPicker('documents')">Google Docs</button>
   <button onclick="openPicker('presentations')">Google Slides</button>
   <button onclick="openPicker('spreadsheets')">Google Sheets</button>
+  <button onclick="openPicker('forms')">Google Forms</button>
   <button onclick="openPicker('folders')">폴더</button>
   <button onclick="openPicker('all')">Docs·Slides·Sheets 전부 (MIME 필터)</button>
   <br>
@@ -138,6 +139,7 @@ const MIME = {
   doc: 'application/vnd.google-apps.document',
   slides: 'application/vnd.google-apps.presentation',
   sheet: 'application/vnd.google-apps.spreadsheet',
+  form: 'application/vnd.google-apps.form',
 };
 function buildView(kind) {
   const V = google.picker.ViewId;
@@ -145,6 +147,7 @@ function buildView(kind) {
     case 'documents':     return new google.picker.DocsView(V.DOCUMENTS).setIncludeFolders(true);
     case 'presentations': return new google.picker.DocsView(V.PRESENTATIONS).setIncludeFolders(true);
     case 'spreadsheets':  return new google.picker.DocsView(V.SPREADSHEETS).setIncludeFolders(true);
+    case 'forms':         return new google.picker.DocsView(V.FORMS).setIncludeFolders(true);
     case 'folders':       return new google.picker.DocsView(V.FOLDERS).setIncludeFolders(true).setSelectFolderEnabled(true);
     case 'byId':          // 특정 파일만 보여 준다. 사용자가 "어느 파일인지 아는데 목록에서 못 찾을 때"(다른 폴더·공유 문서함) 유용
       return new google.picker.DocsView(V.DOCS).setFileIds(document.getElementById('fileIds').value.replace(/\s/g, ''));

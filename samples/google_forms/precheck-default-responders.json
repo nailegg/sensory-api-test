@@ -1,0 +1,56 @@
+{
+  "scenario": "전제: 응답자 제한 없이 만든 폼의 기본 응답 범위",
+  "captured_at": "2026-10-06",
+  "note": "게시·미게시 모두 생성 직후 '링크가 있는 모든 사용자' 응답자 권한(id=anyoneWithLink, type=anyone, role=reader, view=published)이 자동으로 붙는다. permissions.list(includePermissionsForView=published)는 drive.file로 동작. 로그아웃 상태(curl)로 responderUri: 게시 폼 200 + 폼 렌더링, 미게시 폼 401 로그인 화면",
+  "request": {
+    "method": "GET",
+    "url": "/google/forms/permissions/{form_id}"
+  },
+  "response_status": 200,
+  "response": {
+    "published_form": {
+      "responders": [
+        {
+          "id": "anyoneWithLink",
+          "type": "anyone",
+          "role": "reader",
+          "view": "published"
+        }
+      ],
+      "others": [
+        {
+          "id": "02252346710657344069",
+          "displayName": "<OWNER_NAME>",
+          "type": "user",
+          "emailAddress": "<EMAIL>",
+          "role": "owner",
+          "pendingOwner": false
+        }
+      ]
+    },
+    "unpublished_form": {
+      "responders": [
+        {
+          "id": "anyoneWithLink",
+          "type": "anyone",
+          "role": "reader",
+          "view": "published"
+        }
+      ],
+      "others": [
+        {
+          "id": "02252346710657344069",
+          "displayName": "<OWNER_NAME>",
+          "type": "user",
+          "emailAddress": "<EMAIL>",
+          "role": "owner",
+          "pendingOwner": false
+        }
+      ]
+    }
+  },
+  "anonymous_probe": {
+    "published_form": "200, form rendered",
+    "unpublished_form": "401, ServiceLogin"
+  }
+}

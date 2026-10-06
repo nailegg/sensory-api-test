@@ -1,0 +1,20 @@
+{
+  "scenario": "유즈케이스 5: 이메일 수집 '검증됨'(VERIFIED) 설정",
+  "captured_at": "2026-10-06",
+  "note": "개인 Gmail 소유 폼에서 updateSettings emailCollectionType=VERIFIED 200. 로그인된 브라우저 화면: 상단에 로그인 계정과 '계정 전환', '<계정>을(를) 내 응답에 포함될 이메일로 기록합니다' 필수 체크박스. anyoneWithLink가 있는 상태의 로그아웃 HTML에는 '이메일 *' 칸과 '응답과 함께 이메일 주소 기록' 문구가 보인다(RESPONDER_INPUT 화면과 다르게 reCAPTCHA·로그인 권유 없음). 제출 시 로그인을 강제하는지와 respondentEmail 값은 실제 제출로 확인 필요",
+  "request": {
+    "method": "POST",
+    "url": "/google/forms/update-settings/{form_id}",
+    "body": {
+      "email_collection": "VERIFIED"
+    }
+  },
+  "response_status": 200,
+  "response": {
+    "responder_url": "https://docs.google.com/forms/d/e/1FAIpQLSeEzRAbyRnF1G5xsIOHKyGq1wZ8l7Koz6SrbC-VY_SNaiu5WQ/viewform",
+    "published": true,
+    "accepting_responses": true,
+    "email_collection": "VERIFIED",
+    "is_quiz": false
+  }
+}

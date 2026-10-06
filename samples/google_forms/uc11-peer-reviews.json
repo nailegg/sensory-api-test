@@ -1,0 +1,41 @@
+{
+  "captured_at": "2026-10-06",
+  "scenario": "유즈케이스 11: 동료평가 집계(퀴즈 폼의 격자 질문으로 확인)",
+  "note": "reviewees를 안 주면 피평가자는 격자 행 제목. 자기 평가 제외는 reviewees(create-group-forms 결과)가 있을 때만 동작하며 단위 테스트로 확인",
+  "request": {
+    "method": "POST",
+    "url": "/google/forms/peer-reviews/1E0zN4Sh09Ht6KV6iEKEMFFzcvYCP_iSHq83xKehj4jQ",
+    "body": {}
+  },
+  "response_status": 200,
+  "response": [
+    {
+      "reviewee": "학생 A",
+      "criterion": "동료 평가",
+      "average": 2.0,
+      "count": 1,
+      "self_excluded": 0
+    },
+    {
+      "reviewee": "학생 B",
+      "criterion": "동료 평가",
+      "average": 2.0,
+      "count": 1,
+      "self_excluded": 0
+    },
+    {
+      "reviewee": "학생 A",
+      "criterion": "(전체)",
+      "average": 2.0,
+      "count": 1,
+      "self_excluded": 0
+    },
+    {
+      "reviewee": "학생 B",
+      "criterion": "(전체)",
+      "average": 2.0,
+      "count": 1,
+      "self_excluded": 0
+    }
+  ]
+}

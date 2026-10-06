@@ -1,0 +1,76 @@
+{
+  "scenario": "전제: forms.create 기본 게시 상태와 unpublished 파라미터",
+  "captured_at": "2026-10-06",
+  "note": "공식 문서는 '2026-06-30 이후 API 생성 폼은 미게시'라고 하지만, 파라미터 없이 만들면 게시·응답 받기 상태로 생성됐다. unpublished=true일 때만 미게시(publishState가 빈 객체 = 둘 다 false). 세 경우 모두 settings.emailCollectionType=DO_NOT_COLLECT, revisionId 00000002",
+  "request": {
+    "method": "POST",
+    "url": "/google/forms/experiments/create-raw",
+    "bodies": [
+      {
+        "title": "실측 E1 기본값"
+      },
+      {
+        "title": "실측 E1 unpublished=true",
+        "unpublished": true
+      },
+      {
+        "title": "실측 E1 unpublished=false",
+        "unpublished": false
+      }
+    ]
+  },
+  "response_status": 200,
+  "response": {
+    "default": {
+      "formId": "1C3A6_wZoz6mBwm8XOjxzxw-XjPo0-2feimU9SolCy0E",
+      "info": {
+        "title": "실측 E1 기본값",
+        "documentTitle": "실측 E1 기본값"
+      },
+      "settings": {
+        "emailCollectionType": "DO_NOT_COLLECT"
+      },
+      "revisionId": "00000002",
+      "responderUri": "https://docs.google.com/forms/d/e/1FAIpQLSeEzRAbyRnF1G5xsIOHKyGq1wZ8l7Koz6SrbC-VY_SNaiu5WQ/viewform",
+      "publishSettings": {
+        "publishState": {
+          "isPublished": true,
+          "isAcceptingResponses": true
+        }
+      }
+    },
+    "unpublished_true": {
+      "formId": "1O16BJvD5z7_i2bRpawJtWsVRFFcHjTFHRZdIEk3clPQ",
+      "info": {
+        "title": "실측 E1 unpublished=true",
+        "documentTitle": "실측 E1 unpublished=true"
+      },
+      "settings": {
+        "emailCollectionType": "DO_NOT_COLLECT"
+      },
+      "revisionId": "00000002",
+      "responderUri": "https://docs.google.com/forms/d/e/1FAIpQLSfqSbFFMhFKPrfn7IjgR4Z28MMkge9WayzsvgNqjrPp3gTghg/viewform",
+      "publishSettings": {
+        "publishState": {}
+      }
+    },
+    "unpublished_false": {
+      "formId": "1jnpqwS3O-424prOYtGVMcomTtBIxZXMbB9jhj1dj-3k",
+      "info": {
+        "title": "실측 E1 unpublished=false",
+        "documentTitle": "실측 E1 unpublished=false"
+      },
+      "settings": {
+        "emailCollectionType": "DO_NOT_COLLECT"
+      },
+      "revisionId": "00000002",
+      "responderUri": "https://docs.google.com/forms/d/e/1FAIpQLSdPnQGaWdCqptrOLg_4T2UjIAqwz3KZO858cyPWDsjGMdBf0g/viewform",
+      "publishSettings": {
+        "publishState": {
+          "isPublished": true,
+          "isAcceptingResponses": true
+        }
+      }
+    }
+  }
+}

@@ -1,0 +1,41 @@
+{
+  "scenario": "전제: Drive files.create(mimeType=form, parents)로 폴더 안에 바로 생성",
+  "captured_at": "2026-10-06",
+  "note": "200. 폴더 안에 바로 만들어진다(files.update 1회 절약). 단 forms.create 기본값과 달리 미게시 상태로 생성되고, '제목 없는 질문'(객관식) 하나가 기본으로 들어 있다. 응답자 권한은 anyoneWithLink가 붙는다. 기본 질문을 지우는 deleteItem이 필요해 호출 수 이점이 사라지므로 forms.create(unpublished=true) + files.update를 기본으로 한다",
+  "request": {
+    "method": "POST",
+    "url": "/google/forms/experiments/create-via-drive",
+    "body": {
+      "title": "실측 E6 Drive로 생성",
+      "folder_id": "1kHaiJLfnjolxixY3KI13RPadzvMRCqxv"
+    }
+  },
+  "response_status": 200,
+  "response": {
+    "document": {
+      "id": "1kxJsyNfihIBudAQlOidMBZCUj4WfV2CthNhaXMYO6sU",
+      "provider": "google",
+      "kind": "form",
+      "title": "실측 E6 Drive로 생성",
+      "url": "https://docs.google.com/forms/d/1kxJsyNfihIBudAQlOidMBZCUj4WfV2CthNhaXMYO6sU/edit?usp=drivesdk",
+      "mime_type": "application/vnd.google-apps.form",
+      "owner": "<OWNER_NAME>",
+      "created_at": "2026-10-05T16:50:19.231000Z",
+      "modified_at": "2026-10-05T16:50:20.940000Z",
+      "parent_folder_id": "1kHaiJLfnjolxixY3KI13RPadzvMRCqxv",
+      "trashed": false,
+      "locked": false,
+      "text": null
+    },
+    "responder_url": "https://docs.google.com/forms/d/e/1FAIpQLSfl7Y5RFL_Ka6MgUtIf2mQEVlNTSNgXDwKH1lMPU7TqLOG4Kg/viewform",
+    "published": false,
+    "accepting_responses": false,
+    "email_collection": "DO_NOT_COLLECT",
+    "is_quiz": false,
+    "linked_sheet_id": null,
+    "question_ids": {
+      "18b61339": "제목 없는 질문"
+    },
+    "revision_id": "00000002"
+  }
+}

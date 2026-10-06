@@ -77,3 +77,30 @@ class Meeting(BaseModel):
     occurrences: list[MeetingOccurrence] = Field(default_factory=list, description="반복 미팅(type 8)의 회차. 최대 50개")
     has_recording: bool = False
     has_transcript: bool = False
+
+
+class AnswerGrade(BaseModel):
+    """퀴즈 문항 하나의 자동 채점 결과. 채점 대상이 아닌 문항에는 만들지 않는다."""
+
+    score: float = 0
+    correct: bool = False
+    max_score: float | None = Field(default=None, description="문항 배점(pointValue). 폼 구조를 함께 넘겼을 때만 채운다")
+
+
+class FormSubmission(BaseModel):
+    """설문·퀴즈 응답 한 건. Google Forms `FormResponse`에서 온다(mapper.submission_from_response).
+
+    `answers`의 키는 질문 ID다. 질문 제목은 폼을 만들 때 저장한 매핑(FormInfo.question_ids)으로 찾는다.
+    객관식 답은 선택지 문구 그대로라, 생성 후 문구를 바꾸면 예전 응답과 어긋난다.
+    """
+
+    id: str
+    form_id: str
+    provider: Provider = Provider.GOOGLE
+    respondent_email: str | None = Field(default=None, description="이메일 수집(VERIFIED·RESPONDER_INPUT)을 켠 폼에서만 온다")
+    created_at: datetime | None = None
+    submitted_at: datetime | None = Field(default=None, description="마지막 제출 시각(lastSubmittedTime). 채점 변경은 반영되지 않는다")
+    answers: dict[str, list[str]] = Field(default_factory=dict, description="질문 ID → 답 문자열 목록(체크박스는 여러 개)")
+    file_ids: dict[str, list[str]] = Field(default_factory=dict, description="파일 업로드 질문 ID → Drive 파일 ID 목록")
+    total_score: float | None = Field(default=None, description="퀴즈이고 채점된 경우만")
+    grades: dict[str, AnswerGrade] = Field(default_factory=dict, description="채점 대상 질문 ID → 채점 결과")

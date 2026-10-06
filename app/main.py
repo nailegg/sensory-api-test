@@ -6,6 +6,7 @@ from app.core import oauth
 from app.services.google_docs import router as google_docs
 from app.services.google_drive import picker as google_picker
 from app.services.google_drive import router as google_drive
+from app.services.google_forms import router as google_forms
 from app.services.google_sheets import router as google_sheets
 from app.services.google_slides import router as google_slides
 from app.services.zoom import router as zoom
@@ -18,4 +19,5 @@ app.include_router(google_picker.router)  # Picker 테스트 페이지(GET /goog
 app.include_router(google_docs.router)
 app.include_router(google_slides.router)
 app.include_router(google_sheets.router)
+app.include_router(google_forms.router)
 app.include_router(zoom.router)

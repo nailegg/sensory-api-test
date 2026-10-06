@@ -1,0 +1,226 @@
+{
+  "captured_at": "2026-10-06",
+  "scenario": "유즈케이스 4: 교수자가 Forms UI에서 만든 폼을 Picker로 고른 뒤 템플릿으로 복사",
+  "note": "상현이 forms.google.com에서 만든 폼(내 드라이브 루트, 게시·anyoneWithLink, 질문 1개)을 Picker 'Google Forms' 보기에서 목록 클릭으로 고름 → 앱 파일 목록에 나타나고 forms.get 200. files.copy → 복사본 미게시·질문 ID 동일 → open → restrict_responders → 12초 뒤 로그아웃 접근 401. create_form_from_template 한 번으로도 같은 결과(제목 변경 포함). 원본은 제목·modifiedTime·권한 모두 그대로",
+  "request": {
+    "steps": [
+      {
+        "method": "GET",
+        "url": "/google/forms/read/10DppNQl2fifpItddpfeCdiiryU8CIBGnK4KcDCUAS2s"
+      },
+      {
+        "method": "POST",
+        "url": "/google/forms/copy-form/10DppNQl2fifpItddpfeCdiiryU8CIBGnK4KcDCUAS2s",
+        "body": {
+          "name": "실측 UC4 Picker 폼 사본",
+          "folder_id": "1kHaiJLfnjolxixY3KI13RPadzvMRCqxv"
+        }
+      },
+      {
+        "method": "POST",
+        "url": "/google/forms/open/{copy_id}"
+      },
+      {
+        "method": "POST",
+        "url": "/google/forms/restrict-responders/{copy_id}",
+        "body": {
+          "emails": [
+            "<EMAIL>"
+          ]
+        }
+      },
+      {
+        "method": "POST",
+        "url": "/google/forms/create-from-template",
+        "body": {
+          "template_form_id": "10DppNQl2fifpItddpfeCdiiryU8CIBGnK4KcDCUAS2s",
+          "name": "실측 UC4 템플릿 함수",
+          "folder_id": "1kHaiJLfnjolxixY3KI13RPadzvMRCqxv",
+          "title": "팀 프로젝트 1차 사전 설문",
+          "responder_emails": [
+            "<EMAIL>"
+          ]
+        }
+      }
+    ]
+  },
+  "response_status": 200,
+  "response": {
+    "picked_original": {
+      "document": {
+        "id": "10DppNQl2fifpItddpfeCdiiryU8CIBGnK4KcDCUAS2s",
+        "provider": "google",
+        "kind": "form",
+        "title": "제목 없는 설문지",
+        "url": "https://docs.google.com/forms/d/10DppNQl2fifpItddpfeCdiiryU8CIBGnK4KcDCUAS2s/edit?usp=drivesdk",
+        "mime_type": "application/vnd.google-apps.form",
+        "owner": "<OWNER_NAME>",
+        "created_at": "2026-10-06T01:07:31.535000Z",
+        "modified_at": "2026-10-06T01:07:31.536000Z",
+        "parent_folder_id": "0AAy5z0zisDdxUk9PVA",
+        "trashed": false,
+        "locked": false,
+        "text": null
+      },
+      "responder_url": "https://docs.google.com/forms/d/e/1FAIpQLSelBDaEJp1YFQcZOH8l-i8bM6df4PLdGMegEE5UNYVO7AUoXg/viewform",
+      "published": true,
+      "accepting_responses": true,
+      "email_collection": "DO_NOT_COLLECT",
+      "is_quiz": false,
+      "linked_sheet_id": null,
+      "question_ids": {
+        "6864933a": "제목 없는 질문"
+      },
+      "revision_id": "00000001",
+      "questions": [
+        {
+          "id": "6864933a",
+          "title": "제목 없는 질문",
+          "kind": "choice_radio",
+          "options": [
+            "옵션 1"
+          ],
+          "point_value": null
+        }
+      ]
+    },
+    "copy": {
+      "document": {
+        "id": "1RAotuLgGx5vk0S8CtuznaRzFY1odQG1Zk2alvY37vwo",
+        "provider": "google",
+        "kind": "form",
+        "title": "실측 UC4 Picker 폼 사본",
+        "url": "https://docs.google.com/forms/d/1RAotuLgGx5vk0S8CtuznaRzFY1odQG1Zk2alvY37vwo/edit?usp=drivesdk",
+        "mime_type": "application/vnd.google-apps.form",
+        "owner": "<OWNER_NAME>",
+        "created_at": "2026-10-06T01:08:46.894000Z",
+        "modified_at": "2026-10-06T01:08:46.894000Z",
+        "parent_folder_id": "1kHaiJLfnjolxixY3KI13RPadzvMRCqxv",
+        "trashed": false,
+        "locked": false,
+        "text": null
+      },
+      "responder_url": "https://docs.google.com/forms/d/e/1FAIpQLSd7FbmHFSwZTVyE6tgtHMh4rcukG_apr0Ts7Tfe-Wy1TGaLwA/viewform",
+      "published": false,
+      "accepting_responses": false,
+      "email_collection": "DO_NOT_COLLECT",
+      "is_quiz": false,
+      "linked_sheet_id": null,
+      "question_ids": {
+        "6864933a": "제목 없는 질문"
+      },
+      "revision_id": "00000001",
+      "questions": [
+        {
+          "id": "6864933a",
+          "title": "제목 없는 질문",
+          "kind": "choice_radio",
+          "options": [
+            "옵션 1"
+          ],
+          "point_value": null
+        }
+      ]
+    },
+    "copy_after_open": {
+      "published": true,
+      "accepting_responses": true,
+      "responder_url": "https://docs.google.com/forms/d/e/1FAIpQLSd7FbmHFSwZTVyE6tgtHMh4rcukG_apr0Ts7Tfe-Wy1TGaLwA/viewform"
+    },
+    "restrict": [
+      {
+        "email": "<EMAIL>",
+        "ok": true,
+        "permission": {
+          "id": "18249801426757446426",
+          "type": "user",
+          "emailAddress": "<EMAIL>",
+          "role": "reader",
+          "view": "published",
+          "displayName": "<NAME>",
+          "pendingOwner": false
+        },
+        "error": null
+      },
+      {
+        "email": null,
+        "ok": true,
+        "permission": {
+          "removed": "anyoneWithLink"
+        },
+        "error": null
+      }
+    ],
+    "create_from_template": {
+      "form": {
+        "document": {
+          "id": "1djlq1vX7TP4099k-ovfzeXFSl4dCBOAkdBa29dRZ4io",
+          "provider": "google",
+          "kind": "form",
+          "title": "팀 프로젝트 1차 사전 설문",
+          "url": "https://docs.google.com/forms/d/1djlq1vX7TP4099k-ovfzeXFSl4dCBOAkdBa29dRZ4io/edit?usp=drivesdk",
+          "mime_type": "application/vnd.google-apps.form",
+          "owner": "<OWNER_NAME>",
+          "created_at": "2026-10-06T01:09:38.420000Z",
+          "modified_at": "2026-10-06T01:09:45.110000Z",
+          "parent_folder_id": "1kHaiJLfnjolxixY3KI13RPadzvMRCqxv",
+          "trashed": false,
+          "locked": false,
+          "text": null
+        },
+        "responder_url": "https://docs.google.com/forms/d/e/1FAIpQLSeHRcBgKWCc7OKXzvLkUCdtdVEVV5w5-nitrYh7Ntpc0sV2Ug/viewform",
+        "published": true,
+        "accepting_responses": true,
+        "email_collection": "DO_NOT_COLLECT",
+        "is_quiz": false,
+        "linked_sheet_id": null,
+        "question_ids": {
+          "6864933a": "제목 없는 질문"
+        },
+        "revision_id": "00000002",
+        "questions": [
+          {
+            "id": "6864933a",
+            "title": "제목 없는 질문",
+            "kind": "choice_radio",
+            "options": [
+              "옵션 1"
+            ],
+            "point_value": null
+          }
+        ]
+      },
+      "responders": [
+        {
+          "email": "<EMAIL>",
+          "ok": true,
+          "permission": {
+            "id": "18249801426757446426",
+            "type": "user",
+            "emailAddress": "<EMAIL>",
+            "role": "reader",
+            "view": "published",
+            "displayName": "<NAME>",
+            "pendingOwner": false
+          },
+          "error": null
+        },
+        {
+          "email": null,
+          "ok": true,
+          "permission": {
+            "removed": "anyoneWithLink"
+          },
+          "error": null
+        }
+      ]
+    },
+    "original_after": {
+      "title": "제목 없는 설문지",
+      "modified_at": "2026-10-06T01:07:31.536000Z"
+    }
+  },
+  "anonymous_probe": {
+    "copy_after_restrict": "401"
+  }
+}

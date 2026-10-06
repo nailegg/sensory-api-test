@@ -1,0 +1,75 @@
+{
+  "scenario": "유즈케이스 5: restrict_responders(학생 추가 + anyoneWithLink 삭제), 재실행",
+  "note": "이메일 단위 부분 실패 허용(형식이 틀린 주소는 400 invalid). 한 명이라도 추가되면 anyoneWithLink를 지운다(마지막 원소 email=null). 로그아웃 접근은 직후 200이었다가 10초 안에 401로 바뀌었다(반영 지연 수 초). 재실행하면 같은 permission id로 200(멱등)이고 anyoneWithLink 삭제는 404를 성공으로 처리",
+  "request": {
+    "method": "POST",
+    "url": "/google/forms/restrict-responders/{form_id}",
+    "body": {
+      "emails": [
+        "<EMAIL>",
+        "not-an-email"
+      ]
+    }
+  },
+  "response_status": 200,
+  "response": [
+    {
+      "email": "<EMAIL>",
+      "ok": true,
+      "permission": {
+        "id": "18249801426757446426",
+        "type": "user",
+        "emailAddress": "<EMAIL>",
+        "role": "reader",
+        "view": "published",
+        "displayName": "<NAME>",
+        "pendingOwner": false
+      },
+      "error": null
+    },
+    {
+      "email": "not-an-email",
+      "ok": false,
+      "permission": null,
+      "error": "400 invalid: The specified emailAddress is invalid or not applicable for the given permission type."
+    },
+    {
+      "email": null,
+      "ok": true,
+      "permission": {
+        "removed": "anyoneWithLink"
+      },
+      "error": null
+    }
+  ],
+  "rerun_response": [
+    {
+      "email": "<EMAIL>",
+      "ok": true,
+      "permission": {
+        "id": "18249801426757446426",
+        "type": "user",
+        "emailAddress": "<EMAIL>",
+        "role": "reader",
+        "view": "published",
+        "displayName": "<NAME>",
+        "pendingOwner": false
+      },
+      "error": null
+    },
+    {
+      "email": null,
+      "ok": true,
+      "permission": {
+        "removed": null
+      },
+      "error": null
+    }
+  ],
+  "anonymous_probe": {
+    "before": "200",
+    "right_after": "200",
+    "after_10s_to_60s": "401"
+  },
+  "captured_at": "2026-10-06"
+}

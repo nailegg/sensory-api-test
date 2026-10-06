@@ -1,0 +1,94 @@
+{
+  "captured_at": "2026-10-06",
+  "scenario": "유즈케이스 9: 문항별 집계",
+  "note": "forms.get 1 + responses.list 1. 선택지·척도·격자는 counts(0 포함)와 평균, 단답·장문은 text_answers",
+  "request": {
+    "method": "GET",
+    "url": "/google/forms/summary/1E0zN4Sh09Ht6KV6iEKEMFFzcvYCP_iSHq83xKehj4jQ"
+  },
+  "response_status": 200,
+  "response": [
+    {
+      "id": "578d37b1",
+      "title": "학번",
+      "kind": "text",
+      "response_count": 1,
+      "counts": {},
+      "other_answers": [],
+      "average": null,
+      "text_answers": [
+        "<STUDENT_ID>"
+      ]
+    },
+    {
+      "id": "15e71ec8",
+      "title": "HTTP 상태 코드 404의 의미는?",
+      "kind": "choice_radio",
+      "response_count": 1,
+      "counts": {
+        "권한 없음": 0,
+        "찾을 수 없음": 1,
+        "서버 오류": 0
+      },
+      "other_answers": [],
+      "average": null,
+      "text_answers": []
+    },
+    {
+      "id": "69fdc30d",
+      "title": "REST의 R은?",
+      "kind": "text",
+      "response_count": 1,
+      "counts": {},
+      "other_answers": [],
+      "average": null,
+      "text_answers": [
+        "resources"
+      ]
+    },
+    {
+      "id": "5ea52623",
+      "title": "수업 만족도",
+      "kind": "scale",
+      "response_count": 1,
+      "counts": {
+        "1": 0,
+        "2": 0,
+        "3": 0,
+        "4": 0,
+        "5": 1
+      },
+      "other_answers": [],
+      "average": 5.0,
+      "text_answers": []
+    },
+    {
+      "id": "2e209323",
+      "title": "동료 평가 [학생 A]",
+      "kind": "grid_row",
+      "response_count": 1,
+      "counts": {
+        "1": 0,
+        "2": 1,
+        "3": 0
+      },
+      "other_answers": [],
+      "average": 2.0,
+      "text_answers": []
+    },
+    {
+      "id": "4dcd6321",
+      "title": "동료 평가 [학생 B]",
+      "kind": "grid_row",
+      "response_count": 1,
+      "counts": {
+        "1": 0,
+        "2": 1,
+        "3": 0
+      },
+      "other_answers": [],
+      "average": 2.0,
+      "text_answers": []
+    }
+  ]
+}

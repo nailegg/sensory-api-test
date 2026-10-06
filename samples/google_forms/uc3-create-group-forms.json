@@ -1,0 +1,327 @@
+{
+  "captured_at": "2026-10-06",
+  "scenario": "유즈케이스 3: 조별 동료평가 폼(방식 A)",
+  "note": "조마다 create_form(VERIFIED, 평가 항목마다 격자: 행=조원, 열=1~5, 게시) + restrict_responders. 소유자 본인을 응답자로 추가해도 200. Google 계정이 아닌 이메일은 400 invalidSharingRequest(그 사람만 실패, 나머지 계속). reviewees(격자 행 질문 ID → 이메일)는 11번 집계에 쓰므로 저장한다",
+  "request": {
+    "method": "POST",
+    "url": "/google/forms/create-group-forms",
+    "body": {
+      "folder_id": "1kHaiJLfnjolxixY3KI13RPadzvMRCqxv",
+      "activity_name": "팀 프로젝트 1차",
+      "criteria": [
+        "기여도",
+        "협업"
+      ],
+      "scale": [
+        "1",
+        "2",
+        "3",
+        "4",
+        "5"
+      ],
+      "description": "{{team_name}} 조원을 평가하세요. 자기 자신은 집계에서 빠집니다.",
+      "groups": [
+        {
+          "team_name": "A조",
+          "members": [
+            {
+              "name": "<NAME_1>",
+              "email": "<EMAIL>"
+            },
+            {
+              "name": "<NAME_2>",
+              "email": "<EMAIL>"
+            }
+          ]
+        },
+        {
+          "team_name": "B조",
+          "members": [
+            {
+              "name": "<NAME_2>",
+              "email": "<EMAIL>"
+            },
+            {
+              "name": "가상 학생",
+              "email": "student-b@example.com"
+            }
+          ]
+        }
+      ]
+    }
+  },
+  "response_status": 200,
+  "response": [
+    {
+      "team_name": "A조",
+      "form": {
+        "document": {
+          "id": "1tuMJSJb6X9fxzMuYmJBPwaXJKacQAaY5tYNJP_2ALMk",
+          "provider": "google",
+          "kind": "form",
+          "title": "팀 프로젝트 1차 동료평가 - A조",
+          "url": "https://docs.google.com/forms/d/1tuMJSJb6X9fxzMuYmJBPwaXJKacQAaY5tYNJP_2ALMk/edit?usp=drivesdk",
+          "mime_type": "application/vnd.google-apps.form",
+          "owner": "<OWNER_NAME>",
+          "created_at": "2026-10-05T17:45:29.502000Z",
+          "modified_at": "2026-10-05T17:45:31.494000Z",
+          "parent_folder_id": "1kHaiJLfnjolxixY3KI13RPadzvMRCqxv",
+          "trashed": false,
+          "locked": false,
+          "text": null
+        },
+        "responder_url": "https://docs.google.com/forms/d/e/1FAIpQLSdxmcJG7HbsvrsUu0p1U0IlXCgzV5MG8Vi0xcokAakqWQZSuA/viewform",
+        "published": true,
+        "accepting_responses": true,
+        "email_collection": "VERIFIED",
+        "is_quiz": false,
+        "linked_sheet_id": null,
+        "question_ids": {
+          "0928ee0a": "기여도 [상현]",
+          "3e5aa8c7": "기여도 [지인]",
+          "3f2e5524": "협업 [상현]",
+          "6abc8d0f": "협업 [지인]"
+        },
+        "revision_id": "00000004",
+        "questions": [
+          {
+            "id": "0928ee0a",
+            "title": "기여도 [상현]",
+            "kind": "grid_row",
+            "options": [
+              "1",
+              "2",
+              "3",
+              "4",
+              "5"
+            ],
+            "point_value": null,
+            "group_title": "기여도",
+            "row_title": "<NAME_1>"
+          },
+          {
+            "id": "3e5aa8c7",
+            "title": "기여도 [지인]",
+            "kind": "grid_row",
+            "options": [
+              "1",
+              "2",
+              "3",
+              "4",
+              "5"
+            ],
+            "point_value": null,
+            "group_title": "기여도",
+            "row_title": "<NAME_2>"
+          },
+          {
+            "id": "3f2e5524",
+            "title": "협업 [상현]",
+            "kind": "grid_row",
+            "options": [
+              "1",
+              "2",
+              "3",
+              "4",
+              "5"
+            ],
+            "point_value": null,
+            "group_title": "협업",
+            "row_title": "<NAME_1>"
+          },
+          {
+            "id": "6abc8d0f",
+            "title": "협업 [지인]",
+            "kind": "grid_row",
+            "options": [
+              "1",
+              "2",
+              "3",
+              "4",
+              "5"
+            ],
+            "point_value": null,
+            "group_title": "협업",
+            "row_title": "<NAME_2>"
+          }
+        ]
+      },
+      "responders": [
+        {
+          "email": "<EMAIL>",
+          "ok": true,
+          "permission": {
+            "id": "02252346710657344069",
+            "type": "user",
+            "emailAddress": "<EMAIL>",
+            "role": "owner",
+            "displayName": "<OWNER_NAME>",
+            "pendingOwner": false
+          },
+          "error": null
+        },
+        {
+          "email": "<EMAIL>",
+          "ok": true,
+          "permission": {
+            "id": "18249801426757446426",
+            "type": "user",
+            "emailAddress": "<EMAIL>",
+            "role": "reader",
+            "view": "published",
+            "displayName": "<NAME>",
+            "pendingOwner": false
+          },
+          "error": null
+        },
+        {
+          "email": null,
+          "ok": true,
+          "permission": {
+            "removed": "anyoneWithLink"
+          },
+          "error": null
+        }
+      ],
+      "reviewees": {
+        "0928ee0a": "<EMAIL>",
+        "3e5aa8c7": "<EMAIL>",
+        "3f2e5524": "<EMAIL>",
+        "6abc8d0f": "<EMAIL>"
+      },
+      "error": null
+    },
+    {
+      "team_name": "B조",
+      "form": {
+        "document": {
+          "id": "17DoicM_nLn7ylO6zb52aB_1Y7_E8p8LKOZFFo6dpudA",
+          "provider": "google",
+          "kind": "form",
+          "title": "팀 프로젝트 1차 동료평가 - B조",
+          "url": "https://docs.google.com/forms/d/17DoicM_nLn7ylO6zb52aB_1Y7_E8p8LKOZFFo6dpudA/edit?usp=drivesdk",
+          "mime_type": "application/vnd.google-apps.form",
+          "owner": "<OWNER_NAME>",
+          "created_at": "2026-10-05T17:45:41.544000Z",
+          "modified_at": "2026-10-05T17:45:42.784000Z",
+          "parent_folder_id": "1kHaiJLfnjolxixY3KI13RPadzvMRCqxv",
+          "trashed": false,
+          "locked": false,
+          "text": null
+        },
+        "responder_url": "https://docs.google.com/forms/d/e/1FAIpQLSdaDPt9UjZZeRe1-eGS-teI_pnTYsgrT39nMq1ZorIOOVOZ2A/viewform",
+        "published": true,
+        "accepting_responses": true,
+        "email_collection": "VERIFIED",
+        "is_quiz": false,
+        "linked_sheet_id": null,
+        "question_ids": {
+          "20286e80": "기여도 [지인]",
+          "08d37215": "기여도 [가상 학생]",
+          "1271b3a0": "협업 [지인]",
+          "1e5944d9": "협업 [가상 학생]"
+        },
+        "revision_id": "00000004",
+        "questions": [
+          {
+            "id": "20286e80",
+            "title": "기여도 [지인]",
+            "kind": "grid_row",
+            "options": [
+              "1",
+              "2",
+              "3",
+              "4",
+              "5"
+            ],
+            "point_value": null,
+            "group_title": "기여도",
+            "row_title": "<NAME_2>"
+          },
+          {
+            "id": "08d37215",
+            "title": "기여도 [가상 학생]",
+            "kind": "grid_row",
+            "options": [
+              "1",
+              "2",
+              "3",
+              "4",
+              "5"
+            ],
+            "point_value": null,
+            "group_title": "기여도",
+            "row_title": "가상 학생"
+          },
+          {
+            "id": "1271b3a0",
+            "title": "협업 [지인]",
+            "kind": "grid_row",
+            "options": [
+              "1",
+              "2",
+              "3",
+              "4",
+              "5"
+            ],
+            "point_value": null,
+            "group_title": "협업",
+            "row_title": "<NAME_2>"
+          },
+          {
+            "id": "1e5944d9",
+            "title": "협업 [가상 학생]",
+            "kind": "grid_row",
+            "options": [
+              "1",
+              "2",
+              "3",
+              "4",
+              "5"
+            ],
+            "point_value": null,
+            "group_title": "협업",
+            "row_title": "가상 학생"
+          }
+        ]
+      },
+      "responders": [
+        {
+          "email": "<EMAIL>",
+          "ok": true,
+          "permission": {
+            "id": "18249801426757446426",
+            "type": "user",
+            "emailAddress": "<EMAIL>",
+            "role": "reader",
+            "view": "published",
+            "displayName": "<NAME>",
+            "pendingOwner": false
+          },
+          "error": null
+        },
+        {
+          "email": "student-b@example.com",
+          "ok": false,
+          "permission": null,
+          "error": "400 invalidSharingRequest: Bad Request. User message: \"student-b@example.com님을 초대하려고 합니다. 이 이메일 계정에 연결된 Google 계정이 없기 때문에 이 수신자를 초대하려면 '이메일 알림 보내기'를 선택해야 합니다.\""
+        },
+        {
+          "email": null,
+          "ok": true,
+          "permission": {
+            "removed": "anyoneWithLink"
+          },
+          "error": null
+        }
+      ],
+      "reviewees": {
+        "20286e80": "<EMAIL>",
+        "08d37215": "student-b@example.com",
+        "1271b3a0": "<EMAIL>",
+        "1e5944d9": "student-b@example.com"
+      },
+      "error": null
+    }
+  ]
+}

@@ -1,0 +1,44 @@
+{
+  "captured_at": "2026-10-06",
+  "scenario": "유즈케이스 9: 응답 수집(FormSubmission) + 증분 조회 경계",
+  "note": "cursor는 가장 늦은 lastSubmittedTime 원문. filter 'timestamp >= X' 실측: X=cursor(마이크로초) 1건, X=createTime(밀리초) 1건, X=17:37:19Z 1건, X=17:37:20Z 0건 → 경계 포함. cursor를 그대로 다음 since로 넘기면 마지막 응답이 다시 오므로 id로 멱등 처리한다. createTime과 lastSubmittedTime 중 어느 쪽으로 거르는지는 수정 제출이 없어 미구분",
+  "request": {
+    "method": "GET",
+    "url": "/google/forms/responses/16OWHxB7DA4CJ0JlTH0TxLuJgpOgFlZh14Dm35Un0xos",
+    "query": {
+      "since": "(선택)"
+    }
+  },
+  "response_status": 200,
+  "response": {
+    "form_id": "16OWHxB7DA4CJ0JlTH0TxLuJgpOgFlZh14Dm35Un0xos",
+    "submissions": [
+      {
+        "id": "ACYDBNjJcCmSXaajc6HFZCehWXGhrPZwKgIeXT0YLlybdDOY8_YORwJ5Ycwo4WiEUjxJRac",
+        "form_id": "16OWHxB7DA4CJ0JlTH0TxLuJgpOgFlZh14Dm35Un0xos",
+        "provider": "google",
+        "respondent_email": "<EMAIL>",
+        "created_at": "2026-10-05T17:37:19.791000Z",
+        "submitted_at": "2026-10-05T17:37:19.791497Z",
+        "answers": {
+          "55cc6533": [
+            "기획"
+          ],
+          "042500b9": [
+            "다"
+          ]
+        },
+        "file_ids": {},
+        "total_score": null,
+        "grades": {}
+      }
+    ],
+    "cursor": "2026-10-05T17:37:19.791497Z"
+  },
+  "filter_boundary": {
+    "2026-10-05T17:37:19.791497Z": 1,
+    "2026-10-05T17:37:19.791Z": 1,
+    "2026-10-05T17:37:19Z": 1,
+    "2026-10-05T17:37:20Z": 0
+  }
+}

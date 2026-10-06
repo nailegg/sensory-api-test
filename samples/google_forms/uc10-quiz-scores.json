@@ -1,0 +1,31 @@
+{
+  "captured_at": "2026-10-06",
+  "scenario": "유즈케이스 10: 퀴즈 점수",
+  "note": "forms.get(배점 합 max_score) + responses.list 필터 없이 전체. 틀린 문항은 score 0, correct false로 채워진다",
+  "request": {
+    "method": "GET",
+    "url": "/google/forms/quiz-scores/1E0zN4Sh09Ht6KV6iEKEMFFzcvYCP_iSHq83xKehj4jQ"
+  },
+  "response_status": 200,
+  "response": [
+    {
+      "response_id": "ACYDBNglO5OEbnUIuaFSNd8FNXQzlDlq6jVf1gj0T8GO-t6h5nCYxm1JT1aaKjBoWEgXEp4",
+      "respondent_email": "<EMAIL>",
+      "submitted_at": "2026-10-05T17:38:44.478332+00:00",
+      "total_score": 2.0,
+      "max_score": 3.0,
+      "grades": {
+        "15e71ec8": {
+          "score": 2.0,
+          "correct": true,
+          "max_score": 2.0
+        },
+        "69fdc30d": {
+          "score": 0.0,
+          "correct": false,
+          "max_score": 1.0
+        }
+      }
+    }
+  ]
+}
