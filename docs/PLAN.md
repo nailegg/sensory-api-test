@@ -70,6 +70,7 @@ Google 앱 검증과 Zoom 앱 리뷰는 개발 중에는 필요 없다. 서비�
 
 - [x] 상대 레포 스택 확인 — 2026-10-08. synsory-studio는 Node 24 · pnpm · TypeScript(Fastify, React, Supabase, Drizzle, pg-boss, Zod). 이 레포는 Python 유지, 7단계 산출물을 TS 이식 가이드로 바꿈(상현 결정)
 - [x] `docs/STUDIO_PORTING.md` 공통 이식 가이드 초안 — 2026-10-08. 배치안·port·오류 변환·연결 흐름·도구 매핑·큐. 결정 필요 항목은 10절 (studio 담당자 확인 전)
+- [x] `studio-port/` 골격 — 2026-10-09. studio `255dde3` 설정 복사(tsconfig·eslint·prettier·경계 검사·버전 고정), Node 24.21.0(nvm) + pnpm 10.34.6. `pnpm verify` 통과, 경계·strict·`any` 위반이 잡히는 것 확인. 다음: 공통 fetch 래퍼·외부 오류 분류 → Drive 어댑터 → Forms
 - [ ] studio 쪽과 합의: ① 외부 도구 범위 열기(studio `TODO.md` 1절·`AGENTS.md`가 도구 등록과 추가 scope를 막고 있음, `activity_type_allowed` 허용 목록 비어 있음) ② 연결 토큰 테이블 위치(studio는 제품 테이블을 `studio` 스키마 8개로 고정, 후보는 비공개 `studio_auth`) ③ GCP 프로젝트·OAuth 동의 화면과 Zoom 앱을 studio 로그인용과 공유할지, Zoom https 리다이렉트를 studio 로컬(`localhost:5173`)에서 받는 방법
 - [x] `synsory-api` FastAPI 골격 생성 (`core/`, `services/`, `samples/`, `docs/`, `.env.example`, `.gitignore`, git init) — 2026-10-02. uv + Python 3.12. `core/oauth.py`(login/callback/status/refresh/scopes), `token_store.py`, Drive·Docs client/mapper/usecases/router 배관, pytest 13개
 - [x] GCP 프로젝트 + OAuth 동의 화면(테스트 상태) + 개인 계정 테스트 사용자 등록 — 2026-10-02. 웹 애플리케이션 클라이언트, Drive·Docs API 활성화

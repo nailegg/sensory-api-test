@@ -1,0 +1,36 @@
+{
+  "name": "synsory-studio-port",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "packageManager": "pnpm@10.34.6",
+  "engines": {
+    "node": "24.21.x",
+    "pnpm": "10.x"
+  },
+  "scripts": {
+    "typecheck": "tsc --noEmit",
+    "lint": "eslint packages scripts tests",
+    "check:boundaries": "tsx scripts/check-boundaries.ts",
+    "test": "vitest run --config vitest.config.ts",
+    "verify": "pnpm typecheck && pnpm lint && pnpm check:boundaries && pnpm test",
+    "format": "prettier --write \"{packages,scripts,tests}/**/*.ts\" \"*.{ts,js,json,yaml}\""
+  },
+  "dependencies": {
+    "zod": "4.6.5"
+  },
+  "devDependencies": {
+    "@types/node": "24.19.1",
+    "eslint": "10.11.0",
+    "prettier": "3.9.9",
+    "tsx": "4.23.15",
+    "typescript": "6.0.3",
+    "typescript-eslint": "8.71.0",
+    "vitest": "5.0.3"
+  },
+  "pnpm": {
+    "onlyBuiltDependencies": [
+      "esbuild"
+    ]
+  }
+}

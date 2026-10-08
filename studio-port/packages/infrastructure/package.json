@@ -1,0 +1,6 @@
+{
+  "name": "@studio/infrastructure",
+  "private": true,
+  "type": "module",
+  "exports": "./src/index.ts"
+}

@@ -39,6 +39,7 @@ docs/
   STUDIO_PORTING.md       # synsory-studio 이식 공통 가이드 (OAuth 연결, 토큰 저장, port, 큐)
   <service>.md            # 서비스별 연동 스펙 문서 (아래 목차)
 tests/<service>/          # pytest. 주 대상은 usecases.py와 mapper.py
+studio-port/              # studio와 같은 설정의 TS 작업 폴더. 이식 코드를 미리 작성·검증 (studio-port/README.md)
 .env                      # 시크릿. 커밋 금지
 .env.example              # 키 이름만
 .gitignore                # .env, samples/**/raw/, __pycache__, .venv
