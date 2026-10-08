@@ -39,4 +39,21 @@ tests/
   fixtures/        # synsory-api samples/*.json 사본, 가짜 port
 ```
 
+`packages/domain/src/studio-stand-ins.ts`는 studio에 이미 있는 것(`AppError`)의 사본이다. 타입 검사용이고 이식할 때 복사하지 않는다. `scripts/live-*.ts`(실측)도 이식하지 않는다.
+
 파일은 studio 관례대로 `src/` 아래 평평하게 두고 `index.ts`에서 `export *`로 내보낸다. import는 상대 경로 + `.ts` 확장자.
+
+## 실측
+
+`scripts/live-<service>.ts`는 실제 Google·Zoom을 호출해 어댑터를 확인한다. 만든 파일은 끝에 휴지통으로 보낸다. 토큰은 synsory-api 토큰 저장소(`../.tokens/tokens.json`, 필요하면 refresh)에서 받아 환경 변수로만 넘기고 출력하지 않는다. 먼저 synsory-api 서버로 Google 로그인이 되어 있어야 한다(`../CLAUDE.md` 실행).
+
+```
+cd ..   # synsory-api
+TOKEN=$(uv run python -c 'import asyncio; from app.core.config import get_settings; from app.core.oauth import get_valid_token; from app.core.token_store import TokenStore; s=get_settings(); print(asyncio.run(get_valid_token("google", TokenStore(s.token_store_path), s)).access_token)')
+cd studio-port
+GOOGLE_ACCESS_TOKEN="$TOKEN" DRIVE_USER_FOLDER_ID=<앱이 못 보는 사용자 폴더 ID> DRIVE_SHARE_EMAIL=<공유 테스트 계정> pnpm exec tsx scripts/live-google-drive.ts
+```
+
+| 실측 | 날짜 | 결과 |
+| --- | --- | --- |
+| `live-google-drive.ts` | 2026-10-09 | 16/16 통과. Markdown 내보내기의 `_` 이스케이프를 새로 확인(`../docs/google_drive.md` 10절). CSV 변환 업로드의 학번 앞자리 0 소실은 Python 실측과 같음(`../docs/google_sheets.md` 10절 12항) |

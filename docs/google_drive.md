@@ -237,6 +237,11 @@ Docs·Sheets·Slides 변경 감지는 모두 여기서 한다. 테스트는 이 
 - 응답의 `restrictingUser`에 이메일·사진 URL이 들어 있어 샘플 저장 시 마스킹한다. `DOCUMENT_META_FIELDS`에는 `contentRestrictions(readOnly,reason,restrictionTime)`만 요청해 이를 피한다.
 - 잠긴 파일에 Docs `batchUpdate`는 소유자 토큰으로도 403. `files.export`는 된다. **이 때문에 마감 처리에는 쓰지 않는다**(2026-10-03 결정). 마감 처리는 `permissions.update`로 하고 순서는 **권한 낮추기 → 내보내기**.
 
+**Markdown 내보내기 `files.export(text/markdown)` (2026-10-09 실측, studio-port TS 어댑터)**
+
+- Markdown 변환 업로드로 만든 문서를 다시 `md`로 내보내면 제목·굵게·목록은 유지되지만 **`_`가 `\_`로 이스케이프된다**: `{{team_name}}` → `{{team\_name}}`. 줄바꿈 일부는 끝에 공백 두 칸이 붙는다.
+- 내보낸 Markdown에서 태그나 원문 문자열을 찾는 로직을 만들지 않는다. 본문 확인은 Docs `documents.get` 평문(`docs/google_docs.md`)으로 한다.
+
 **공유 `permissions` (2026-10-03 실측)**
 
 - `permissions.create` `type=user, role=writer`는 `drive.file`로 앱이 만든 파일에 동작한다. 소유자는 `role=owner` 권한 건으로 따로 있어 편집자만 골라 바꿀 수 있다.
@@ -275,6 +280,40 @@ except DriveApiError as e:
 ```
 
 `DriveApiError.is_rate_limit`은 429와 403 `rateLimitExceeded`·`userRateLimitExceeded`를 묶는다. 403을 "권한 없음"으로 바로 처리하지 않는 이유다.
+
+### 11.1 studio 이식
+
+공통 배치·형식은 `docs/STUDIO_PORTING.md`. TS 이식본은 `studio-port/`에 있고 `pnpm verify` 통과, 실측 16개 항목 통과(2026-10-09). port에는 실측된 흐름(`usecases.py`)이 쓰는 호출만 옮겼다.
+
+1. **파일 대응**
+
+   | synsory-api | studio |
+   | --- | --- |
+   | `google_drive/client.py` `DriveClient` + `mapper.py` | `packages/infrastructure/src/google-drive.ts` `createGoogleDrive(accessToken)` → `GoogleDrivePort`, `documentFromDriveFile`, `kindFromMime`, `EXPORT_MIME` |
+   | `DriveApiError` | `packages/infrastructure/src/external-http.ts` `ExternalApiError`(`status`·`reason`·`apiStatus`·`rateLimited`). 응답 모양 불일치는 `ExternalResponseError` |
+   | `core/models.py` `Document` | `packages/domain/src/integrations.ts` `externalDocument`(Zod). 시각은 ISO 문자열 |
+   | `google_drive/usecases.py` (그룹 파일·마감·복원·내보내기) | `packages/application/src/google-files.ts` (다음 작업) |
+   | `client.set_read_only` | 이식하지 않음. 마감은 권한 낮추기로 정했다(10절 편집 잠금) |
+   | `client.rename_file` · `delete_file` · `create_empty_native_file` · `get_start_page_token` · `list_changes` | 이식하지 않음. 어떤 흐름도 쓰지 않는다(`create_empty_native_file`은 Forms 실험용). 필요해지면 Python client를 보고 추가 |
+
+2. **port 메서드** (`packages/application/src/integration-ports.ts` `GoogleDrivePort`)
+
+   | 메서드 | Drive 호출 | Python 대응 |
+   | --- | --- | --- |
+   | `getFile(id)` | `files.get` | `get_file` |
+   | `createFolder(name, parent?)` | `files.create` | `create_folder` |
+   | `createFromContent({ name, content, source, target, parentFolderId? })` | `files.create` multipart 업로드(5MB 이하) | `create_from_content`. MIME 대신 `source` = `'markdown' \| 'pptx' \| 'xlsx' \| 'csv'`, `target` = `'doc' \| 'slides' \| 'sheet'` |
+   | `copyFile(id, name, parent?)` · `moveFile(id, toFolderId)` | `files.copy` · `files.update` `addParents` | 같은 이름. `removeParents`는 쓰는 흐름이 없어 뺐다(단일 부모라 `addParents`만으로 옮겨진다, 2026-10-09 실측) |
+   | `listFiles(pageSize?)` | `files.list` `q=trashed = false` | usecase `list_app_files` |
+   | `exportFile(id, format)` | `files.get` + `files.export` | usecase `export_file`. 파일 종류별 형식표를 어댑터가 고르고, 안 되는 형식은 `AppError UNSUPPORTED_EXPORT_FORMAT` |
+   | `trashFile` | `files.update` | 같은 이름 |
+   | `shareWithUser(id, email, role, { notify, message })` | `permissions.create` | `share_with_user`. `expiration_time`은 개인 계정에서 403이고 쓰는 흐름이 없어 뺐다 |
+   | `shareAsResponder(id, email \| null)` | `permissions.create` `view=published` | `share_as_responder`. 알림은 항상 보내지 않는다 |
+   | `listPermissions(id, { includePublishedView })` · `updatePermissionRole` · `deletePermission` | `permissions.*` | 같은 이름 |
+
+3. **도구 매핑**: Drive 단독 도구는 없다. 그룹 파일 도구(Docs·Slides·Sheets)의 `external_refs` 항목이 `ExternalDocument` + `team_id`다(`STUDIO_PORTING.md` 7절).
+4. **큐 작업**: 없음.
+5. **테스트**: `tests/google_drive/test_mapper.py` 5개 → `studio-port/tests/unit/google-drive.test.ts` 첫 묶음. 요청 모양 9개·외부 오류 분류 6개를 추가했다. 가짜 HTTP는 `tests/fixtures/http.ts` `recordingFetch`. `test_usecases.py` 3개는 `google-files.ts`와 함께 옮긴다. 실측 스크립트 `studio-port/scripts/live-google-drive.ts`는 이식하지 않는다.
 
 ## 12. 미확인 · 보류 항목
 
