@@ -23,7 +23,9 @@ import type {
   FormStructure,
   GoogleDrivePort,
   GoogleFormsPort,
+  GoogleSheetsPort,
 } from './integration-ports.ts';
+import { mapConcurrently } from './concurrency.ts';
 
 // Google Forms 흐름(유즈케이스 1~12). synsory-api app/services/google_forms/usecases.py의 이식본.
 // 결과의 원본은 Synsory DB다. 수집·집계는 Synsory로 가져오는 데까지다.
@@ -34,14 +36,16 @@ export type FormInfo = Omit<FormStructure, 'title'> & {
   document: ExternalDocument;
 };
 
+// forms.get + Drive 메타데이터. 폴더 이동·복사 응답처럼 Drive 메타데이터를 이미 받았으면 넘겨서 다시 읽지 않는다.
 export async function readForm(
   forms: GoogleFormsPort,
   drive: GoogleDrivePort,
   formId: string,
+  knownDocument?: ExternalDocument,
 ): Promise<FormInfo> {
   const [{ title, ...structure }, document] = await Promise.all([
     forms.get(formId),
-    drive.getFile(formId),
+    knownDocument ?? drive.getFile(formId),
   ]);
   return { ...structure, document: { ...document, title: title || document.title } };
 }
@@ -76,20 +80,19 @@ export async function createForm(
     throw e;
   }
   if (input.publish ?? true) await forms.setPublishState(formId, true, true);
-  if (input.folderId) await drive.moveFile(formId, input.folderId);
-  return readForm(forms, drive, formId);
+  const moved = input.folderId ? await drive.moveFile(formId, input.folderId) : undefined;
+  return readForm(forms, drive, formId, moved);
 }
 
 // 유즈케이스 8. 미리 만든(publish=false) 폼을 수업 시각에 연다. 마감 연장(7)도 같다. 폼 단위라 학생별 연장은 안 된다.
-export async function openForm(forms: GoogleFormsPort, drive: GoogleDrivePort, formId: string) {
+// 스케줄러가 부르는 작업이라 결과를 다시 읽지 않는다(필요하면 readForm).
+export async function openForm(forms: GoogleFormsPort, formId: string): Promise<void> {
   await forms.setPublishState(formId, true, true);
-  return readForm(forms, drive, formId);
 }
 
 // 유즈케이스 7·8. 마감. 게시는 유지하고 응답 받기만 끈다. 다시 실행해도 안전하다.
-export async function closeForm(forms: GoogleFormsPort, drive: GoogleDrivePort, formId: string) {
+export async function closeForm(forms: GoogleFormsPort, formId: string): Promise<void> {
   await forms.setPublishState(formId, true, false);
-  return readForm(forms, drive, formId);
 }
 
 // 폼을 만들 때 자동으로 붙는 "링크가 있는 모든 사용자" 응답자 권한의 고정 id.
@@ -106,6 +109,7 @@ export interface ResponderResult {
 // 유즈케이스 5. 학생마다 응답자 권한(view=published) → "링크가 있는 모든 사용자" 권한 삭제.
 // 링크 권한이 남아 있으면 학생을 추가해도 누구나 응답할 수 있다(2026-10-06 실측).
 // 한 명도 추가하지 못했으면 지우지 않는다(아무도 응답 못 하는 폼 방지). 이메일 단위로 실패해도 계속한다.
+// 학생 권한은 배치 요청 하나, 링크 권한 삭제는 그 뒤에(같은 파일이라 동시에 하지 않는다).
 export async function restrictResponders(
   drive: GoogleDrivePort,
   formId: string,
@@ -113,14 +117,11 @@ export async function restrictResponders(
   removeLinkAccess = true,
 ): Promise<ResponderResult[]> {
   const results: ResponderResult[] = [];
-  for (const email of emails) {
-    try {
-      const p = await drive.shareAsResponder(formId, email);
-      results.push({ email, permission_id: p.id, error: null });
-    } catch (e) {
-      if (!(e instanceof AppError)) throw e;
-      results.push({ email, permission_id: null, error: e });
-    }
+  try {
+    results.push(...(await drive.shareAsResponders(formId, emails)));
+  } catch (e) {
+    if (!(e instanceof AppError)) throw e;
+    results.push(...emails.map((email) => ({ email, permission_id: null, error: e })));
   }
   if (removeLinkAccess && results.some((r) => r.error === null)) {
     try {
@@ -152,7 +153,8 @@ export interface GroupFormResult {
   error: AppError | null;
 }
 
-// 조마다 동료평가 폼: createForm(VERIFIED, 게시) → restrictResponders(조원만). 그룹 단위로 실패해도 계속한다.
+// 조마다 동료평가 폼: createForm(VERIFIED, 게시) → restrictResponders(조원만). 조끼리는 동시에 만들고,
+// 조 단위로 실패해도 계속한다.
 // 게시와 제한 사이 몇 초 동안 링크가 열려 있으므로 링크는 이 함수가 끝난 뒤에 학생에게 보낸다.
 export async function createGroupForms(
   forms: GoogleFormsPort,
@@ -170,8 +172,7 @@ export async function createGroupForms(
 ): Promise<GroupFormResult[]> {
   const scale = input.scale ?? ['1', '2', '3', '4', '5'];
   const titleTemplate = input.titleTemplate ?? '{{activity_name}} 동료평가 - {{team_name}}';
-  const results: GroupFormResult[] = [];
-  for (const g of input.groups) {
+  return mapConcurrently(input.groups, async (g) => {
     const variables = { activity_name: input.activityName, team_name: g.team_name };
     const result: GroupFormResult = {
       team_name: g.team_name,
@@ -207,9 +208,8 @@ export async function createGroupForms(
       if (!(e instanceof AppError)) throw e;
       result.error = e;
     }
-    results.push(result);
-  }
-  return results;
+    return result;
+  });
 }
 
 // ---------- 유즈케이스 9~12: 수집·집계·내보내기 ----------
@@ -322,6 +322,67 @@ export async function exportResponsesCsv(
   };
 }
 
+export interface SheetExportResult {
+  spreadsheet_id: string;
+  sheet_title: string;
+  // 헤더 제외
+  rows_written: number;
+  // 다음 내보내기에 previousColumns로 넘긴다.
+  columns: number;
+  // 이번에 새로 만들었으면 spreadsheet_id를 폼과 함께 저장한다.
+  created: boolean;
+}
+
+// 유즈케이스 13. 응답을 교수자 Drive의 스프레드시트로(한 방향 사본, 동기화 아님). RAW로 써서 학번은 지키지만
+// 점수·척도도 문자열이 된다.
+// 처음: 시트 "응답"으로 만들기 → 폴더 이동 → 쓰기. 다시: 첫 시트에서 Synsory가 쓴 열만 지우고 → 쓰기.
+// 지울 너비는 max(이번 열 수, previousColumns). 1행 너비로 추정하지 않는 이유: 교수자가 오른쪽에 덧붙인 메모 열까지 지운다.
+export async function exportResponsesToSheet(
+  forms: GoogleFormsPort,
+  drive: GoogleDrivePort,
+  sheets: GoogleSheetsPort,
+  formId: string,
+  input: {
+    spreadsheetId?: string;
+    folderId?: string;
+    title?: string;
+    previousColumns?: number;
+    timeZone?: string;
+  } = {},
+): Promise<SheetExportResult> {
+  const [structure, collected] = await Promise.all([
+    forms.get(formId),
+    collectResponses(forms, formId),
+  ]);
+  const table = responseTable(structure.questions, collected.submissions, input.timeZone);
+  const width = table[0]?.length ?? 0;
+  let spreadsheetId = input.spreadsheetId;
+  let sheetTitle = '응답';
+  if (spreadsheetId === undefined) {
+    spreadsheetId = await sheets.create(input.title ?? `${structure.title || formId} 응답`, [
+      sheetTitle,
+    ]);
+    if (input.folderId) await drive.moveFile(spreadsheetId, input.folderId);
+  } else {
+    const [first] = await sheets.listSheets(spreadsheetId);
+    if (!first) throw new AppError('SHEET_NOT_FOUND', 404, '시트를 찾을 수 없습니다.');
+    sheetTitle = first.title;
+    await sheets.clearColumns(
+      spreadsheetId,
+      sheetTitle,
+      Math.max(width, input.previousColumns ?? 0),
+    );
+  }
+  await sheets.writeValues(spreadsheetId, sheetTitle, 'A1', table);
+  return {
+    spreadsheet_id: spreadsheetId,
+    sheet_title: sheetTitle,
+    rows_written: table.length - 1,
+    columns: width,
+    created: input.spreadsheetId === undefined,
+  };
+}
+
 // ---------- 유즈케이스 4: 기존 폼을 템플릿으로 ----------
 
 // Drive 복사 → (title이면) 제목 변경 → 게시 → (responderEmails면) 응답자 제한. 원본은 수정하지 않는다.
@@ -339,11 +400,12 @@ export async function createFormFromTemplate(
     publish?: boolean;
   },
 ): Promise<{ form: FormInfo; responders: ResponderResult[] }> {
-  const { id } = await drive.copyFile(input.templateFormId, input.name, input.folderId);
+  const copied = await drive.copyFile(input.templateFormId, input.name, input.folderId);
+  const id = copied.id;
   if (input.title) await forms.update(id, { title: input.title });
   if (input.publish ?? true) await forms.setPublishState(id, true, true);
   const responders = input.responderEmails?.length
     ? await restrictResponders(drive, id, input.responderEmails)
     : [];
-  return { form: await readForm(forms, drive, id), responders };
+  return { form: await readForm(forms, drive, id, copied), responders };
 }

@@ -1,4 +1,5 @@
 import type {
+  AppError,
   ExternalDocument,
   FormSubmission,
   Meeting,
@@ -10,6 +11,13 @@ import type {
 // synsory-api에서 실측된 흐름(usecases.py)이 쓰는 호출만 둔다.
 
 export type DriveRole = 'reader' | 'commenter' | 'writer';
+
+// 사람 한 명분 권한 부여 결과. 실패한 사람만 error가 있다.
+export interface PermissionResult {
+  email: string;
+  permission_id: string | null;
+  error: AppError | null;
+}
 
 export interface DrivePermission {
   id: string;
@@ -59,14 +67,17 @@ export interface GoogleDrivePort {
   // 파일 종류에 맞는 형식표로 내보낸다. 파일 이름은 Drive 이름 + 확장자. 10MB 상한.
   exportFile(fileId: string, format: ExportFormat): Promise<ExportedFile>;
   trashFile(fileId: string): Promise<void>;
-  shareWithUser(
+  // 여러 명에게 편집·보기 권한. 같은 파일의 권한 변경은 동시에 하면 안 되므로(마지막 쓰기만 남음)
+  // Drive 배치 요청 한 번에 담는다(공식 권장: 순차 또는 배치). 사람별로 성공·실패를 돌려준다.
+  // 같은 이메일을 다시 공유하면 기존 permission이 온다(재시도 안전).
+  shareWithUsers(
     fileId: string,
-    email: string,
+    emails: string[],
     role: DriveRole,
     options?: { notify?: boolean; message?: string },
-  ): Promise<DrivePermission>;
-  // Forms 응답자 권한(view=published). email이 null이면 "링크가 있는 모든 사용자". 알림은 보내지 않는다.
-  shareAsResponder(fileId: string, email: string | null): Promise<DrivePermission>;
+  ): Promise<PermissionResult[]>;
+  // Forms 응답자 권한(view=published). 알림은 보내지 않는다. 배치 요청 하나.
+  shareAsResponders(fileId: string, emails: string[]): Promise<PermissionResult[]>;
   // includePublishedView면 Forms 응답자 권한도 함께 온다.
   listPermissions(
     fileId: string,
@@ -174,4 +185,70 @@ export interface ZoomPort {
   deleteMeeting(meetingId: string, occurrenceId: string | null): Promise<void>;
   // 호스트 시작 링크. 2시간 만료 + 받은 사람은 누구나 호스트라 저장·로그 금지. 누를 때마다 새로 받는다.
   getStartUrl(meetingId: string): Promise<string>;
+}
+
+// 태그 치환: {{key}} → 값, 태그별 치환 횟수(0이면 템플릿에 그 태그가 없거나 서식이 갈라진 것).
+// google-files.ts의 ReplaceTags와 같은 모양이라 createGroupFilesFromTemplate에 그대로 넘긴다.
+export type TagCounts = Record<string, number>;
+
+// Google Docs. 앱이 만든 문서와 Picker로 고른 문서에 drive.file로 동작한다.
+export interface GoogleDocsPort {
+  replaceTags(documentId: string, variables: Record<string, string>): Promise<TagCounts>;
+}
+
+// Google Slides. 텍스트를 바꾸면 도형의 autofit이 꺼져 긴 값이 넘친다.
+export interface GoogleSlidesPort {
+  replaceTags(presentationId: string, variables: Record<string, string>): Promise<TagCounts>;
+}
+
+export interface SheetInfo {
+  // 불변. URL의 gid. 이름은 사용자가 바꿀 수 있어 저장 식별자는 이 값이다.
+  // 변환 업로드·복사된 파일은 0이 아닐 수 있다(2026-10-04 실측).
+  sheet_id: number;
+  title: string;
+  index: number;
+  hidden: boolean;
+}
+
+export interface SheetValues {
+  sheet_id: number;
+  sheet_title: string;
+  // 실제 응답 범위(A1). 뒤쪽 빈 행·열은 잘려 있다.
+  range: string;
+  // UNFORMATTED_VALUE: 숫자는 숫자, 날짜는 1899-12-30 기준 일련번호. 행 끝 빈 칸은 빠진다.
+  values: unknown[][];
+}
+
+// Google Sheets. 읽기·쓰기 모두 사용자당 분당 60회(요청 수 기준)라 모아서 보낸다.
+// 값은 A1 표기(values.*), 구조·보호·치환은 batchUpdate(GridRange)로 다른 API다.
+export interface GoogleSheetsPort {
+  // findReplace(allSheets, 수식 안 태그 포함).
+  replaceTags(spreadsheetId: string, variables: Record<string, string>): Promise<TagCounts>;
+  // 빈 스프레드시트(locale ko_KR, Asia/Seoul). 폴더는 못 정해서 Drive moveFile로 옮긴다.
+  create(title: string, sheetTitles?: string[]): Promise<string>;
+  // index 순.
+  listSheets(spreadsheetId: string): Promise<SheetInfo[]>;
+  // 시트 하나의 값. sheetId(불변)로 고르면 현재 이름을 찾아 읽는다. 없으면 첫 시트.
+  readValues(
+    spreadsheetId: string,
+    options?: { sheetId?: number; cellRange?: string },
+  ): Promise<SheetValues>;
+  // RAW로 덮어쓴다(학번 "0123" 유지, 수식도 문자열). USER_ENTERED는 앞자리 0을 잃는다.
+  writeValues(
+    spreadsheetId: string,
+    sheetTitle: string,
+    cellRange: string,
+    values: string[][],
+  ): Promise<void>;
+  // A열부터 columns개 열의 값만 지운다(서식·검증은 남는다). 그 오른쪽 열은 건드리지 않는다.
+  clearColumns(spreadsheetId: string, sheetTitle: string, columns: number): Promise<void>;
+  // 마감 선택지: 파일은 열어 두고 학생 입력 범위만 보호. editors를 항상 명시한다(생략하면 학생 writer도
+  // 편집 가능으로 들어가 보호가 무의미, 2026-10-04 실측). 보호는 소유자 토큰의 API 쓰기를 막지 않는다.
+  lockRanges(
+    spreadsheetId: string,
+    sheetId: number,
+    cellRanges: string[],
+    options?: { description?: string; editorEmails?: string[] },
+  ): Promise<number[]>;
+  unlockRanges(spreadsheetId: string, protectedRangeIds: number[]): Promise<void>;
 }

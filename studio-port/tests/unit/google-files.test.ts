@@ -40,10 +40,17 @@ describe('createGroupFilesFromTemplate (google_drive test_usecases.py)', () => {
         copied.push({ source: fileId, name, parent });
         return doc(`copy-${copied.length}`, name);
       },
-      async shareWithUser(fileId, email, role) {
-        if (email === failEmail) throw new AppError('EXTERNAL_FAILED', 502, '공유하지 못했습니다.');
-        shared.push([fileId, email, role]);
-        return perm(`perm-${email}`, role, email);
+      async shareWithUsers(fileId, emails, role) {
+        return emails.map((email) => {
+          if (email === failEmail)
+            return {
+              email,
+              permission_id: null,
+              error: new AppError('EXTERNAL_FAILED', 502, '공유하지 못했습니다.'),
+            };
+          shared.push([fileId, email, role]);
+          return { email, permission_id: `perm-${email}`, error: null };
+        });
       },
     });
     return { port, copied, shared };

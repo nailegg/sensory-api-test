@@ -126,12 +126,22 @@ try {
   );
 
   if (shareEmail) {
-    const p = await drive.shareWithUser(doc.id, shareEmail, 'writer');
-    const lowered = await drive.updatePermissionRole(doc.id, p.id, 'commenter');
-    check('shareWithUser writer → commenter', p.role === 'writer' && lowered.role === 'commenter');
-    await drive.deletePermission(doc.id, p.id);
+    // 배치 요청 하나에 실제 계정 + Google 계정이 아닌 주소. 사람별 결과가 따로 온다.
+    const [ok, bad] = await drive.shareWithUsers(
+      doc.id,
+      [shareEmail, 'nobody@synsory.invalid'],
+      'writer',
+    );
+    const id = ok?.permission_id ?? '';
+    const lowered = await drive.updatePermissionRole(doc.id, id, 'commenter');
+    check(
+      'shareWithUsers (batch): per-person results, then writer → commenter',
+      !!id && bad?.error?.code === 'EXTERNAL_FAILED' && lowered.role === 'commenter',
+      `second: ${bad?.error?.code} ${JSON.stringify(bad?.error?.details)}`,
+    );
+    await drive.deletePermission(doc.id, id);
     const after = await drive.listPermissions(doc.id);
-    check('deletePermission', !after.some((x) => x.id === p.id));
+    check('deletePermission', !after.some((x) => x.id === id));
   }
 
   const files = await drive.listFiles(5);

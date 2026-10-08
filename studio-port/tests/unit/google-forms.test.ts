@@ -255,18 +255,17 @@ function formsAndDrive(
       calls.push(['copy', id, name, parent]);
       return documentFromDriveFile({ id: 'c1' });
     },
-    async shareAsResponder(id, email) {
-      if (email && opts.failEmails?.includes(email))
-        throw new AppError('EXTERNAL_FAILED', 502, 'invalidSharingRequest');
-      calls.push(['share', id, email]);
-      return {
-        id: `perm-${email}`,
-        type: 'user',
-        role: 'reader',
-        email,
-        display_name: null,
-        view: 'published',
-      };
+    async shareAsResponders(id, emails) {
+      return emails.map((email) => {
+        if (opts.failEmails?.includes(email))
+          return {
+            email,
+            permission_id: null,
+            error: new AppError('EXTERNAL_FAILED', 502, 'invalidSharingRequest'),
+          };
+        calls.push(['share', id, email]);
+        return { email, permission_id: `perm-${email}`, error: null };
+      });
     },
     async deletePermission(id, permissionId) {
       if (opts.deleteError) throw opts.deleteError;

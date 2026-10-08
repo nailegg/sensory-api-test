@@ -9,6 +9,7 @@ import {
   exportResponsesCsv,
   getSubmissionStatus,
   openForm,
+  readForm,
   restrictResponders,
 } from '../packages/application/src/index.ts';
 import { createGoogleDrive, createGoogleForms } from '../packages/infrastructure/src/index.ts';
@@ -82,8 +83,10 @@ try {
     `options=${scale?.options.join()}`,
   );
 
-  const closed = await closeForm(forms, drive, quiz.document.id);
-  const reopened = await openForm(forms, drive, quiz.document.id);
+  await closeForm(forms, quiz.document.id);
+  const closed = await readForm(forms, drive, quiz.document.id);
+  await openForm(forms, quiz.document.id);
+  const reopened = await readForm(forms, drive, quiz.document.id);
   check(
     'closeForm keeps published, stops responses; openForm resumes',
     closed.published === true &&

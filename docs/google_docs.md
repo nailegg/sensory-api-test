@@ -292,6 +292,27 @@ doc = await docs_uc.read_document(docs, drive, document_id)
 
 에러는 `DriveApiError`(`status`, `reason`, `message`, `is_rate_limit`)와 `DocsApiError`(`status`, `status_text`, `message`, `is_rate_limit`)로 올라온다. `is_rate_limit`이면 지수 백오프로 재시도하고, 그 외 4xx는 7절 표로 분기한다. 토큰 만료(401)는 client가 처리하지 않으므로 호출 전에 갱신한다.
 
+### 11.1 studio 이식
+
+공통 배치·형식은 `docs/STUDIO_PORTING.md`, Drive 쪽(공유·마감·내보내기·그룹 파일 흐름)은 `docs/google_drive.md` 11.1절. 실측은 `studio-port/scripts/live-google-editors.ts` 9개 항목 통과(2026-10-09).
+
+1. **파일 대응**
+
+   | synsory-api | studio |
+   | --- | --- |
+   | `google_docs/client.py` `batch_update` + usecases `replace_tag_requests` · `replace_tags` | `packages/infrastructure/src/google-docs.ts` `createGoogleDocs(accessToken)` → `GoogleDocsPort.replaceTags`. 요청·횟수 해석은 Slides·Sheets와 공통인 `google-tags.ts` |
+   | usecases `create_group_documents` Google Doc 템플릿 경로 | `createGroupFilesFromTemplate(drive, { ..., replaceTags: docs.replaceTags })`. Docs 전용 함수를 두지 않는다 |
+   | usecases `create_group_documents` Markdown 경로(`method="markdown"`) | `packages/application/src/google-files.ts` `createGroupFilesFromContent(drive, { source: 'markdown', target: 'doc', ... })` (Sheets CSV 경로와 같은 함수) |
+   | usecases `export_document` · `close_submissions` 등 | Drive port·`google-files.ts` (`docs/google_drive.md` 11.1절) |
+   | `client.create` · `get`, mapper `plain_text` · `document_from_docs`, usecases `read_document` · `create_empty_document` · `create_document_with_docs_api`(방식 B) | 이식하지 않음. 유즈케이스 1~4가 쓰지 않는다(읽기·빈 문서는 배관, 방식 B는 비교용). 본문 읽기가 필요해지면 Python mapper(탭·표 재귀)를 보고 추가 |
+
+   Python과 달라진 점: `create_group_documents`의 "템플릿 둘 중 하나만"(`ValueError`)은 함수를 둘로 나눠 생기지 않는다.
+
+2. **port 메서드**: `GoogleDocsPort.replaceTags(documentId, variables)` → 태그별 치환 횟수. `documents.batchUpdate` 1회(`replaceAllText`, `matchCase`, 탭 지정 없음 = 모든 탭).
+3. **도구 매핑**: 그룹 파일 도구(`STUDIO_PORTING.md` 7절 `google_group_docs`).
+4. **큐 작업**: 없음.
+5. **테스트**: `tests/google_docs/test_usecases.py`의 Drive 흐름 테스트는 `google-files.test.ts`, 템플릿 경로·치환 요청은 `studio-port/tests/unit/google-editors.test.ts`, Markdown 경로는 같은 파일의 `createGroupFilesFromContent`. `test_mapper.py`(본문 평문) 5개는 읽기를 이식하지 않아 옮기지 않았다.
+
 ## 12. 미확인 · 보류 항목
 
 | 항목 | 확인 방법 · 시점 |

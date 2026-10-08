@@ -344,6 +344,25 @@ doc = await slides_uc.read_presentation(slides, drive, presentation_id)
 
 에러는 `DriveApiError`(`status`, `reason`, `message`, `is_rate_limit`)와 `SlidesApiError`(`status`, `status_text`, `message`, `is_rate_limit`)로 올라온다. `is_rate_limit`이면 지수 백오프로 재시도하고, 그 외 4xx는 7절 표로 분기한다. 토큰 만료(401)는 client가 처리하지 않으므로 호출 전에 갱신한다.
 
+### 11.1 studio 이식
+
+공통 배치·형식은 `docs/STUDIO_PORTING.md`, Drive 쪽(공유·마감·내보내기·그룹 파일 흐름)은 `docs/google_drive.md` 11.1절. 실측은 `studio-port/scripts/live-google-editors.ts` 9개 항목 통과(2026-10-09).
+
+1. **파일 대응**
+
+   | synsory-api | studio |
+   | --- | --- |
+   | `google_slides/client.py` `batch_update` + usecases `replace_tag_requests` · `replace_tags` | `packages/infrastructure/src/google-slides.ts` `createGoogleSlides(accessToken)` → `GoogleSlidesPort.replaceTags` (`google-tags.ts` 공통) |
+   | usecases `create_group_presentations` | `createGroupFilesFromTemplate(drive, { ..., replaceTags: slides.replaceTags })`. Slides 전용 함수를 두지 않는다 |
+   | usecases `upload_template` | `drive.createFromContent({ source: 'pptx', target: 'slides', ... })` 한 번이라 함수를 두지 않는다 |
+   | usecases `export_presentation` · `close_submissions` 등 | Drive port·`google-files.ts` |
+   | `client.create` · `get`, mapper `plain_text` · `speaker_notes` · `document_from_slides`, usecases `read_presentation` · `create_empty_presentation` | 이식하지 않음(유즈케이스 1~4가 쓰지 않는 배관) |
+
+2. **port 메서드**: `GoogleSlidesPort.replaceTags(presentationId, variables)`. `presentations.batchUpdate` 1회(`replaceAllText`, `matchCase`).
+3. **도구 매핑**: 그룹 파일 도구(`google_group_slides`).
+4. **큐 작업**: 없음.
+5. **테스트**: 치환 요청 모양은 `google-editors.test.ts`, 복사→치환→공유·실패 처리는 `google-files.test.ts`(공통 흐름), 내보내기 형식은 `google-drive.test.ts`. `test_mapper.py` 4개(평문·노트)는 읽기를 이식하지 않아 옮기지 않았다. 실측: python-pptx로 만든 템플릿(태그 3개)을 변환 업로드 → 복사 → 치환 횟수 1·1·1.
+
 ## 12. 미확인 · 보류 항목
 
 | 항목 | 확인 방법 · 시점 |

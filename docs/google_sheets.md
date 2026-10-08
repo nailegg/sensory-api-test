@@ -396,6 +396,46 @@ doc = await sheets_uc.read_spreadsheet(sheets, drive, spreadsheet_id, include_va
 
 에러는 `DriveApiError`(`status`, `reason`, `message`, `is_rate_limit`)와 `SheetsApiError`(`status`, `status_text`, `message`, `is_rate_limit`)로 올라온다. `is_rate_limit`이면 지수 백오프로 재시도하고, 그 외 4xx는 7절 표로 분기한다. 토큰 만료(401)는 client가 처리하지 않으므로 호출 전에 갱신한다.
 
+### 11.1 studio 이식
+
+공통 배치·형식은 `docs/STUDIO_PORTING.md`, Drive 쪽(공유·마감·내보내기·그룹 파일 흐름)은 `docs/google_drive.md` 11.1절. 실측은 `studio-port/scripts/live-google-editors.ts` 9개 항목 통과(2026-10-09).
+
+1. **파일 대응**
+
+   | synsory-api | studio |
+   | --- | --- |
+   | `google_sheets/client.py` + mapper 좌표(`column_letter` · `column_index` · `a1` · `grid_range`) + usecases `replace_tag_requests` · `replace_tags` · `protect_range_requests` · `lock_ranges` · `unlock_ranges` · `list_sheets` · `read_sheet_values` | `packages/infrastructure/src/google-sheets.ts` `createGoogleSheets(accessToken)` → `GoogleSheetsPort`, `columnLetter` · `columnIndex` · `a1` · `gridRange` · `protectRangeRequests` |
+   | usecases `create_group_sheets` copy 방식 | `createGroupFilesFromTemplate(drive, { ..., replaceTags: sheets.replaceTags })`. Python은 자체 루프였지만 동작(복사 실패 → error, 치환 실패 → 복사본 남기고 공유 안 함)이 공통 흐름과 같다 |
+   | usecases `create_group_sheets` csv 방식 | `createGroupFilesFromContent(drive, { source: 'csv', target: 'sheet', ... })` (Docs Markdown 경로와 같은 함수) |
+   | usecases `upload_template` | `drive.createFromContent({ source: 'xlsx', target: 'sheet', ... })` 한 번이라 함수를 두지 않는다 |
+   | usecases `create_empty_spreadsheet` · `write_values`(Forms 13이 씀), `clear_values` | `GoogleSheetsPort.create` + `drive.moveFile`, `writeValues`(항상 RAW), `clearColumns(…, columns)` |
+   | usecases `export_spreadsheet` · `close_submissions` 등 | Drive port·`google-files.ts` |
+   | `client.batch_get_values` · `batch_update_values` · `append_values`, mapper `plain_text` · `document_from_spreadsheet` · `first_sheet_title`, usecases `read_spreadsheet` | 이식하지 않음(유즈케이스가 쓰지 않는 배관) |
+
+   Python과 달라진 점:
+   - `read_sheet_values`는 `sheetId`로만 고른다(이름 지정 경로 없음. 이름은 사용자가 바꿀 수 있어 저장 식별자는 `sheetId`다). 없는 `sheetId`는 `AppError SHEET_NOT_FOUND` 404. `value_render_option`은 `UNFORMATTED_VALUE` 고정.
+   - `writeValues`는 RAW 고정(`USER_ENTERED`는 학번 앞자리 0을 잃는다, 10절).
+   - `clear_values(a1_range)` 대신 `clearColumns(spreadsheetId, sheetTitle, columns)`: A1 표기를 아는 쪽(infrastructure)이 범위를 만든다. application에 열 문자 변환을 두지 않으려고.
+   - `SheetInfo`에서 `row_count` · `column_count` · `frozen_row_count` · `protected_ranges`를 뺐다(흐름이 쓰지 않음. 보호 해제는 `lockRanges`가 돌려준 id를 저장해 쓴다).
+   - "템플릿 둘 중 하나만"(`ValueError`)은 함수를 둘로 나눠 생기지 않는다.
+
+2. **port 메서드** (`GoogleSheetsPort`)
+
+   | 메서드 | Sheets 호출 | Python 대응 |
+   | --- | --- | --- |
+   | `replaceTags(id, variables)` | `batchUpdate` `findReplace`(allSheets·matchCase·includeFormulas) | `replace_tags` |
+   | `create(title, sheetTitles?)` → id | `spreadsheets.create`(ko_KR·Asia/Seoul) | `client.create` |
+   | `listSheets(id)` | `spreadsheets.get` `fields=sheets(properties(...))` | `list_sheets` |
+   | `readValues(id, { sheetId?, cellRange? })` | `get` + `values.get` | `read_sheet_values` |
+   | `writeValues(id, sheetTitle, cellRange, values)` | `values.update` RAW | `write_values` |
+   | `clearColumns(id, sheetTitle, columns)` | `values.clear` `A:{열}` | `clear_values` |
+   | `lockRanges(id, sheetId, ranges, { description, editorEmails })` → ids | `batchUpdate` `addProtectedRange`(editors 항상 명시) | `lock_ranges` |
+   | `unlockRanges(id, ids)` | `batchUpdate` `deleteProtectedRange` | `unlock_ranges` |
+
+3. **도구 매핑**: 그룹 파일 도구(`google_group_sheets`). 유즈케이스 5(마감 후 값 읽기)는 `readValues` 결과를 응답으로 저장한다(`source_key` = 파일 ID, 결정 필요).
+4. **큐 작업**: 없음(값 읽기는 마감 시각 작업에서 부른다).
+5. **테스트**: `tests/google_sheets/test_mapper.py` 좌표 3개 + `test_usecases.py` 중 치환 요청·보호 범위·잠금·시트 목록·값 읽기·csv 방식 → `studio-port/tests/unit/google-editors.test.ts`. 복사 방식·실패 계속은 `google-files.test.ts`(공통 흐름), 내보내기 형식은 `google-drive.test.ts`. 옮기지 않음: 평문·Document 변환 4개(읽기 미이식), "둘 중 하나만" 1개(함수 분리). 실측(openpyxl 템플릿): 두 시트·수식 안 태그 치환, 텍스트 서식 `0123` 유지, 복사본 `sheetId`가 0이 아님, CSV 방식은 `0123` → `123`(10절 12항과 같음), 범위 잠금·해제.
+
 ## 12. 미확인 · 보류 항목
 
 | 항목 | 확인 방법 · 시점 |

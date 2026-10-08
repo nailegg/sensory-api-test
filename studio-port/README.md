@@ -54,10 +54,17 @@ cd studio-port
 GOOGLE_ACCESS_TOKEN="$TOKEN" DRIVE_USER_FOLDER_ID=<앱이 못 보는 사용자 폴더 ID> DRIVE_SHARE_EMAIL=<공유 테스트 계정> pnpm exec tsx scripts/live-google-drive.ts
 ```
 
+`live-google-editors.ts`는 태그가 든 pptx·xlsx 템플릿이 필요하다. 레포에 두지 않고 실행 전에 만든다(`{{team_name}}` 등 공백 없이, xlsx는 두 시트·수식 안 태그·텍스트 서식 `0123`). 경로는 `TEMPLATE_PPTX`·`TEMPLATE_XLSX`로 넘긴다:
+
+```
+uv run --with python-pptx --with openpyxl python <템플릿 만드는 스크립트>
+```
+
 Zoom은 같은 명령에서 `"google"`을 `"zoom"`으로 바꿔 토큰을 받고 `ZOOM_ACCESS_TOKEN="$TOKEN" pnpm exec tsx scripts/live-zoom.ts`로 실행한다(미팅을 만들고 지운다. 생성·수정 하루 100회 중 6회 정도).
 
 | 실측 | 날짜 | 결과 |
 | --- | --- | --- |
+| `live-google-editors.ts` | 2026-10-09 | 9/9 통과. Docs·Slides·Sheets 태그 치환(템플릿 복사·Markdown·CSV), Sheets 수식 안 태그·텍스트 `0123` 유지·복사본 `sheetId`≠0·범위 잠금, 세 종류 마감, Forms 13 재내보내기 시 메모 열 유지 |
 | `live-zoom.ts` | 2026-10-09 | 8/8 통과(무료 계정). 그룹별 미팅·매주 반복 3회·회차 길이 변경·회차 취소(`deleted`로 남음)·시작 링크·없는 미팅 404(code 3001)·정리. 웹훅은 공개 https 주소가 필요해 단위 테스트만 |
 | `live-google-forms.ts` | 2026-10-09 | 10/10 통과. 응답은 API로 넣을 수 없어 0건 상태까지. 발견: 0 시작 척도는 `low`가 빠져 온다(`../docs/google_forms.md` 10절 20항) |
 | `live-google-files.ts` | 2026-10-09 | 7/7 통과. 그룹 파일 복사·부분 공유 실패(비 Google 이메일 400 `invalidSharingRequest`)·Picker 전 템플릿 404·마감·재마감 무변화·되돌리기 |

@@ -242,6 +242,12 @@ Docs·Sheets·Slides 변경 감지는 모두 여기서 한다. 테스트는 이 
 - Markdown 변환 업로드로 만든 문서를 다시 `md`로 내보내면 제목·굵게·목록은 유지되지만 **`_`가 `\_`로 이스케이프된다**: `{{team_name}}` → `{{team\_name}}`. 줄바꿈 일부는 끝에 공백 두 칸이 붙는다.
 - 내보낸 Markdown에서 태그나 원문 문자열을 찾는 로직을 만들지 않는다. 본문 확인은 Docs `documents.get` 평문(`docs/google_docs.md`)으로 한다.
 
+**같은 파일의 권한 변경: 동시 금지, 배치 권장 (공식 문서 2026-09-14 갱신본 확인, 2026-10-09 실측)**
+
+- 공식: "Concurrent permission modifications on the same file, folder, or shared drive aren't supported." 한 파일의 권한은 ACL 하나로 처리돼 동시에 바꾸면 마지막 쓰기만 남거나 `sharingRateLimitExceeded`가 난다. 권장은 "순서대로 또는 배치 요청으로".
+- 그래서 조원 공유는 Drive **배치 요청**(`POST https://www.googleapis.com/batch/drive/v3`, `multipart/mixed`, 100개까지) 하나로 보낸다. 사용량 한도는 안의 요청 수만큼 세지만 왕복은 1번이다. 권한 낮추기·되돌리기(파일마다 사람 수만큼 `permissions.update`)는 순서대로 한다. 파일끼리는 동시에 해도 된다.
+- **실측: 배치 안에 실패할 사람이 한 명이라도 있으면 배치 전체가 같은 오류로 실패한다.** Google 계정이 아닌 주소 1명 + 정상 계정 1명을 묶어 보내면 두 파트 모두 400 `invalidSharingRequest`(메시지에 실패한 주소가 들어 있음). 혼자 보내면 정상 계정은 200. 그래서 studio-port는 실패한 사람만 한 명씩 다시 보낸다(정상 경로는 배치 1회, 실패가 섞이면 실패한 사람 수만큼 추가).
+
 **공유 `permissions` (2026-10-03 실측)**
 
 - `permissions.create` `type=user, role=writer`는 `drive.file`로 앱이 만든 파일에 동작한다. 소유자는 `role=owner` 권한 건으로 따로 있어 편집자만 골라 바꿀 수 있다.
@@ -293,7 +299,7 @@ except DriveApiError as e:
    | `DriveApiError` | `packages/infrastructure/src/external-http.ts` `ExternalApiError extends AppError`. `code`·`status`는 Synsory 기준(`EXTERNAL_NOT_FOUND` 404 · `EXTERNAL_RATE_LIMITED` 429 · `EXTERNAL_FAILED` 502), Google 값은 `externalStatus`·`reason`·`apiStatus`(`details`에도 같은 값). Google 원문 메시지는 `externalMessage`에만 두고 응답·`details`에는 넣지 않는다. 응답 모양 불일치는 `ExternalResponseError`(AppError 아님 → 버그로 올라감) |
    | `core/models.py` `Document` | `packages/domain/src/integrations.ts` `externalDocument`(Zod). 시각은 ISO 문자열 |
    | `usecases.render_template` · `group_variables` | `packages/domain/src/integrations.ts` `renderTemplate` · `groupVariables` |
-   | `usecases.share_file` · `create_group_files_from_template` · `downgrade_editors` · `close_submissions` · `restore_editors` | `packages/application/src/google-files.ts` 같은 이름(camelCase). `DriveApiError`를 잡던 자리는 `AppError`를 잡는다(application은 infrastructure를 import할 수 없음). `replace_errors` 인자는 없앴다: 호출하던 Docs·Slides가 자기 API 오류만 넘겼고, TS에서는 그것도 `AppError`라 같은 동작이다. `ShareResult.ok`는 `error === null`로 대신한다 |
+   | `usecases.share_file` · `create_group_files_from_template` · `downgrade_editors` · `close_submissions` · `restore_editors` | `packages/application/src/google-files.ts` 같은 이름(camelCase). 그룹·파일끼리는 동시에 4개씩(`concurrency.ts` `mapConcurrently`, 실측 6개 조 기준 순차 대비 Forms 약 6배·Docs 약 5배), 공유는 배치, 같은 파일의 권한 낮추기·되돌리기는 순서대로(10절). `DriveApiError`를 잡던 자리는 `AppError`를 잡는다(application은 infrastructure를 import할 수 없음). `replace_errors` 인자는 없앴다: 호출하던 Docs·Slides가 자기 API 오류만 넘겼고, TS에서는 그것도 `AppError`라 같은 동작이다. `ShareResult.ok`는 `error === null`로 대신한다 |
    | `usecases.get_document_meta` · `list_app_files` · `create_folder` · `move_to_trash` · `export_file` | port 메서드 하나씩이라 application 함수를 두지 않는다(`getFile` · `listFiles` · `createFolder` · `trashFile` · `exportFile`) |
    | `client.set_read_only` | 이식하지 않음. 마감은 권한 낮추기로 정했다(10절 편집 잠금) |
    | `client.rename_file` · `delete_file` · `create_empty_native_file` · `get_start_page_token` · `list_changes` | 이식하지 않음. 어떤 흐름도 쓰지 않는다(`create_empty_native_file`은 Forms 실험용). 필요해지면 Python client를 보고 추가 |
@@ -309,8 +315,8 @@ except DriveApiError as e:
    | `listFiles(pageSize?)` | `files.list` `q=trashed = false` | usecase `list_app_files` |
    | `exportFile(id, format)` | `files.get` + `files.export` | usecase `export_file`. 파일 종류별 형식표를 어댑터가 고르고, 안 되는 형식은 `AppError UNSUPPORTED_EXPORT_FORMAT` |
    | `trashFile` | `files.update` | 같은 이름 |
-   | `shareWithUser(id, email, role, { notify, message })` | `permissions.create` | `share_with_user`. `expiration_time`은 개인 계정에서 403이고 쓰는 흐름이 없어 뺐다 |
-   | `shareAsResponder(id, email \| null)` | `permissions.create` `view=published` | `share_as_responder`. 알림은 항상 보내지 않는다 |
+   | `shareWithUsers(id, emails, role, { notify, message })` → 사람별 `PermissionResult` | `permissions.create`를 **배치 요청** 하나로(실패한 사람만 단건 재시도) | `share_with_user`를 사람마다 부르던 것. `expiration_time`은 개인 계정에서 403이고 쓰는 흐름이 없어 뺐다 |
+   | `shareAsResponders(id, emails)` | 같음, `view=published` | `share_as_responder`. 알림은 항상 보내지 않는다. "링크가 있는 모든 사용자" 다시 열기(`email=None`)는 쓰는 흐름이 없어 뺐다 |
    | `listPermissions(id, { includePublishedView })` · `updatePermissionRole` · `deletePermission` | `permissions.*` | 같은 이름 |
 
 3. **도구 매핑**: Drive 단독 도구는 없다. 그룹 파일 도구(Docs·Slides·Sheets)의 `external_refs` 항목이 `ExternalDocument` + `team_id`다(`STUDIO_PORTING.md` 7절).

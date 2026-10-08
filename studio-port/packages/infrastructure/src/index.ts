@@ -2,3 +2,7 @@ export * from './external-http.ts';
 export * from './google-drive.ts';
 export * from './google-forms.ts';
 export * from './zoom.ts';
+export * from './google-tags.ts';
+export * from './google-docs.ts';
+export * from './google-slides.ts';
+export * from './google-sheets.ts';

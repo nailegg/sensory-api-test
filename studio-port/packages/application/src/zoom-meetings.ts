@@ -1,4 +1,5 @@
 import { AppError, renderTemplate, type Meeting } from '../../domain/src/index.ts';
+import { mapConcurrently } from './concurrency.ts';
 import type { MeetingSchedule, ZoomPort } from './integration-ports.ts';
 
 // Zoom 흐름 중 호출 여러 개를 엮는 것. synsory-api app/services/zoom/usecases.py의 이식본.
@@ -11,7 +12,8 @@ export interface GroupMeetingResult {
 }
 
 // 유즈케이스 2(A 방식): 그룹마다 예약 미팅 하나. 그룹 수만큼 생성하므로 하루 100회(생성+수정 합산)를
-// 넘지 않게 호출자가 센다. 한 그룹이 실패해도 나머지를 계속한다. 학생에게 줄 링크는 각 meeting.join_url.
+// 넘지 않게 호출자가 센다. 그룹끼리는 동시에 만들고 한 그룹이 실패해도 나머지를 계속한다.
+// 학생에게 줄 링크는 각 meeting.join_url.
 export async function createGroupMeetings(
   zoom: ZoomPort,
   input: Omit<MeetingSchedule, 'topic'> & {
@@ -21,24 +23,22 @@ export async function createGroupMeetings(
   },
 ): Promise<GroupMeetingResult[]> {
   const { teamNames, topicTemplate, activityName, ...schedule } = input;
-  const results: GroupMeetingResult[] = [];
-  for (const team of teamNames) {
+  return mapConcurrently(teamNames, async (team): Promise<GroupMeetingResult> => {
     const topic = renderTemplate(topicTemplate, {
       team_name: team,
       activity_name: activityName ?? '',
     });
     try {
-      results.push({
+      return {
         team_name: team,
         meeting: await zoom.createMeeting({ ...schedule, topic }),
         error: null,
-      });
+      };
     } catch (e) {
       if (!(e instanceof AppError)) throw e;
-      results.push({ team_name: team, meeting: null, error: e });
+      return { team_name: team, meeting: null, error: e };
     }
-  }
-  return results;
+  });
 }
 
 // 유즈케이스 4. 주어진 값만 바꾼다. occurrenceId를 주면 반복 미팅의 그 회차만. 하루 100회에 포함된다.

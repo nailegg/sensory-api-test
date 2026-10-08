@@ -5,6 +5,7 @@ import {
   documentFromDriveFile,
   ExternalApiError,
   kindFromMime,
+  type Fetch,
 } from '../../packages/infrastructure/src/index.ts';
 import { DRIVE_FILE, NOT_FOUND } from '../fixtures/google-drive.ts';
 import { recordingFetch, token } from '../fixtures/http.ts';
@@ -150,41 +151,113 @@ describe('GoogleDrivePort requests', () => {
     expect(http.requests).toHaveLength(1);
   });
 
-  it('shares without notification by default and maps the permission', async () => {
-    const http = recordingFetch({
-      json: { id: 'perm-1', type: 'user', role: 'writer', emailAddress: 'a@example.com' },
-    });
-    const p = await createGoogleDrive(token, http).shareWithUser(
+  // Drive 배치 응답(multipart/mixed). 파트 순서는 요청 순서와 다를 수 있다.
+  function batchFetch(parts: { item: number; status: number; body: unknown }[]) {
+    const requests: { url: URL; headers: Headers; body: string }[] = [];
+    const fetchImpl: Fetch = async (input, init) => {
+      requests.push({
+        url: new URL(String(input)),
+        headers: new Headers(init?.headers),
+        body: String(init?.body),
+      });
+      const text =
+        parts
+          .map(
+            (p) =>
+              `--batch_x\r\nContent-Type: application/http\r\nContent-ID: <response-item-${p.item}>\r\n\r\n` +
+              `HTTP/1.1 ${p.status} X\r\nContent-Type: application/json; charset=UTF-8\r\n\r\n${JSON.stringify(p.body)}\r\n`,
+          )
+          .join('') + '--batch_x--';
+      return new Response(text, {
+        headers: { 'content-type': 'multipart/mixed; boundary=batch_x' },
+      });
+    };
+    return { fetch: fetchImpl, requests };
+  }
+
+  it('shares with several users in one batch request and maps per-person results', async () => {
+    const http = batchFetch([
+      { item: 1, status: 200, body: { id: 'perm-b', type: 'user', role: 'writer' } },
+      { item: 0, status: 200, body: { id: 'perm-a', type: 'user', role: 'writer' } },
+    ]);
+    const results = await createGoogleDrive(token, http).shareWithUsers(
       'file-1',
-      'a@example.com',
+      ['a@example.com', 'b@example.com'],
       'writer',
       { message: '알림 꺼짐이면 무시' },
     );
     const [r] = http.requests;
-    expect(r?.url.searchParams.get('sendNotificationEmail')).toBe('false');
-    expect(r?.url.searchParams.has('emailMessage')).toBe(false);
-    expect(r?.json).toEqual({ type: 'user', role: 'writer', emailAddress: 'a@example.com' });
-    expect(p).toEqual({
-      id: 'perm-1',
-      type: 'user',
-      role: 'writer',
-      email: 'a@example.com',
-      display_name: null,
-      view: null,
-    });
+    expect(r?.url.toString()).toBe('https://www.googleapis.com/batch/drive/v3');
+    expect(r?.headers.get('content-type')).toMatch(/^multipart\/mixed; boundary=/);
+    expect(
+      r?.body.match(
+        /POST \/drive\/v3\/files\/file-1\/permissions\?[^ ]*sendNotificationEmail=false/g,
+      ),
+    ).toHaveLength(2);
+    expect(r?.body).not.toContain('emailMessage');
+    expect(r?.body).toContain('{"type":"user","role":"writer","emailAddress":"a@example.com"}');
+    expect(results.map((x) => [x.email, x.permission_id, x.error])).toEqual([
+      ['a@example.com', 'perm-a', null], // 응답 파트 순서가 달라도 Content-ID로 맞춘다
+      ['b@example.com', 'perm-b', null],
+    ]);
+    expect(http.requests).toHaveLength(1);
   });
 
-  it('grants Forms responder access as view=published, anyone when no email', async () => {
-    const http = recordingFetch(
-      { json: { id: 'anyoneWithLink', type: 'anyone', role: 'reader', view: 'published' } },
-      { json: { permissions: [] } },
+  it('retries failed people one by one because Drive fails the whole batch together', async () => {
+    // 실측: 한 명이 400이면 배치 안의 모두가 같은 400. 성공해야 할 사람은 단건 재시도로 공유된다.
+    const failure = { error: { message: 'bad', errors: [{ reason: 'invalidSharingRequest' }] } };
+    const requests: string[] = [];
+    const fetchImpl: Fetch = async (input) => {
+      const url = String(input);
+      requests.push(url);
+      if (url.includes('/batch/'))
+        return new Response(
+          [0, 1]
+            .map(
+              (i) =>
+                `--b\r\nContent-ID: <response-item-${i}>\r\n\r\nHTTP/1.1 400 Bad\r\n\r\n${JSON.stringify(failure)}\r\n`,
+            )
+            .join('') + '--b--',
+          { headers: { 'content-type': 'multipart/mixed; boundary=b' } },
+        );
+      return requests.filter((u) => !u.includes('/batch/')).length === 1
+        ? Response.json({ id: 'perm-a', type: 'user', role: 'writer' })
+        : Response.json(failure, { status: 400 });
+    };
+    const results = await createGoogleDrive(token, { fetch: fetchImpl }).shareWithUsers(
+      'file-1',
+      ['a@example.com', 'nobody@x.invalid'],
+      'writer',
     );
+    expect(requests.map((u) => (u.includes('/batch/') ? 'batch' : 'single'))).toEqual([
+      'batch',
+      'single',
+      'single',
+    ]);
+    expect(results.map((r) => [r.email, r.permission_id, r.error?.code ?? null])).toEqual([
+      ['a@example.com', 'perm-a', null],
+      ['nobody@x.invalid', null, 'EXTERNAL_FAILED'],
+    ]);
+  });
+
+  it('grants Forms responder access as view=published without notification; no call for nobody', async () => {
+    const http = batchFetch([
+      { item: 0, status: 200, body: { id: 'p1', type: 'user', role: 'reader', view: 'published' } },
+    ]);
     const drive = createGoogleDrive(token, http);
-    await drive.shareAsResponder('form-1', null);
-    await drive.listPermissions('form-1', { includePublishedView: true });
-    expect(http.requests[0]?.json).toEqual({ role: 'reader', view: 'published', type: 'anyone' });
-    expect(http.requests[0]?.url.searchParams.has('sendNotificationEmail')).toBe(false);
-    expect(http.requests[1]?.url.searchParams.get('includePermissionsForView')).toBe('published');
+    expect(await drive.shareAsResponders('form-1', [])).toEqual([]);
+    expect(http.requests).toHaveLength(0);
+    await drive.shareAsResponders('form-1', ['a@example.com']);
+    expect(http.requests[0]?.body).toContain(
+      '{"type":"user","role":"reader","view":"published","emailAddress":"a@example.com"}',
+    );
+    expect(http.requests[0]?.body).toContain('sendNotificationEmail=false');
+  });
+
+  it('reads Forms responder permissions with includePermissionsForView', async () => {
+    const http = recordingFetch({ json: { permissions: [] } });
+    await createGoogleDrive(token, http).listPermissions('form-1', { includePublishedView: true });
+    expect(http.requests[0]?.url.searchParams.get('includePermissionsForView')).toBe('published');
   });
 
   it('trashes files and accepts an empty 204 body when deleting a permission', async () => {

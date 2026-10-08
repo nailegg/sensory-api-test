@@ -74,7 +74,7 @@ export class ExternalResponseError extends Error {
 }
 
 export interface ExternalRequest {
-  method: 'GET' | 'POST' | 'PATCH' | 'DELETE';
+  method: 'GET' | 'POST' | 'PATCH' | 'PUT' | 'DELETE';
   url: string;
   query?: Record<string, string | number | boolean | undefined>;
   json?: unknown;
@@ -112,7 +112,7 @@ export async function externalRequest(
   };
   if (body !== undefined) init.body = body;
   const response = await (options.fetch ?? fetch)(url, init);
-  if (!response.ok) throw toError(provider, response.status, await response.text());
+  if (!response.ok) throw externalError(provider, response.status, await response.text());
   return response;
 }
 
@@ -134,7 +134,11 @@ export async function readJson<T>(response: Response, schema: z.ZodType<T>): Pro
 // Google 오류 본문: { error: { message, status, errors: [{ reason }] } }
 // Zoom 오류 본문: { code, message }
 // JSON이 아니어도(HTML 오류 페이지 등) status는 남긴다.
-function toError(provider: ExternalProvider, status: number, text: string): ExternalApiError {
+export function externalError(
+  provider: ExternalProvider,
+  status: number,
+  text: string,
+): ExternalApiError {
   let body: Record<string, unknown> = {};
   try {
     body = (JSON.parse(text) as Record<string, unknown> | null) ?? {};

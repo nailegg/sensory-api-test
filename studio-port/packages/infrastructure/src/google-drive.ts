@@ -4,10 +4,13 @@ import type {
   DrivePermission,
   ExportFormat,
   GoogleDrivePort,
+  PermissionResult,
   UploadSource,
   UploadTarget,
 } from '../../application/src/index.ts';
 import {
+  ExternalApiError,
+  externalError,
   externalRequest,
   readJson,
   type AccessToken,
@@ -157,6 +160,39 @@ function multipartRelated(metadata: unknown, content: Uint8Array, contentType: s
   return { body, contentType: `multipart/related; boundary=${boundary}` };
 }
 
+// ---------- 배치 요청 ----------
+
+const BATCH_URL = 'https://www.googleapis.com/batch/drive/v3';
+// 배치 하나에 담을 수 있는 요청 수 상한.
+const BATCH_MAX = 100;
+
+// Drive 배치 본문(multipart/mixed). 안쪽 요청은 바깥 요청의 Authorization을 따른다.
+export function batchBody(requests: { path: string; json: unknown }[], boundary: string): string {
+  const parts = requests.map(
+    (r, i) =>
+      `--${boundary}\r\nContent-Type: application/http\r\nContent-ID: <item-${i}>\r\n\r\n` +
+      `POST ${r.path} HTTP/1.1\r\nContent-Type: application/json; charset=UTF-8\r\n\r\n` +
+      `${JSON.stringify(r.json)}\r\n`,
+  );
+  return parts.join('') + `--${boundary}--`;
+}
+
+// 배치 응답의 파트마다 요청 순서(index), HTTP 상태, 본문. 파트 순서는 요청 순서와 다를 수 있어 Content-ID로 맞춘다.
+export function parseBatchResponse(
+  text: string,
+  boundary: string,
+): { index: number; status: number; body: string }[] {
+  return text.split(`--${boundary}`).flatMap((part) => {
+    const index = /Content-ID:\s*<response-item-(\d+)>/i.exec(part)?.[1];
+    const status = /HTTP\/1\.1 (\d{3})/.exec(part);
+    if (index === undefined || !status) return [];
+    const rest = part.slice(status.index);
+    const bodyStart = /\r?\n\r?\n/.exec(rest);
+    const body = bodyStart ? rest.slice(bodyStart.index + bodyStart[0].length).trim() : '';
+    return [{ index: Number(index), status: Number(status[1]), body }];
+  });
+}
+
 function withParent(metadata: Record<string, unknown>, parentFolderId?: string) {
   return parentFolderId ? { ...metadata, parents: [parentFolderId] } : metadata;
 }
@@ -181,6 +217,67 @@ export function createGoogleDrive(
     });
     return permissionFromDrive(await readJson(response, drivePermission));
   };
+  // 같은 파일에 permissions.create 여러 개. 100개씩 배치로, 배치끼리는 순서대로 보낸다.
+  // Drive는 한 파일의 배치를 ACL 변경 하나로 다뤄, 한 명이라도 실패하면(예: Google 계정이 아닌 주소 400)
+  // 배치 안의 모든 사람이 같은 오류로 실패한다(2026-10-09 실측). 그래서 실패한 사람만 한 명씩 다시 보낸다.
+  async function createPermissions(
+    fileId: string,
+    emails: string[],
+    query: Record<string, string>,
+    body: (email: string) => Record<string, unknown>,
+  ): Promise<PermissionResult[]> {
+    const results: PermissionResult[] = [];
+    const path = `/drive/v3/files/${fileId}/permissions?${new URLSearchParams({ fields: PERMISSION_FIELDS, ...query })}`;
+    for (let start = 0; start < emails.length; start += BATCH_MAX) {
+      const chunk = emails.slice(start, start + BATCH_MAX);
+      const boundary = 'synsory-' + crypto.randomUUID();
+      const response = await call({
+        method: 'POST',
+        url: BATCH_URL,
+        headers: { 'content-type': `multipart/mixed; boundary=${boundary}` },
+        body: batchBody(
+          chunk.map((email) => ({ path, json: body(email) })),
+          boundary,
+        ),
+      });
+      const replyBoundary = /boundary=([^;]+)/.exec(
+        response.headers.get('content-type') ?? '',
+      )?.[1];
+      const parts = replyBoundary ? parseBatchResponse(await response.text(), replyBoundary) : [];
+      const batch: PermissionResult[] = chunk.map((email, i) => {
+        const part = parts.find((p) => p.index === i);
+        if (!part) return { email, permission_id: null, error: externalError('google', 502, '') };
+        if (part.status >= 400)
+          return {
+            email,
+            permission_id: null,
+            error: externalError('google', part.status, part.body),
+          };
+        const parsed = drivePermission.safeParse(JSON.parse(part.body));
+        return parsed.success
+          ? { email, permission_id: parsed.data.id, error: null }
+          : { email, permission_id: null, error: externalError('google', 502, '') };
+      });
+      if (batch.some((r) => r.error))
+        for (const [i, r] of batch.entries()) {
+          if (!r.error) continue;
+          try {
+            const p = await permission({
+              method: 'POST',
+              url: `${BASE_URL}/files/${fileId}/permissions`,
+              query,
+              json: body(r.email),
+            });
+            batch[i] = { email: r.email, permission_id: p.id, error: null };
+          } catch (e) {
+            if (!(e instanceof ExternalApiError)) throw e;
+            batch[i] = { email: r.email, permission_id: null, error: e };
+          }
+        }
+      results.push(...batch);
+    }
+    return results;
+  }
   return {
     // files.get (쿼터 5)
     getFile: (fileId) => document({ method: 'GET', url: `${BASE_URL}/files/${fileId}` }),
@@ -272,27 +369,26 @@ export function createGoogleDrive(
       });
     },
 
-    // permissions.create. 같은 이메일을 다시 공유하면 기존 permission이 온다(재시도 안전).
-    shareWithUser: (fileId, email, role, { notify = false, message } = {}) =>
-      permission({
-        method: 'POST',
-        url: `${BASE_URL}/files/${fileId}/permissions`,
-        query: { sendNotificationEmail: notify, emailMessage: notify ? message : undefined },
-        json: { type: 'user', role, emailAddress: email },
-      }),
+    // permissions.create를 배치 하나로. Google 계정이 아닌 이메일은 알림 없이 공유하면 400 invalidSharingRequest.
+    shareWithUsers: (fileId, emails, role, { notify = false, message } = {}) =>
+      createPermissions(
+        fileId,
+        emails,
+        {
+          sendNotificationEmail: String(notify),
+          ...(notify && message ? { emailMessage: message } : {}),
+        },
+        (email) => ({ type: 'user', role, emailAddress: email }),
+      ),
 
     // 편집 공유(view 없음)와 다르다. synsory-api docs/google_forms.md 10절 4항.
-    shareAsResponder: (fileId, email) =>
-      permission({
-        method: 'POST',
-        url: `${BASE_URL}/files/${fileId}/permissions`,
-        query: { sendNotificationEmail: email ? false : undefined },
-        json: {
-          role: 'reader',
-          view: 'published',
-          ...(email ? { type: 'user', emailAddress: email } : { type: 'anyone' }),
-        },
-      }),
+    shareAsResponders: (fileId, emails) =>
+      createPermissions(fileId, emails, { sendNotificationEmail: 'false' }, (email) => ({
+        type: 'user',
+        role: 'reader',
+        view: 'published',
+        emailAddress: email,
+      })),
 
     async listPermissions(fileId, { includePublishedView = false } = {}) {
       const response = await call({

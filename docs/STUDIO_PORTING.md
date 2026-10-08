@@ -157,6 +157,12 @@ studio의 Google 로그인(Supabase, `openid email profile`)과 **별개 흐름*
 - **Zoom 웹훅**: `POST /api/webhooks/zoom`. 이 라우트만 Fastify JSON 파싱 전 **원본 바이트**를 받아 서명 검증(`v0:{ts}:{raw body}` HMAC-SHA256, 상수 시간 비교) → `endpoint.url_validation`이면 CRC 응답(3초 안) → 그 밖은 큐에 넣고 즉시 204. 처리는 worker에서. 72시간마다 재검증, 6회 연속 실패 시 구독 중지.
 - 외부 HTTP 호출은 DB 트랜잭션 밖에서 한다. 결과 저장만 짧은 트랜잭션으로.
 
+### 8.1 동시 처리 (2026-10-09 실측·반영)
+
+- 서로 다른 파일·미팅을 만드는 일(그룹마다·파일마다)은 동시에 4개씩 처리한다(`application/src/concurrency.ts` `mapConcurrently`). 6개 조 실측: Forms 동료평가 순차 86.7초 → 동시 3개 27.8초 → 동시 6개 14.7초, Docs 그룹 문서 34.3초 → 14.0초 → 6.3초. 호출당 평균 1.2~2초는 동시 수와 무관했고 한도 오류는 없었다.
+- **같은 파일의 권한 변경은 동시에 하지 않는다**(Drive 공식: 동시 수정 미지원, 마지막 쓰기만 남음). 조원 공유는 Drive 배치 요청 하나, 권한 낮추기·되돌리기는 순서대로. 배치는 한 명만 실패해도 전체가 실패해 실패한 사람만 단건 재시도한다(`docs/google_drive.md` 10절).
+- 그래도 조가 많으면 수십 초~분 단위라, 그룹 생성은 HTTP 요청 안이 아니라 worker 작업으로 돌리는 것을 권한다(브랜치 작업 전 결정 ③).
+
 ## 9. Python → TypeScript 변환표
 
 | Python (synsory-api) | TypeScript (studio) |
