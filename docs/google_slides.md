@@ -4,7 +4,7 @@
 최종 수정: 2026-10-04 · 작성: 상현
 확인 기준: 공식 문서 2026-10-04, 실측 2026-10-04 (개인 Gmail 계정, 테스트 상태 OAuth 앱, Docs와 같은 GCP 프로젝트)
 
-옮기는 파일: `app/services/google_slides/{client,mapper,scopes,usecases}.py`와 이 문서. 유즈케이스 2 공유·3·4는 `app/services/google_drive/usecases.py`의 공통 함수를 쓰므로 그 파일도 함께 옮긴다(Docs와 공유). Drive 호출(폴더 지정, 템플릿 복사 `files.copy`, pptx 변환 업로드, 메타데이터, 공유·권한, 내보내기, 변경 감지)은 `app/services/google_drive/`와 `docs/google_drive.md`에 두고 이 문서는 Slides API(`slides.googleapis.com/v1`)만 다룬다.
+이식 대상(studio에 TS로 이식, 위치는 11절 "studio 이식"): `app/services/google_slides/{client,mapper,scopes,usecases}.py`와 이 문서. 유즈케이스 2 공유·3·4는 `app/services/google_drive/usecases.py`의 공통 함수를 쓰므로 그 파일도 함께 이식한다(Docs와 공유). Drive 호출(폴더 지정, 템플릿 복사 `files.copy`, pptx 변환 업로드, 메타데이터, 공유·권한, 내보내기, 변경 감지)은 `app/services/google_drive/`와 `docs/google_drive.md`에 두고 이 문서는 Slides API(`slides.googleapis.com/v1`)만 다룬다.
 
 ---
 
@@ -101,7 +101,7 @@ Google 4종이 공유하는 OAuth 흐름이다. 콘솔 설정·인가·갱신 �
 - GCP 콘솔 "API 및 서비스 → 라이브러리"에서 **Google Slides API**를 사용 설정한다(2026-10-04 수행). 빠뜨리면 Slides 호출마다 403 `PERMISSION_DENIED`, `details[].reason=SERVICE_DISABLED`, 메시지 "Google Slides API has not been used in project … before or it is disabled"(실측 `uc2-replace-fails-api-disabled.json`). Drive 호출(변환 업로드·복사)은 그 상태에서도 되므로, 유즈케이스 2가 "복사는 됐는데 치환만 실패"로 나타난다. 사용 설정 직후 바로 동작했다.
 - scope 추가가 없어 **재동의가 필요 없었다**(기존 토큰 그대로 사용, 2026-10-04 확인). `presentations`·`presentations.readonly`(기존 덱 접근) 또는 `spreadsheets.readonly`(연결된 Sheets 차트)를 추가하게 되면 사용자가 재동의해야 한다(`include_granted_scopes=true`로 증분 인가).
 - 사용자 모델은 Docs와 같다: OAuth 연결은 교수자, 학생은 Drive 공유로 접근.
-- 테스트 서버의 템플릿 업로드 엔드포인트(`/google/slides/upload-template`)는 multipart 파일 업로드라 `python-multipart` 패키지가 필요하다. 라우터 전용이라 서비스 레포로 옮기는 파일에는 영향 없다.
+- 테스트 서버의 템플릿 업로드 엔드포인트(`/google/slides/upload-template`)는 multipart 파일 업로드라 `python-multipart` 패키지가 필요하다. 라우터 전용이라 studio로 이식하는 코드에는 영향 없다.
 
 ## 3. scope 표
 

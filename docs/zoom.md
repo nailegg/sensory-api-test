@@ -4,7 +4,7 @@
 최종 수정: 2026-10-05 · 작성: 상현
 확인 기준: 공식 문서 2026-10-04~05(developers.zoom.us 가이드·공식 OpenAPI JSON, support.zoom.com, zoom.us/pricing). **실측 2026-10-05**: 개인 무료(Basic) 계정 + General App(User-managed, Development) + ngrok 고정 도메인. 실측한 것은 각 절에 날짜를 붙였다.
 
-옮기는 파일: `app/services/zoom/{client,mapper,scopes,usecases}.py`와 이 문서. 웹훅 URL 검증 응답 생성과 서명 검증은 FastAPI 없는 순수 함수로 `usecases.py`에 두어 함께 옮기고, `router.py`는 그것을 부르기만 한다. Zoom은 Google처럼 공유 레이어(Drive)가 없으므로 이 문서 하나가 Zoom 전부를 다룬다. Base URL: `https://api.zoom.us/v2`(토큰 응답의 `api_url`이 다르면 그 값).
+이식 대상(studio에 TS로 이식, 위치는 11절 "studio 이식"): `app/services/zoom/{client,mapper,scopes,usecases}.py`와 이 문서. 웹훅 URL 검증 응답 생성과 서명 검증은 FastAPI 없는 순수 함수로 `usecases.py`에 두어 함께 이식하고, `router.py`는 그것을 부르기만 한다. Zoom은 Google처럼 공유 레이어(Drive)가 없으므로 이 문서 하나가 Zoom 전부를 다룬다. Base URL: `https://api.zoom.us/v2`(토큰 응답의 `api_url`이 다르면 그 값).
 
 ---
 
@@ -81,7 +81,7 @@
 
 ## 2. 인증
 
-OAuth 2.0 인가 코드 방식(사용자 동의). Zoom Marketplace **General App · User-managed**. 코드는 `app/core/oauth.py`의 `PROVIDERS["zoom"]`(이미 `client_auth_in_header=True`로 배관됨, 옮기지 않음). 공식 문서(2026-10-04)로 확인한 절차와 제약:
+OAuth 2.0 인가 코드 방식(사용자 동의). Zoom Marketplace **General App · User-managed**. 코드는 `app/core/oauth.py`의 `PROVIDERS["zoom"]`(이미 `client_auth_in_header=True`로 배관됨, 이식하지 않음). 공식 문서(2026-10-04)로 확인한 절차와 제약:
 
 **2.1 Marketplace 설정 (2026-10-05 실제 수행)**
 

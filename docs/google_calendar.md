@@ -6,7 +6,7 @@
 
 **왜 조사했나.** Google Meet REST API에는 시각 필드가 없어 "시각이 있는 Meet 예약"은 Calendar 일정으로만 된다(`docs/google_meet.md` 1단계 요약). 이 문서는 Calendar를 Meet 예약 수단으로 쓸 수 있는지, 비용(scope·제약)이 얼마인지를 본다. **Calendar를 독립 서비스로 1~7단계를 밟을지, Drive처럼 Meet이 기대는 레이어로만 둘지는 2단계 결정이다.** 레이어로 두면 Calendar 호출은 `app/services/google_calendar/client.py`에 모으고 Meet의 `usecases.py`가 불러 쓴다(CLAUDE.md: 다른 서비스 client import는 usecases에서만).
 
-옮기는 파일(예정): `app/services/google_calendar/{client,mapper,scopes,usecases}.py`와 이 문서. Base URL `https://www.googleapis.com/calendar/v3`.
+이식 대상(예정, studio에 TS로 이식): `app/services/google_calendar/{client,mapper,scopes,usecases}.py`와 이 문서. Base URL `https://www.googleapis.com/calendar/v3`.
 
 ---
 

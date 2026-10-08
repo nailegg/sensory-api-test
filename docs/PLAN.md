@@ -5,7 +5,7 @@
 
 ## 전제와 목적
 
-Synsory가 나중에 붙일 SaaS API(Google Docs · Sheets · Slides · Forms · Meet, Zoom)를 서비스 레포와 별개로 먼저 검증하고, 사용 방식을 문서로 확정하는 것이 이 작업의 목표다. 서비스 레포는 다른 개발자가 독립적으로 구축 중이므로, 여기서 나오는 산출물은 그 레포에 그대로 옮겨 쓸 수 있는 형태여야 한다.
+Synsory가 나중에 붙일 SaaS API(Google Docs · Sheets · Slides · Forms · Meet, Zoom)를 서비스 레포와 별개로 먼저 검증하고, 사용 방식을 문서로 확정하는 것이 이 작업의 목표다. 서비스 레포는 다른 개발자가 독립적으로 구축 중이므로, 여기서 나오는 산출물은 그 레포에 이식할 수 있는 형태(스펙 문서, 요청·응답 샘플, 테스트 케이스, 이식 가이드)여야 한다. 서비스 레포는 synsory-studio(TypeScript)로 확인됐다(2026-10-08). 이 레포의 Python 코드는 검증된 참조 구현이고, studio에는 TS로 다시 쓴다. 파일별 대응은 `CLAUDE.md`의 "synsory-studio 대응".
 
 확정된 전제:
 
@@ -25,7 +25,7 @@ Synsory가 나중에 붙일 SaaS API(Google Docs · Sheets · Slides · Forms ·
 4. **테스트 환경 준비** — 개인 계정에 테스트용 문서·미팅을 만들고, 시크릿은 `.env`에만 둔다. 계정 플랜(무료/유료)을 기록한다. 결과: 실험용 자원 목록, 시크릿 관리 규칙.
 5. **기능 테스트** — 시나리오별 흐름을 `usecases.py`에 구현하고 라우터는 그것을 부르기만 하게 한다. 실제 요청·응답을 파일로 저장한다. 그다음 실패 케이스(권한 없음, 삭제된 자원, 큰 파일, 빈 값)를 일부러 만들어 에러 형태를 기록한다. 쿼터·rate limit을 문서에서 확인하고, 필요하면 웹훅을 받아본다. 결과: 라우터 코드, 요청·응답 샘플, 에러 목록, 쿼터 표.
 6. **연동 스펙 문서화** — 5단계 결과를 "산출물 템플릿" 목차대로 정리한다. 응답을 Synsory 공통 모델로 어떻게 매핑하는지 적는다. 결과: 서비스별 연동 스펙 문서 1부.
-7. **핸드오프·검증** — 상대 개발자가 문서만 보고 처음부터 재현해본다. 빠진 설정(API 활성화, 리다이렉트 URI 등)을 문서에 보충한다. 옮기는 파일은 `client.py` · `mapper.py` · `scopes.py` · `usecases.py`와 `docs/<service>.md`로 고정하고, 라우터는 옮기지 않는다. `usecases.py`와 `mapper.py`를 pytest로 남겨 회귀 확인에 쓴다. 결과: 재현 확인된 문서, 테스트 코드.
+7. **핸드오프·검증** — 서비스별 **studio 이식 가이드**를 `docs/<service>.md` 11절 끝 "studio 이식" 하위절에 쓴다(공통 부분은 `docs/STUDIO_PORTING.md`). 담을 것: ① Python 함수 → studio 위치(`infrastructure` · `application` · `domain` · `contracts`) 대응, ② 필요한 port 인터페이스와 메서드 목록, ③ `ToolHandler` 매핑(`activity_type`, `source_key`, `identity`, `external_refs`에 넣을 값), ④ 큐 작업 정의(폴링 주기, 웹훅 → 큐 흐름), ⑤ `samples/` → studio `tests/fixtures`, pytest 케이스 → vitest 케이스 목록. 그다음 상대 개발자가 문서만 보고 studio에서 처음부터 재현해본다. 빠진 설정(API 활성화, 리다이렉트 URI 등)을 문서에 보충한다. 라우터는 이식하지 않는다. 결과: 재현 확인된 문서와 이식 가이드, 회귀 확인용 pytest.
 
 1~2단계와 3~4단계는 서비스마다 며칠이면 끝난다. 시간은 대부분 5~6단계에 들어간다. 여러 서비스를 병렬로 하기보다 한 서비스를 6단계까지 끝내 문서 형식을 굳힌 뒤 다음 서비스로 가는 편이 빠르다. Google 4종은 3단계(인증)를 공유하므로, Docs를 먼저 끝내면 나머지 세 개는 3단계를 건너뛴다.
 
@@ -68,7 +68,9 @@ Google 앱 검증과 Zoom 앱 리뷰는 개발 중에는 필요 없다. 서비�
 
 공통 준비(한 번만):
 
-- [ ] 상대 개발자에게 Python 버전·패키지 도구·HTTP 클라이언트 선택 확인
+- [x] 상대 레포 스택 확인 — 2026-10-08. synsory-studio는 Node 24 · pnpm · TypeScript(Fastify, React, Supabase, Drizzle, pg-boss, Zod). 이 레포는 Python 유지, 7단계 산출물을 TS 이식 가이드로 바꿈(상현 결정)
+- [x] `docs/STUDIO_PORTING.md` 공통 이식 가이드 초안 — 2026-10-08. 배치안·port·오류 변환·연결 흐름·도구 매핑·큐. 결정 필요 항목은 10절 (studio 담당자 확인 전)
+- [ ] studio 쪽과 합의: ① 외부 도구 범위 열기(studio `TODO.md` 1절·`AGENTS.md`가 도구 등록과 추가 scope를 막고 있음, `activity_type_allowed` 허용 목록 비어 있음) ② 연결 토큰 테이블 위치(studio는 제품 테이블을 `studio` 스키마 8개로 고정, 후보는 비공개 `studio_auth`) ③ GCP 프로젝트·OAuth 동의 화면과 Zoom 앱을 studio 로그인용과 공유할지, Zoom https 리다이렉트를 studio 로컬(`localhost:5173`)에서 받는 방법
 - [x] `synsory-api` FastAPI 골격 생성 (`core/`, `services/`, `samples/`, `docs/`, `.env.example`, `.gitignore`, git init) — 2026-10-02. uv + Python 3.12. `core/oauth.py`(login/callback/status/refresh/scopes), `token_store.py`, Drive·Docs client/mapper/usecases/router 배관, pytest 13개
 - [x] GCP 프로젝트 + OAuth 동의 화면(테스트 상태) + 개인 계정 테스트 사용자 등록 — 2026-10-02. 웹 애플리케이션 클라이언트, Drive·Docs API 활성화
 - [ ] Zoom Marketplace General App 생성 (개인 계정)
@@ -79,17 +81,16 @@ Google 앱 검증과 Zoom 앱 리뷰는 개발 중에는 필요 없다. 서비�
 | 서비스 | 현재 단계 | 상태 | 메모 |
 | --- | --- | --- | --- |
 | Google Drive | 6 문서화 | 1차 마감(2026-10-03), Picker 추가(2026-10-04) | `docs/google_drive.md` 전 절 작성. Sheets·Slides·Forms에서 새 Drive 호출이 생기면 추가. **Picker**(2026-10-04): 1단계 탐색, 테스트 페이지 `GET /google/picker`, 공통 함수 `create_group_files_from_template`(복사→치환→공유. Slides·Docs가 사용, Sheets는 전환 가능), 실측 완료 — Picker 전 404 → Picker 후 Slides 복사·치환·공유 성공, 토큰 refresh·서버 재시작 뒤 유지. 보류: Sheets·Docs 템플릿 Picker 후 실측, 태그 든 원본 재복사(`docs/google_drive.md` 2.1절·12절) |
-| Google Docs | 6 문서화 | 완료 → 7 핸드오프 대기 | 유즈케이스 4개 실측·문서화 완료(2026-10-03). `docs/google_docs.md` 12절 전부 작성. 2026-10-04: 유즈케이스 2에 Google Doc 템플릿 경로(`template_document_id`, Picker) 추가(상현 승인). Picker 후 실측은 보류. 다음: 상대 개발자가 2절·11절만 보고 재현, 빠진 것 보충, 옮길 파일 4개 확정 |
-| Google Sheets | 6 문서화 | 완료(2026-10-04) → 7 핸드오프 대기 | 유즈케이스 Docs·Slides와 같은 4개 + 마감 후 값 읽기(상현 확정). 템플릿은 xlsx 1회 변환 업로드 → `files.copy` → `findReplace`(수식 안 태그 포함) 실측·채택. 실측·샘플 11개, `docs/google_sheets.md` 12절 전부 작성. 발견: 복사본 `sheetId`≠0, 보호 범위 `editors` 생략 시 학생도 편집 가능(항상 명시), 소유자 API 쓰기는 보호 무시, `RAW`/`USER_ENTERED` 학번 0 소실, csv 내보내기 첫 시트만. **성적표 동기화는 검토 후 보류**(성적 원본은 Synsory DB, 1.2~1.3절). 다음: 상대 개발자 재현, 옮길 파일 4개 확정 |
-| Google Slides | 6 문서화 | 완료(2026-10-04) → 7 핸드오프 대기 | 유즈케이스는 Docs와 같은 4개(상현 확정). 템플릿은 pptx 1회 변환 업로드 → 그룹마다 Drive `files.copy` → `replaceAllText`. 실측·샘플 10개, `docs/google_slides.md` 12절 전부 작성. 공유·마감·내보내기 함수는 `google_drive/usecases.py`로 옮겨 Docs와 공유. Drive `files.copy` 추가 |
-| Google Forms | 6 문서화 | 완료(2026-10-06) → 7 핸드오프 대기 | 유즈케이스 13개(2026-10-06 상현 확정) 모두 구현·실측, 샘플 21개, 테스트 25개. `docs/google_forms.md` 12절 전부 작성, 12절은 유즈케이스를 막는 미확인 없음. 문서와 다른 실측: 생성 기본값은 게시 상태(항상 미게시로 만들고 게시), 응답 권한 `anyoneWithLink` 자동 부여(제한 시 삭제), 퀴즈의 틀린 답과 비채점 문항 grade가 똑같이 `{}`(배점으로 구분). 퀴즈 점수는 기본이 제출 직후 공개. Picker로 고른 UI 폼도 템플릿 복사 가능. 실측 파일은 휴지통으로 정리 |
+| Google Docs | 6 문서화 | 완료 → 7 핸드오프 대기 | 유즈케이스 4개 실측·문서화 완료(2026-10-03). `docs/google_docs.md` 12절 전부 작성. 2026-10-04: 유즈케이스 2에 Google Doc 템플릿 경로(`template_document_id`, Picker) 추가(상현 승인). Picker 후 실측은 보류. 다음: 상대 개발자가 2절·11절만 보고 재현, 빠진 것 보충, studio 이식 가이드 작성 |
+| Google Sheets | 6 문서화 | 완료(2026-10-04) → 7 핸드오프 대기 | 유즈케이스 Docs·Slides와 같은 4개 + 마감 후 값 읽기(상현 확정). 템플릿은 xlsx 1회 변환 업로드 → `files.copy` → `findReplace`(수식 안 태그 포함) 실측·채택. 실측·샘플 11개, `docs/google_sheets.md` 12절 전부 작성. 발견: 복사본 `sheetId`≠0, 보호 범위 `editors` 생략 시 학생도 편집 가능(항상 명시), 소유자 API 쓰기는 보호 무시, `RAW`/`USER_ENTERED` 학번 0 소실, csv 내보내기 첫 시트만. **성적표 동기화는 검토 후 보류**(성적 원본은 Synsory DB, 1.2~1.3절). 다음: 상대 개발자 재현, studio 이식 가이드 작성 |
+| Google Slides | 6 문서화 | 완료(2026-10-04) → 7 핸드오프 대기 | 유즈케이스는 Docs와 같은 4개(상현 확정). 템플릿은 pptx 1회 변환 업로드 → 그룹마다 Drive `files.copy` → `replaceAllText`. 실측·샘플 10개, `docs/google_slides.md` 12절 전부 작성. 공유·마감·내보내기 함수는 `google_drive/usecases.py`로 옮겨 Docs와 공유(이 레포 안의 이동). Drive `files.copy` 추가. 다음: studio 이식 가이드 작성 |
+| Google Forms | 6 문서화 | 완료(2026-10-06) → 7 핸드오프 대기 | 유즈케이스 13개(2026-10-06 상현 확정) 모두 구현·실측, 샘플 21개, 테스트 25개. `docs/google_forms.md` 12절 전부 작성, 12절은 유즈케이스를 막는 미확인 없음. 문서와 다른 실측: 생성 기본값은 게시 상태(항상 미게시로 만들고 게시), 응답 권한 `anyoneWithLink` 자동 부여(제한 시 삭제), 퀴즈의 틀린 답과 비채점 문항 grade가 똑같이 `{}`(배점으로 구분). 퀴즈 점수는 기본이 제출 직후 공개. Picker로 고른 UI 폼도 템플릿 복사 가능. 실측 파일은 휴지통으로 정리. 다음: studio 이식 가이드 작성 |
 | Google Calendar | 1 API 탐색 | 완료(2026-10-06) · 보류 | Meet 예약 수단으로 조사. `docs/google_calendar.md` 작성. Meet 링크는 `events.insert` + `conferenceData.createRequest`로 만들고 초대 메일·반복은 Calendar가 처리. 최소 scope는 `calendar.app.created`(보조 캘린더). Calendar가 만든 Meet은 Meet API에서 "다른 앱 공간"이라 출석에 `meetings.space.readonly`가 필요하고, 2026-02부터 Meet 코드 재사용 금지 권고. **2026-10-06 상현: Meet 단독으로 쓰기로 해 보류**(학생 캘린더 불필요) |
 | Google Meet | 2 유즈케이스 | 초안(2026-10-06) → 상현 확인 대기 | 1단계 완료(2026-10-05, `docs/google_meet.md`). 2026-10-06 상현 방향: **Meet 단독(Calendar 없음), 출석 포함**. 초안 4개: 그룹별 링크 생성, 명단으로 잠금(`RESTRICTED` + `spaces.members`), 회의 후 출석 집계(`conferenceRecords` → `participants` → `participantSessions`, 식별은 멤버 대응표 A / 표시 이름 학번 B), 링크 회수. 강제 종료·상태 추적은 Zoom과 맞춰 보류. 전제 확인(3단계 첫 작업): 개인 Gmail에서 Meet API 동작, 무료 회의에서 참가자 API가 채워지는지 |
-| Zoom | 6 문서화 | 완료(2026-10-05) → 7 핸드오프 대기 | 상현 확정: **무료(Basic) 계정으로 실측 가능한 6개** — 플랜 확인, 그룹별 미팅 예약(A 그룹마다 미팅 / B 소회의실 비교용), 정기(매주 반복) 회의, 일정 변경·취소, 호스트 시작 링크, 출석 자동 집계(참가자 웹훅 + 표시 이름 학번 매칭)(`docs/zoom.md` 1절). 제외: 마감 시 강제 종료, 시작·종료 웹훅 상태 추적. 보류: 로그인·사전 등록 기반 출석 식별, 녹화·트랜스크립트·요약(Pro). scope 6개. 3단계 진행 중(2026-10-05): ngrok 고정 도메인(학교망 차단 → 우회 후 online), General App 생성(무료 계정 가능, ngrok 리다이렉트 등록 가능), 웹훅 수신 코드(`POST /zoom/webhook`) 구현, **로그인·`GET /users/me`(type 1)·refresh 실측 성공**. **웹훅 4종 수신 성공**(무료 계정, 게스트 표시 이름 그대로·이메일 빈 값 확인). 처음 40분 0건이었다가 앱 재설치 + 구독 재저장 뒤 수신. ngrok 주소로 되돌려도 수신돼 도메인은 원인이 아님(`docs/zoom.md` 2.1절). OAuth·웹훅 모두 ngrok 고정 도메인 하나로 받는다. **5단계(2026-10-05)**: 유즈케이스 1~6 구현·실측, 샘플 16개, 테스트 66개. 발견: 소회의실 사전 배정은 계정 설정 "예약 시 참가자를 소회의실에 할당"이 꺼져 있으면 200인데 조용히 버려짐(켠 뒤 저장 확인), 취소한 회차는 `deleted`로 남음. **6단계(2026-10-05)**: `docs/zoom.md` 12절 전부 정리(1~6 동작을 막는 미확인 없음). 다음: 상대 개발자가 2절·11절만 보고 재현, 옮길 파일 4개 확정. 다음: 3단계 Marketplace General App 생성, 리다이렉트는 ngrok + client secret 방식으로 결정(2026-10-05, PKCE 미사용) |
+| Zoom | 6 문서화 | 완료(2026-10-05) → 7 핸드오프 대기 | 상현 확정: **무료(Basic) 계정으로 실측 가능한 6개** — 플랜 확인, 그룹별 미팅 예약(A 그룹마다 미팅 / B 소회의실 비교용), 정기(매주 반복) 회의, 일정 변경·취소, 호스트 시작 링크, 출석 자동 집계(참가자 웹훅 + 표시 이름 학번 매칭)(`docs/zoom.md` 1절). 제외: 마감 시 강제 종료, 시작·종료 웹훅 상태 추적. 보류: 로그인·사전 등록 기반 출석 식별, 녹화·트랜스크립트·요약(Pro). scope 6개. 3단계 진행 중(2026-10-05): ngrok 고정 도메인(학교망 차단 → 우회 후 online), General App 생성(무료 계정 가능, ngrok 리다이렉트 등록 가능), 웹훅 수신 코드(`POST /zoom/webhook`) 구현, **로그인·`GET /users/me`(type 1)·refresh 실측 성공**. **웹훅 4종 수신 성공**(무료 계정, 게스트 표시 이름 그대로·이메일 빈 값 확인). 처음 40분 0건이었다가 앱 재설치 + 구독 재저장 뒤 수신. ngrok 주소로 되돌려도 수신돼 도메인은 원인이 아님(`docs/zoom.md` 2.1절). OAuth·웹훅 모두 ngrok 고정 도메인 하나로 받는다. **5단계(2026-10-05)**: 유즈케이스 1~6 구현·실측, 샘플 16개, 테스트 66개. 발견: 소회의실 사전 배정은 계정 설정 "예약 시 참가자를 소회의실에 할당"이 꺼져 있으면 200인데 조용히 버려짐(켠 뒤 저장 확인), 취소한 회차는 `deleted`로 남음. **6단계(2026-10-05)**: `docs/zoom.md` 12절 전부 정리(1~6 동작을 막는 미확인 없음). 다음: 상대 개발자가 2절·11절만 보고 재현, studio 이식 가이드 작성. 다음: 3단계 Marketplace General App 생성, 리다이렉트는 ngrok + client secret 방식으로 결정(2026-10-05, PKCE 미사용) |
 
 ## 열린 질문
 
-- 상대 레포의 Python 버전·패키지 도구·SDK 사용 여부 (확인 전까지 Python 3.12 + uv + httpx)
 - Zoom 녹화·트랜스크립트·AI 요약 시나리오 필요 시 Pro 플랜 1개월 결제 여부($16.99). Basic으로는 예약·웹훅만 실측 가능 — 2026-10-05 보류(무료 계정 유즈케이스부터)
 - Zoom 출석 유즈케이스의 학생 식별 방식 — 2026-10-05 표시 이름 학번 매칭으로 결정(`docs/zoom.md` 1절 6번). 로그인·사전 등록 방식은 학교 계정·Pro 확인 뒤
 - Google Meet을 Zoom과 함께 붙이는지 하나만 붙이는지(Meet 단독 사용은 가능하게 설계, 2026-10-06) — 무료 호스트 제한(Meet 3명 이상 60분 vs Zoom 40분), 예약 방식, 이벤트 방식 비교는 `docs/google_meet.md` 1단계 요약

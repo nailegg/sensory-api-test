@@ -4,7 +4,7 @@
 최종 수정: 2026-10-04 · 작성: 상현
 확인 기준: 공식 문서 2026-10-04, 실측 2026-10-04 (개인 Gmail 계정, 테스트 상태 OAuth 앱, 3단계는 Docs 인증 재사용)
 
-옮기는 파일: `app/services/google_sheets/{client,mapper,scopes,usecases}.py`와 이 문서(+ `app/services/google_drive/{client,mapper,scopes,usecases}.py`, `docs/google_drive.md`). `router.py`는 테스트 서버용이라 옮기지 않는다. Drive 호출(폴더 지정, 메타데이터, 공유·권한, 내보내기, 변경 감지)은 `app/services/google_drive/`와 `docs/google_drive.md`에 두고 이 문서는 Sheets API(`sheets.googleapis.com/v4`)만 다룬다.
+이식 대상(studio에 TS로 이식, 위치는 11절 "studio 이식"): `app/services/google_sheets/{client,mapper,scopes,usecases}.py`와 이 문서(+ `app/services/google_drive/{client,mapper,scopes,usecases}.py`, `docs/google_drive.md`). `router.py`는 테스트 서버용이라 이식하지 않는다. Drive 호출(폴더 지정, 메타데이터, 공유·권한, 내보내기, 변경 감지)은 `app/services/google_drive/`와 `docs/google_drive.md`에 두고 이 문서는 Sheets API(`sheets.googleapis.com/v4`)만 다룬다.
 
 ---
 

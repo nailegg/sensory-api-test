@@ -82,7 +82,7 @@ GCP 콘솔 설정 절차, 인가·콜백·갱신 흐름, 실측 결과는 `docs/
 
 **2026년 기준 대체·변경 공지.** Google Workspace 개발자 릴리스 노트(2025~2026)에 Picker 항목은 없고, Picker 문서는 2026-09에 갱신됐다(위 날짜). 대체 API 공지 없음. 변화로 볼 것은 ① 네이티브 앱의 웹뷰 금지·새 탭 OAuth 흐름(위), ② Google이 제공하는 웹 컴포넌트 `@googleworkspace/drive-picker-element`(`<drive-picker client-id app-id>` + `<drive-picker-docs-view mime-types …>`, GIS 토큰 자동 처리, 이벤트 `picker-picked|canceled|error`). 프론트가 React 등이면 이 컴포넌트가 가장 짧다. 이 레포의 테스트 페이지는 의존성 없이 `gapi.load('picker')`로 직접 띄운다.
 
-**테스트 페이지.** `GET /google/picker`(`app/services/google_drive/picker.py`, 옮기지 않음). 서버 token_store의 토큰을 `/google/picker/config`로 브라우저에 넘겨 Picker를 띄우고, 고른 파일 ID로 바로 `GET /google/drive/file-meta/{id}`를 불러 서버 접근 여부를 보여 준다. JS 주석에 프론트엔드용 설명(GIS 토큰 대안 포함)을 달았다. 체크박스로 `setDeveloperKey`·`setAppId`를 일부러 빼고 띄워 볼 수 있다.
+**테스트 페이지.** `GET /google/picker`(`app/services/google_drive/picker.py`, 이식하지 않음). 서버 token_store의 토큰을 `/google/picker/config`로 브라우저에 넘겨 Picker를 띄우고, 고른 파일 ID로 바로 `GET /google/drive/file-meta/{id}`를 불러 서버 접근 여부를 보여 준다. JS 주석에 프론트엔드용 설명(GIS 토큰 대안 포함)을 달았다. 체크박스로 `setDeveloperKey`·`setAppId`를 일부러 빼고 띄워 볼 수 있다.
 
 **실측 (2026-10-04, 상현 개인 Gmail)**
 

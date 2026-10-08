@@ -4,7 +4,7 @@
 최종 수정: 2026-10-03 · 작성: 상현
 확인 기준: 공식 문서는 2026-09-30, 실측은 2026-10-02~03 (개인 Gmail 계정, 테스트 상태 OAuth 앱)
 
-옮기는 파일: `app/services/google_docs/{client,mapper,scopes,usecases}.py`와 `app/services/google_drive/{client,mapper,scopes,usecases}.py`, 그리고 이 문서와 `docs/google_drive.md`. `router.py`·`core/oauth.py`·`core/token_store.py`는 테스트 서버용이라 옮기지 않고, 2절·11절을 참고해 서비스 레포 방식으로 다시 쓴다.
+이식 대상(studio에 TS로 이식, 위치는 11절 "studio 이식"): `app/services/google_docs/{client,mapper,scopes,usecases}.py`와 `app/services/google_drive/{client,mapper,scopes,usecases}.py`, 그리고 이 문서와 `docs/google_drive.md`. `router.py`·`core/oauth.py`·`core/token_store.py`는 테스트 서버용이라 이식하지 않고, 2절·11절을 참고해 studio 방식으로 다시 쓴다(`docs/STUDIO_PORTING.md`).
 
 Drive API 쪽 내용(파일 메타데이터, 폴더, 내보내기, 변경 감지)은 `docs/google_drive.md`에 있다. 이 문서는 Docs API(`docs.googleapis.com/v1`)만 다룬다.
 
@@ -30,7 +30,7 @@ Drive API 쪽 내용(파일 메타데이터, 폴더, 내보내기, 변경 감지
 
 ## 2. 인증
 
-Google 4종이 공유하는 OAuth 2.0 사용자 동의 흐름이다. 코드는 `app/core/oauth.py`(테스트 서버용, 옮기지 않음). 공통 제약(refresh token 7일·100개 한도, 증분 인가, 세분화 동의)은 `docs/google_drive.md` 2절에 있다. 여기서는 **처음부터 재현하는 절차**를 적는다.
+Google 4종이 공유하는 OAuth 2.0 사용자 동의 흐름이다. 코드는 `app/core/oauth.py`(테스트 서버용, 이식하지 않음). 공통 제약(refresh token 7일·100개 한도, 증분 인가, 세분화 동의)은 `docs/google_drive.md` 2절에 있다. 여기서는 **처음부터 재현하는 절차**를 적는다.
 
 **2.1 GCP 콘솔 설정 (개발자가 한 번, 2026-10-02 실제 수행 순서)**
 

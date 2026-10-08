@@ -4,7 +4,7 @@
 최종 수정: 2026-10-06 · 작성: 상현
 확인 기준: 공식 문서 2026-10-04. 실측 2026-10-06 (개인 Gmail 계정, 테스트 상태 OAuth 앱, `drive.file`만)
 
-옮기는 파일: `app/services/google_forms/{client,mapper,scopes,usecases}.py`, `app/core/models.py`의 `FormSubmission`·`AnswerGrade`, `app/services/google_drive/client.py`에 추가한 `share_as_responder`·`list_permissions(include_published_view)`·`create_empty_native_file`, 그리고 이 문서. 의존성 `openpyxl`(유즈케이스 12의 xlsx)이 추가됐다. `router.py`와 `google_drive/picker.py`의 Forms 버튼은 테스트 서버용이라 옮기지 않는다. Drive 호출(폴더 지정, 메타데이터, 공유·응답자 권한, 삭제, 복사)은 `app/services/google_drive/`와 `docs/google_drive.md`에 두고 이 문서는 Forms API(`forms.googleapis.com/v1`)만 다룬다.
+이식 대상(studio에 TS로 이식, 위치는 11절 "studio 이식"): `app/services/google_forms/{client,mapper,scopes,usecases}.py`, `app/core/models.py`의 `FormSubmission`·`AnswerGrade`, `app/services/google_drive/client.py`에 추가한 `share_as_responder`·`list_permissions(include_published_view)`·`create_empty_native_file`, 그리고 이 문서. 의존성 `openpyxl`(유즈케이스 12의 xlsx)이 추가됐다. `router.py`와 `google_drive/picker.py`의 Forms 버튼은 테스트 서버용이라 이식하지 않는다. Drive 호출(폴더 지정, 메타데이터, 공유·응답자 권한, 삭제, 복사)은 `app/services/google_drive/`와 `docs/google_drive.md`에 두고 이 문서는 Forms API(`forms.googleapis.com/v1`)만 다룬다.
 
 ---
 

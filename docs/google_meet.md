@@ -4,7 +4,7 @@
 최종 수정: 2026-10-05 · 작성: 상현
 확인 기준: 공식 문서 2026-10-05(developers.google.com Meet REST API v2 · Workspace Events API · Calendar API, support.google.com Meet·Google One). 실측 없음. **개인 Gmail 계정에서 Meet REST API가 동작하는지부터 공식 문서에 명시가 없어** 3단계 첫 호출로 확인한다(12절).
 
-옮기는 파일(예정): `app/services/google_meet/{client,mapper,scopes,usecases}.py`와 이 문서. 녹화 파일(MP4)·트랜스크립트 문서는 Drive 파일이므로 Drive 호출은 `app/services/google_drive/`와 `docs/google_drive.md`에 둔다. 시각이 있는 예약은 Calendar API가 필요한데, Calendar 호출을 어느 폴더에 둘지(새 `google_calendar` 서비스 vs Meet 유즈케이스 범위 축소)는 2단계 결정이다(10절 1항). 이 문서는 Meet REST API(`https://meet.googleapis.com/v2`)를 다룬다.
+이식 대상(예정, studio에 TS로 이식): `app/services/google_meet/{client,mapper,scopes,usecases}.py`와 이 문서. 녹화 파일(MP4)·트랜스크립트 문서는 Drive 파일이므로 Drive 호출은 `app/services/google_drive/`와 `docs/google_drive.md`에 둔다. 시각이 있는 예약은 Calendar API가 필요한데, Calendar 호출을 어느 폴더에 둘지(새 `google_calendar` 서비스 vs Meet 유즈케이스 범위 축소)는 2단계 결정이다(10절 1항). 이 문서는 Meet REST API(`https://meet.googleapis.com/v2`)를 다룬다.
 
 ---
 

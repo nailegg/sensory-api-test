@@ -1,13 +1,13 @@
 # synsory-api
 
-Synsory 서비스가 나중에 붙일 SaaS API(Google Drive · Docs · Sheets · Slides · Forms, Zoom)를 서비스 레포와 별개로 먼저 검증하고 사용 방식을 문서화하는 FastAPI 테스트 프로젝트다. 여기서 만든 `client.py` · `mapper.py` · `scopes.py` · `usecases.py`와 `docs/<service>.md`는 다른 개발자가 구축 중인 서비스 레포로 그대로 옮겨진다. 코드는 "옮겨 쓸 수 있게" 쓴다.
+Synsory 서비스가 나중에 붙일 SaaS API(Google Drive · Docs · Sheets · Slides · Forms, Zoom)를 서비스 레포와 별개로 먼저 검증하고 사용 방식을 문서화하는 FastAPI 테스트 프로젝트다. 여기서 만든 `client.py` · `mapper.py` · `scopes.py` · `usecases.py`와 `docs/<service>.md`는 다른 개발자가 구축 중인 서비스 레포 synsory-studio(TypeScript)에 TS로 이식된다. 이 레포의 Python 코드는 실측으로 검증된 참조 구현이고, 실제로 넘기는 것은 스펙 문서·샘플·테스트 케이스·이식 가이드다. 코드는 "읽고 그대로 TS로 옮길 수 있게" 쓴다(아래 "synsory-studio 대응").
 
 ## 확정된 전제
 
 - 인증: OAuth 2.0 사용자 동의 방식. Google 서비스 계정, Zoom Server-to-Server는 쓰지 않는다.
 - 테스트 계정: 개인 Google 계정, 개인 Zoom 계정. KAIST Workspace 계정은 쓰지 않는다.
 - 스택: Python 3.12, uv, FastAPI, httpx. Google 공식 SDK(`google-api-python-client`)는 쓰지 않고 REST를 직접 호출한다. SDK가 확실히 유리한 경우만 `docs/<service>.md` 10절에 근거를 적고 예외로 쓴다.
-- 상대 서비스 레포의 Python 버전·패키지 도구가 확인되면 위 스택을 거기에 맞춘다.
+- 서비스 레포 확인(2026-10-08): synsory-studio는 Node 24 · pnpm · TypeScript 모노레포(Fastify API, React 웹, Supabase Auth·Postgres, Drizzle, pg-boss worker, Zod). 이 레포는 검증용이라 Python을 유지한다. 실측 결과와 문서는 언어와 무관하고, 다 된 검증을 다시 쓸 이유가 없다.
 - 로컬 서버는 포트 8000. OAuth 리다이렉트 URI는 `http://localhost:8000/auth/google/callback`, `http://localhost:8000/auth/zoom/callback`. Zoom이 https를 요구하면 Zoom만 ngrok 주소를 쓴다(웹훅 때문에 ngrok은 어차피 필요). 1단계에서 확인해 `.env.example`에 반영한다.
 
 ## 이름 규칙
@@ -27,15 +27,16 @@ app/
     token_store.py        # 토큰 저장 (테스트는 로컬 JSON 파일)
     models.py             # Synsory 공통 모델 (Document, Meeting …). 여기서만 정의
   services/<service>/
-    router.py             # /<provider>/<service>/... 시나리오 단위 엔드포인트. 얇은 층, 옮기지 않음
-    picker.py             # (google_drive만) Google Picker 테스트 HTML 페이지 GET /google/picker. 옮기지 않음
-    usecases.py           # 여러 client를 엮는 흐름 (FastAPI 의존성 없음). 옮겨지는 파일
-    client.py             # 이 서비스의 외부 API 호출만. 옮겨지는 파일
-    mapper.py             # API 응답 dict → core/models 순수 변환. 옮겨지는 파일
-    scopes.py             # 이 서비스가 쓰는 scope 목록 + 각 scope의 사용 이유. 옮겨지는 파일
+    router.py             # /<provider>/<service>/... 시나리오 단위 엔드포인트. 얇은 층, 이식하지 않음
+    picker.py             # (google_drive만) Google Picker 테스트 HTML 페이지 GET /google/picker. 이식하지 않음
+    usecases.py           # 여러 client를 엮는 흐름 (FastAPI 의존성 없음). 이식 대상
+    client.py             # 이 서비스의 외부 API 호출만. 이식 대상
+    mapper.py             # API 응답 dict → core/models 순수 변환. 이식 대상
+    scopes.py             # 이 서비스가 쓰는 scope 목록 + 각 scope의 사용 이유. 이식 대상
 samples/<service>/        # 실제 요청·응답 캡처 (JSON, 시나리오별)
 docs/
   PLAN.md                 # 진행 절차, 서비스별 예외, 진행 현황
+  STUDIO_PORTING.md       # synsory-studio 이식 공통 가이드 (OAuth 연결, 토큰 저장, port, 큐)
   <service>.md            # 서비스별 연동 스펙 문서 (아래 목차)
 tests/<service>/          # pytest. 주 대상은 usecases.py와 mapper.py
 .env                      # 시크릿. 커밋 금지
@@ -45,11 +46,30 @@ tests/<service>/          # pytest. 주 대상은 usecases.py와 mapper.py
 
 ## 계층 규칙
 
-- `router.py`: 요청 파싱, `token_store`에서 토큰 꺼내기, `usecases` 호출, 응답 반환. 이것 외의 로직을 두지 않는다. 서비스 레포로 옮기지 않는다.
+- `router.py`: 요청 파싱, `token_store`에서 토큰 꺼내기, `usecases` 호출, 응답 반환. 이것 외의 로직을 두지 않는다. studio로 이식하지 않는다(studio에서는 `apps/api` 라우트를 새로 쓴다).
 - `usecases.py`: "문서 만들기 → 폴더로 옮기기 → Drive 메타데이터 조회 → `Document`로 변환"처럼 여러 client와 mapper를 엮는 흐름. 다른 서비스의 client(예: `google_drive.client`)를 import하는 곳은 여기뿐이다. FastAPI를 import하지 않는다.
 - `client.py`: 자기 서비스의 외부 API만 부른다. 다른 서비스의 client를 import하지 않는다. FastAPI를 import하지 않는다.
 - `mapper.py`: 응답 dict(들)를 받아 `core/models`로 바꾸는 순수 함수. 네트워크 호출도, client import도 하지 않는다. Drive 메타데이터가 필요하면 usecases가 두 응답을 받아 mapper에 넘긴다.
 - `scopes.py`: scope 문자열 목록과 각각의 사용 이유. `core/oauth.py`가 이를 모아 인가 요청을 만든다. 서비스가 추가되어 scope가 늘면 사용자가 재동의해야 한다는 점을 `docs/<service>.md` 2절에 적는다.
+
+## synsory-studio 대응
+
+이식할 때 각 파일이 들어갈 studio 위치다. studio는 `domain`(순수) → `application`(유스케이스, 외부 SDK 의존 금지) → `infrastructure`(I/O) → `apps/api`(HTTP) 계층을 `scripts/check-boundaries.ts`로 검사한다. 공통 부분의 상세는 `docs/STUDIO_PORTING.md`, 서비스별 부분은 각 `docs/<service>.md` 11절 끝의 "studio 이식" 하위절에 적는다.
+
+| synsory-api | synsory-studio |
+| --- | --- |
+| `services/<service>/client.py` | `packages/infrastructure`의 서비스 어댑터 (REST를 `fetch`로 직접 호출, SDK 미사용 유지). usecases 안의 요청 본문 생성 함수도 여기로 |
+| `services/<service>/usecases.py` | `packages/application`. application은 infrastructure를 import할 수 없으므로 client 호출을 port 인터페이스(`ports.ts` 방식)로 받는다 |
+| `services/<service>/mapper.py` | 외부 응답 형식 변환은 `packages/infrastructure` 어댑터 안. 집계·출석 판정 같은 Synsory 규칙과 payload 스키마는 `packages/domain`(`ToolHandler` 포함). 기준은 `docs/STUDIO_PORTING.md` 2절 |
+| `services/<service>/scopes.py` | scope 상수와 사용 이유를 TS 상수로 |
+| `core/models.py` | `packages/contracts`의 Zod 스키마. `Document`는 `activities.external_refs` 항목, `FormSubmission` 등은 `activity_responses.payload`에 대응 |
+| `core/oauth.py` · `core/token_store.py` | 새로 만든다. Supabase 로그인과 분리된 교수자용 "Google/Zoom 연결" 흐름(`apps/api`) + refresh token을 studio의 AES-GCM으로 암호화해 비공개 `studio_auth` 스키마에 저장 |
+| 폴링·웹훅 처리 | pg-boss 작업(리소스 단위 group) → `CollectionService.commit`(checkpoint revision) |
+| `samples/<service>/*.json` | studio `tests/fixtures`의 mapper·handler 단위 테스트 입력 |
+| `tests/<service>/` (pytest) | 같은 케이스를 vitest로 옮길 목록 |
+| `router.py` · `picker.py` | 이식하지 않음 |
+
+이식을 쉽게 하려고 지킬 것: client 함수는 토큰과 단순 값을 받아 응답 dict를 돌려주는 형태로 둔다(port 메서드 하나에 그대로 대응). usecases는 Python 전용 기법(데코레이터로 흐름 숨기기, 동적 import 등)에 기대지 않는다.
 
 ## 규칙
 
@@ -92,4 +112,4 @@ uv run uvicorn app.main:app --port 8000 --reload
 11. 샘플 코드 (`usecases.py`의 흐름을 기준으로)
 12. 미확인 · 보류 항목
 
-목차 번호와 제목을 바꾸지 않는다. 서비스 간에 같은 위치에서 같은 정보를 찾을 수 있어야 한다.
+목차 번호와 제목을 바꾸지 않는다. studio 이식 내용은 13절을 새로 만들지 않고 11절 끝에 "studio 이식" 하위절로 붙인다. 서비스 간에 같은 위치에서 같은 정보를 찾을 수 있어야 한다.

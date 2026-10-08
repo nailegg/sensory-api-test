@@ -2,7 +2,7 @@
 
 Synsory가 나중에 붙일 SaaS API(Google Drive · Docs · Sheets · Slides · Forms · Meet, Zoom)를 서비스 레포와 별개로 먼저 검증하고, 사용 방식을 문서로 확정하는 FastAPI 테스트 프로젝트다.
 
-여기서 만든 `client.py` · `mapper.py` · `scopes.py` · `usecases.py`와 `docs/<service>.md`는 서비스 레포로 그대로 옮겨진다. 라우터는 실측용이라 옮기지 않는다.
+서비스 레포는 [synsory-studio](https://github.com/Synsory/synsory-studio)(TypeScript)다. 여기서 만든 `client.py` · `mapper.py` · `scopes.py` · `usecases.py`는 실측으로 검증된 참조 구현이고, studio에는 TS로 이식한다. 넘기는 것은 `docs/<service>.md`, 요청·응답 샘플, 테스트 케이스, 이식 가이드다. 라우터는 실측용이라 이식하지 않는다. 파일별 대응은 [CLAUDE.md](CLAUDE.md) "synsory-studio 대응".
 
 - 인증: OAuth 2.0 사용자 동의 방식(Google 서비스 계정, Zoom Server-to-Server는 쓰지 않음)
 - 테스트 계정: 개인 Google 계정, 개인 Zoom 무료(Basic) 계정
@@ -73,10 +73,10 @@ app/
   main.py                  # 라우터 등록만
   core/                    # config, oauth(공통 인가), token_store, models(공통 모델)
   services/<service>/
-    router.py              # 얇은 층. 옮기지 않음
+    router.py              # 얇은 층. 이식하지 않음
     usecases.py            # 여러 client·mapper를 엮는 흐름     ┐
-    client.py              # 이 서비스의 외부 API 호출만        │ 서비스 레포로
-    mapper.py              # 응답 dict → core/models 순수 변환  │ 옮기는 파일
+    client.py              # 이 서비스의 외부 API 호출만        │ studio로 TS
+    mapper.py              # 응답 dict → core/models 순수 변환  │ 이식하는 파일
     scopes.py              # scope 목록과 사용 이유             ┘
 samples/<service>/         # 실측 요청·응답
 docs/                      # PLAN.md, 서비스별 스펙 문서
@@ -97,6 +97,6 @@ tests/<service>/           # usecases·mapper 테스트
 - OAuth 동의 화면이 "테스트" 상태면 Google refresh token은 7일 뒤 만료된다. 오류가 아니다.
 - Google Docs·Drive API는 현재 무료지만 공식 문서에 한도 초과분 과금 계획이 적혀 있다.
 - Zoom 앱은 미공개 상태라 개발자 계정 사용자만 인가할 수 있다. 다른 계정에 열려면 공유 요청 또는 게시 심사가 필요하다.
-- 상대 레포의 Python 버전·패키지 도구는 아직 확인 전이다. 확인되면 스택을 거기에 맞춘다.
+- 서비스 레포(synsory-studio)는 TypeScript라 Python 코드를 그대로 쓰지 않고 이식한다. studio는 지금 외부 도구 등록과 Google 추가 scope를 막아 두었으므로 그쪽 범위를 먼저 열어야 한다.
 
 열린 질문 전체는 [docs/PLAN.md](docs/PLAN.md) "열린 질문" 절에 있다.
