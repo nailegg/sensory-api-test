@@ -283,16 +283,18 @@ except DriveApiError as e:
 
 ### 11.1 studio 이식
 
-공통 배치·형식은 `docs/STUDIO_PORTING.md`. TS 이식본은 `studio-port/`에 있고 `pnpm verify` 통과, 실측 16개 항목 통과(2026-10-09). port에는 실측된 흐름(`usecases.py`)이 쓰는 호출만 옮겼다.
+공통 배치·형식은 `docs/STUDIO_PORTING.md`. TS 이식본은 `studio-port/`에 있고 `pnpm verify` 통과, 실측 통과(2026-10-09, 어댑터 17개 항목·흐름 7개 항목). port에는 실측된 흐름(`usecases.py`)이 쓰는 호출만 옮겼다.
 
 1. **파일 대응**
 
    | synsory-api | studio |
    | --- | --- |
    | `google_drive/client.py` `DriveClient` + `mapper.py` | `packages/infrastructure/src/google-drive.ts` `createGoogleDrive(accessToken)` → `GoogleDrivePort`, `documentFromDriveFile`, `kindFromMime`, `EXPORT_MIME` |
-   | `DriveApiError` | `packages/infrastructure/src/external-http.ts` `ExternalApiError`(`status`·`reason`·`apiStatus`·`rateLimited`). 응답 모양 불일치는 `ExternalResponseError` |
+   | `DriveApiError` | `packages/infrastructure/src/external-http.ts` `ExternalApiError extends AppError`. `code`·`status`는 Synsory 기준(`EXTERNAL_NOT_FOUND` 404 · `EXTERNAL_RATE_LIMITED` 429 · `EXTERNAL_FAILED` 502), Google 값은 `externalStatus`·`reason`·`apiStatus`(`details`에도 같은 값). Google 원문 메시지는 `externalMessage`에만 두고 응답·`details`에는 넣지 않는다. 응답 모양 불일치는 `ExternalResponseError`(AppError 아님 → 버그로 올라감) |
    | `core/models.py` `Document` | `packages/domain/src/integrations.ts` `externalDocument`(Zod). 시각은 ISO 문자열 |
-   | `google_drive/usecases.py` (그룹 파일·마감·복원·내보내기) | `packages/application/src/google-files.ts` (다음 작업) |
+   | `usecases.render_template` · `group_variables` | `packages/domain/src/integrations.ts` `renderTemplate` · `groupVariables` |
+   | `usecases.share_file` · `create_group_files_from_template` · `downgrade_editors` · `close_submissions` · `restore_editors` | `packages/application/src/google-files.ts` 같은 이름(camelCase). `DriveApiError`를 잡던 자리는 `AppError`를 잡는다(application은 infrastructure를 import할 수 없음). `replace_errors` 인자는 없앴다: 호출하던 Docs·Slides가 자기 API 오류만 넘겼고, TS에서는 그것도 `AppError`라 같은 동작이다. `ShareResult.ok`는 `error === null`로 대신한다 |
+   | `usecases.get_document_meta` · `list_app_files` · `create_folder` · `move_to_trash` · `export_file` | port 메서드 하나씩이라 application 함수를 두지 않는다(`getFile` · `listFiles` · `createFolder` · `trashFile` · `exportFile`) |
    | `client.set_read_only` | 이식하지 않음. 마감은 권한 낮추기로 정했다(10절 편집 잠금) |
    | `client.rename_file` · `delete_file` · `create_empty_native_file` · `get_start_page_token` · `list_changes` | 이식하지 않음. 어떤 흐름도 쓰지 않는다(`create_empty_native_file`은 Forms 실험용). 필요해지면 Python client를 보고 추가 |
 
@@ -302,7 +304,7 @@ except DriveApiError as e:
    | --- | --- | --- |
    | `getFile(id)` | `files.get` | `get_file` |
    | `createFolder(name, parent?)` | `files.create` | `create_folder` |
-   | `createFromContent({ name, content, source, target, parentFolderId? })` | `files.create` multipart 업로드(5MB 이하) | `create_from_content`. MIME 대신 `source` = `'markdown' \| 'pptx' \| 'xlsx' \| 'csv'`, `target` = `'doc' \| 'slides' \| 'sheet'` |
+   | `createFromContent({ name, content, source, target, parentFolderId? })` | `files.create` multipart 업로드(5MB 이하) | `create_from_content`. MIME 대신 `source` = `'markdown' \| 'docx' \| 'pptx' \| 'xlsx' \| 'csv'`, `target` = `'doc' \| 'slides' \| 'sheet'` |
    | `copyFile(id, name, parent?)` · `moveFile(id, toFolderId)` | `files.copy` · `files.update` `addParents` | 같은 이름. `removeParents`는 쓰는 흐름이 없어 뺐다(단일 부모라 `addParents`만으로 옮겨진다, 2026-10-09 실측) |
    | `listFiles(pageSize?)` | `files.list` `q=trashed = false` | usecase `list_app_files` |
    | `exportFile(id, format)` | `files.get` + `files.export` | usecase `export_file`. 파일 종류별 형식표를 어댑터가 고르고, 안 되는 형식은 `AppError UNSUPPORTED_EXPORT_FORMAT` |
@@ -313,7 +315,7 @@ except DriveApiError as e:
 
 3. **도구 매핑**: Drive 단독 도구는 없다. 그룹 파일 도구(Docs·Slides·Sheets)의 `external_refs` 항목이 `ExternalDocument` + `team_id`다(`STUDIO_PORTING.md` 7절).
 4. **큐 작업**: 없음.
-5. **테스트**: `tests/google_drive/test_mapper.py` 5개 → `studio-port/tests/unit/google-drive.test.ts` 첫 묶음. 요청 모양 9개·외부 오류 분류 6개를 추가했다. 가짜 HTTP는 `tests/fixtures/http.ts` `recordingFetch`. `test_usecases.py` 3개는 `google-files.ts`와 함께 옮긴다. 실측 스크립트 `studio-port/scripts/live-google-drive.ts`는 이식하지 않는다.
+5. **테스트**: `tests/google_drive/test_mapper.py` 5개 → `studio-port/tests/unit/google-drive.test.ts` 첫 묶음. 요청 모양 9개·외부 오류 분류 6개를 추가했다. 가짜 HTTP는 `tests/fixtures/http.ts` `recordingFetch`. `test_usecases.py` 3개와 `tests/google_docs/test_usecases.py`의 Drive 흐름 4개(render·downgrade·restore·close)와 부분 공유 실패 1개 → `studio-port/tests/unit/google-files.test.ts`(가짜 port `tests/fixtures/fake-drive.ts`). 실측 스크립트 `studio-port/scripts/live-google-drive.ts` · `live-google-files.ts`는 이식하지 않는다.
 
 ## 12. 미확인 · 보류 항목
 

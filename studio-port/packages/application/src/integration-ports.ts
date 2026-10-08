@@ -16,8 +16,8 @@ export interface DrivePermission {
   view: string | null;
 }
 
-// 변환 업로드: Markdown → Docs, pptx → Slides, xlsx·csv → Sheets.
-export type UploadSource = 'markdown' | 'pptx' | 'xlsx' | 'csv';
+// 변환 업로드: Markdown·docx → Docs, pptx → Slides, xlsx·csv → Sheets.
+export type UploadSource = 'markdown' | 'docx' | 'pptx' | 'xlsx' | 'csv';
 export type UploadTarget = 'doc' | 'slides' | 'sheet';
 
 // files.export 형식. Drive에는 Slides 이미지 형식이 없고, Sheets csv·tsv는 첫 시트만 나온다.

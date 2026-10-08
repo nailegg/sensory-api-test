@@ -47,6 +47,7 @@ const XLSX = 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
 
 const UPLOAD_MIME: Record<UploadSource, string> = {
   markdown: 'text/markdown',
+  docx: DOCX,
   pptx: PPTX,
   xlsx: XLSX,
   csv: 'text/csv',

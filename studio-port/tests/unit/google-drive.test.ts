@@ -109,6 +109,23 @@ describe('GoogleDrivePort requests', () => {
     expect(r?.body?.endsWith(`--${boundary}--`)).toBe(true);
   });
 
+  it('uploads docx bytes converting to a Google Doc', async () => {
+    const http = recordingFetch({ json: DRIVE_FILE });
+    await createGoogleDrive(token, http).createFromContent({
+      name: '안내문',
+      content: new Uint8Array([0x50, 0x4b, 0x03, 0x04]),
+      source: 'docx',
+      target: 'doc',
+    });
+    const [r] = http.requests;
+    expect(r?.body).toContain(
+      '{"name":"안내문","mimeType":"application/vnd.google-apps.document"}',
+    );
+    expect(r?.body).toContain(
+      'Content-Type: application/vnd.openxmlformats-officedocument.wordprocessingml.document\r\n\r\nPK',
+    );
+  });
+
   it('exports with the format table of the file kind', async () => {
     const http = recordingFetch(
       { json: { id: 'file-1', name: '회의록', mimeType: 'application/vnd.google-apps.document' } },
@@ -192,8 +209,12 @@ describe('external errors', () => {
   it('keeps Drive 404 notFound as a non rate-limit error', async () => {
     const e = await failing({ status: 404, json: NOT_FOUND });
     expect(e).toBeInstanceOf(ExternalApiError);
-    expect(e).toMatchObject({ status: 404, reason: 'notFound', rateLimited: false });
-    expect((e as Error).message).toBe('File not found: nonexistent-id-123.');
+    expect(e).toBeInstanceOf(AppError);
+    expect(e).toMatchObject({ code: 'EXTERNAL_NOT_FOUND', status: 404, reason: 'notFound' });
+    // Google 원문 메시지는 externalMessage에만 두고, API 응답에 나가는 message·details에는 넣지 않는다.
+    expect(e).toMatchObject({ externalMessage: 'File not found: nonexistent-id-123.' });
+    expect((e as AppError).message).not.toContain('nonexistent-id-123');
+    expect(JSON.stringify((e as AppError).details)).not.toContain('nonexistent-id-123');
   });
 
   it('treats Drive 403 user rate limit as rate limited', async () => {
@@ -201,7 +222,7 @@ describe('external errors', () => {
       status: 403,
       json: { error: { message: 'slow down', errors: [{ reason: 'userRateLimitExceeded' }] } },
     });
-    expect(e).toMatchObject({ status: 403, rateLimited: true });
+    expect(e).toMatchObject({ code: 'EXTERNAL_RATE_LIMITED', status: 429, externalStatus: 403 });
   });
 
   it('treats 403 insufficient permissions as not rate limited', async () => {
@@ -215,7 +236,12 @@ describe('external errors', () => {
         },
       },
     });
-    expect(e).toMatchObject({ rateLimited: false, apiStatus: 'PERMISSION_DENIED' });
+    expect(e).toMatchObject({
+      code: 'EXTERNAL_FAILED',
+      status: 502,
+      externalStatus: 403,
+      apiStatus: 'PERMISSION_DENIED',
+    });
   });
 
   it('treats 429 and RESOURCE_EXHAUSTED as rate limited', async () => {
@@ -227,7 +253,12 @@ describe('external errors', () => {
 
   it('survives non-JSON error bodies', async () => {
     const e = await failing({ status: 502, text: '<html>bad gateway</html>' });
-    expect(e).toMatchObject({ status: 502, reason: null });
+    expect(e).toMatchObject({
+      code: 'EXTERNAL_FAILED',
+      externalStatus: 502,
+      reason: null,
+      externalMessage: null,
+    });
   });
 
   it('rejects responses that do not match the expected shape', async () => {

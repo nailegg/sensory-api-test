@@ -26,3 +26,19 @@ export const externalDocument = z.object({
   text: z.string().nullable(),
 });
 export type ExternalDocument = z.infer<typeof externalDocument>;
+
+// 그룹 파일 제목·본문의 {{team_name}} 같은 태그를 치환한다. 없는 변수는 그대로 둔다(Markdown의 다른 중괄호와 충돌 방지).
+export function renderTemplate(template: string, variables: Record<string, string>): string {
+  return template.replace(/\{\{\s*([\p{L}\p{N}_]+)\s*\}\}/gu, (tag, key: string) =>
+    Object.hasOwn(variables, key) ? (variables[key] ?? tag) : tag,
+  );
+}
+
+// 그룹 파일 템플릿 변수. Docs·Slides·Sheets가 같은 이름을 쓴다.
+export function groupVariables(
+  teamName: string,
+  activityName: string,
+  due: string | null,
+): Record<string, string> {
+  return { team_name: teamName, activity_name: activityName, due: due ?? '' };
+}

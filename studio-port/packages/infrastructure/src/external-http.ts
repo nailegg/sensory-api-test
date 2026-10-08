@@ -1,4 +1,5 @@
 import type { z } from 'zod';
+import { AppError } from '../../domain/src/index.ts';
 
 // Google REST 공통 호출. SDK 없이 fetch로 직접 부른다. Zoom은 Zoom 어댑터를 옮길 때 추가한다.
 // 오류 본문 원문은 개인정보가 섞일 수 있어 보관하지 않고 분류에 필요한 값만 남긴다.
@@ -8,24 +9,34 @@ export type AccessToken = () => Promise<string>;
 
 const RATE_LIMIT_REASONS = new Set(['rateLimitExceeded', 'userRateLimitExceeded']);
 
-export class ExternalApiError extends Error {
+// Google 오류를 studio AppError로 낸다. application은 infrastructure를 import할 수 없으므로
+// AppError로 "외부 호출 실패"를 알아보고, 그 밖의 예외는 버그로 보고 올린다.
+// 코드 이름은 docs/STUDIO_PORTING.md 5절 제안(결정 필요 C).
+export class ExternalApiError extends AppError {
   constructor(
-    public readonly status: number,
-    message: string,
+    public readonly externalStatus: number,
     // error.errors[0].reason. Drive는 403 rate limit과 권한 부족을 이것으로 구분한다.
     public readonly reason: string | null,
     // error.status (예: RESOURCE_EXHAUSTED, PERMISSION_DENIED).
     public readonly apiStatus: string | null,
+    // Google 원문 메시지. 원인 추적용이다. 파일 ID·이메일이 섞일 수 있어 details(API 응답에 나감)에
+    // 넣지 않는다. 로그에 남길지·가릴지는 studio 로깅 정책을 따른다(STUDIO_PORTING.md 결정 필요 M).
+    public readonly externalMessage: string | null,
   ) {
-    super(message);
+    const rateLimited =
+      externalStatus === 429 ||
+      apiStatus === 'RESOURCE_EXHAUSTED' ||
+      (reason !== null && RATE_LIMIT_REASONS.has(reason));
+    const [code, status, message] = rateLimited
+      ? ['EXTERNAL_RATE_LIMITED', 429, 'Google 요청 한도를 넘었습니다. 잠시 후 다시 시도하세요.']
+      : externalStatus === 404
+        ? ['EXTERNAL_NOT_FOUND', 404, 'Google에서 파일을 찾을 수 없거나 앱에 접근 권한이 없습니다.']
+        : ['EXTERNAL_FAILED', 502, 'Google 요청이 실패했습니다.'];
+    super(code, status, message, { status: externalStatus, reason, api_status: apiStatus });
     this.name = 'ExternalApiError';
   }
   get rateLimited(): boolean {
-    return (
-      this.status === 429 ||
-      this.apiStatus === 'RESOURCE_EXHAUSTED' ||
-      (this.reason !== null && RATE_LIMIT_REASONS.has(this.reason))
-    );
+    return this.code === 'EXTERNAL_RATE_LIMITED';
   }
 }
 
@@ -105,8 +116,8 @@ function toError(status: number, text: string): ExternalApiError {
   const str = (v: unknown) => (typeof v === 'string' && v ? v : null);
   return new ExternalApiError(
     status,
-    str(error.message) ?? `Google API 오류 (${status})`,
     str(error.errors?.[0]?.reason),
     str(error.status),
+    str(error.message),
   );
 }

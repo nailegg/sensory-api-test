@@ -105,7 +105,7 @@ tests/unit/                       # pytest 케이스의 vitest 번역
 
 ## 5. 오류 변환
 
-synsory-api의 `XApiError(status, body, is_rate_limit, reason)`는 infrastructure의 `ExternalApiError`로 옮기고, application 경계에서 `AppError`로 바꾼다. 코드 이름 제안 **[결정 필요 C]**:
+synsory-api의 `XApiError(status, body, is_rate_limit, reason)`는 infrastructure의 `ExternalApiError`로 옮긴다. `ExternalApiError`는 domain `AppError`를 상속한다(studio-port 구현, 2026-10-09). application은 infrastructure를 import할 수 없으므로 `AppError`로 외부 호출 실패를 알아보고 "기록하고 다음으로" 처리하며, 그 밖의 예외는 버그로 올린다. `details`(API 응답에 나감)에는 `status`·`reason`·`api_status`만 둔다. Google 원문 메시지는 원인 추적용으로 별도 필드 `externalMessage`에 둔다. 파일 ID·이메일이 섞일 수 있어 응답으로 내보내지 않고, 로그에 남길지·가릴지는 **[결정 필요 M]**. 코드 이름 제안 **[결정 필요 C]** (Google 오류 중 아래 세 개만 구현, 연결 관련 두 개는 연결 흐름을 만들 때):
 
 | 상황 | 판별 (synsory-api 근거) | AppError code · status |
 | --- | --- | --- |
@@ -115,7 +115,7 @@ synsory-api의 `XApiError(status, body, is_rate_limit, reason)`는 infrastructur
 | 플랜 제한 | Zoom code 200 (유료 전용) | `EXTERNAL_PLAN_REQUIRED` 403 |
 | 그 밖의 외부 오류 | 4xx/5xx | `EXTERNAL_FAILED` 502 |
 
-외부 응답 본문은 개인정보가 섞일 수 있어 로그·`details`에 원문을 넣지 않는다.
+외부 응답 본문 원문은 개인정보가 섞일 수 있어 `details`에 넣지 않는다.
 
 ## 6. 외부 계정 연결 (core/oauth.py · token_store.py 대체)
 
@@ -192,6 +192,7 @@ studio 범위·정책 (studio 담당자 결정):
 - H. Picker용 짧은 수명 access token 전달
 - J. 명단에 학번 필드
 - L. xlsx 라이브러리 의존성 추가
+- M. 외부 오류 원문 메시지(`ExternalApiError.externalMessage`)를 로그에 남길지, 이메일을 가린 뒤 남길지 (studio는 "원본 응답·개인정보를 로그에 출력하지 않는다")
 - GCP 프로젝트·동의 화면과 Zoom 앱을 studio 로그인용과 공유할지
 
 ## 11. 서비스별 "studio 이식" 하위절 형식

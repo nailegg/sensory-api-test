@@ -70,6 +70,23 @@ try {
     docx.content.length > 1000 && docx.content[0] === 0x50,
     `${docx.content.length} bytes`,
   );
+  // 내보낸 docx를 다시 변환 업로드한다. 제목·굵게가 왕복에서 남는지 본다.
+  const fromDocx = await drive.createFromContent({
+    name: '안내문 (docx)',
+    content: docx.content,
+    source: 'docx',
+    target: 'doc',
+    parentFolderId: folder.id,
+  });
+  const roundText = new TextDecoder().decode((await drive.exportFile(fromDocx.id, 'md')).content);
+  check(
+    'createFromContent docx → doc keeps formatting',
+    fromDocx.kind === 'doc' &&
+      fromDocx.parent_folder_id === folder.id &&
+      roundText.includes('# 과제 안내') &&
+      roundText.includes('**마감**'),
+    JSON.stringify(roundText),
+  );
   const wrong = await failure(drive.exportFile(doc.id, 'pptx'));
   check(
     'exportFile rejects pptx for a doc',
@@ -123,13 +140,15 @@ try {
   const missing = await failure(drive.getFile('nonexistent-id-123'));
   check(
     'unknown id → 404 notFound',
-    missing instanceof ExternalApiError && missing.status === 404 && missing.reason === 'notFound',
+    missing instanceof ExternalApiError &&
+      missing.externalStatus === 404 &&
+      missing.reason === 'notFound',
   );
   if (userFolderId) {
     const hidden = await failure(drive.getFile(userFolderId));
     check(
       'user folder is invisible under drive.file (404)',
-      hidden instanceof ExternalApiError && hidden.status === 404,
+      hidden instanceof ExternalApiError && hidden.externalStatus === 404,
     );
   }
 } finally {

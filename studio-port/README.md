@@ -56,4 +56,5 @@ GOOGLE_ACCESS_TOKEN="$TOKEN" DRIVE_USER_FOLDER_ID=<앱이 못 보는 사용자 �
 
 | 실측 | 날짜 | 결과 |
 | --- | --- | --- |
-| `live-google-drive.ts` | 2026-10-09 | 16/16 통과. Markdown 내보내기의 `_` 이스케이프를 새로 확인(`../docs/google_drive.md` 10절). CSV 변환 업로드의 학번 앞자리 0 소실은 Python 실측과 같음(`../docs/google_sheets.md` 10절 12항) |
+| `live-google-files.ts` | 2026-10-09 | 7/7 통과. 그룹 파일 복사·부분 공유 실패(비 Google 이메일 400 `invalidSharingRequest`)·Picker 전 템플릿 404·마감·재마감 무변화·되돌리기 |
+| `live-google-drive.ts` | 2026-10-09 | 17/17 통과(docx 왕복 변환 추가: Doc→docx→Doc 후 md 내보내기가 원본과 같음). Markdown 내보내기의 `_` 이스케이프를 새로 확인(`../docs/google_drive.md` 10절). CSV 변환 업로드의 학번 앞자리 0 소실은 Python 실측과 같음(`../docs/google_sheets.md` 10절 12항) |
