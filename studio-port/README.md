@@ -33,6 +33,7 @@ packages/
   domain/          # Synsory 규칙(집계, 출석 판정, payload 스키마). domain과 zod만 import
   application/     # port 인터페이스 초안. application·contracts·domain과 zod만 import
   contracts/       # 웹과 주고받는 DTO (필요할 때)
+  ui/              # 웹 공용(브라우저 전용 코드). 웹은 contracts·ui만 import한다
   infrastructure/  # Google·Zoom 어댑터(fetch), 외부 오류 분류
 tests/
   unit/            # vitest. synsory-api pytest 케이스를 번역

@@ -135,7 +135,12 @@ studio의 Google 로그인(Supabase, `openid email profile`)과 **별개 흐름*
 - Google 동의 화면이 "테스트" 상태면 refresh token 7일 만료. refresh token은 계정 × 클라이언트당 100개, 초과 시 오래된 것부터 무효.
 - Zoom 리다이렉트 URI는 https 필수(`http://localhost` 불가). studio 로컬(`localhost:5173`)에서 Zoom 연결을 받으려면 ngrok 같은 터널이 필요. **[결정 필요 F]**
 - Drive 연결용 Google client secret은 Supabase가 아닌 앱 env에 둬야 한다. studio `.env.dev.local.example`의 "Google secret은 Supabase에만" 원칙의 예외. **[결정 필요 G]**
-- Picker는 브라우저에 짧은 수명 access token이 필요하다(`docs/google_drive.md` 2.1절). studio "토큰을 웹에 두지 않는다" 원칙과 충돌. Picker 열 때만 내려주는 엔드포인트를 둘지. **[결정 필요 H]**
+- Picker는 브라우저에 access token이 필요하다(`docs/google_drive.md` 2.1절). **결정 H 확정(2026-10-09, 상현): Picker를 열 때만 서버가 그 교수자의 짧은 수명 access token을 내려준다.** studio-port 이식분: `contracts` `pickerSession`·`pickedFiles`, `application` `acceptPickedFiles`(서버가 볼 수 있는지·템플릿 종류인지 확인), `infrastructure` `pickerAppId`, `ui` `pickGoogleFiles`(브라우저, 토큰은 인자로만). studio에서 할 것과 지킬 것:
+  - 세션 API(예: `GET /api/connections/google/picker-session`)는 교수자 세션·CSRF 확인 뒤 응답하고 `Cache-Control: no-store`. 남은 수명이 짧으면(예: 5분 미만) 갱신 후 준다. refresh token은 절대 내려주지 않는다.
+  - 브라우저는 토큰을 메모리에만 두고 Picker를 닫으면 버린다(웹 저장소 금지). revoke하지 않는다(같은 프로젝트의 서버 refresh token까지 무효가 된다는 보고, `docs/google_drive.md` 2.1절).
+  - 고른 ID는 서버로 보내 `acceptPickedFiles`로 확인한 뒤에만 템플릿으로 쓴다.
+  - **미확인 위험**: studio API는 `@fastify/helmet`을 전역으로 등록한다. 웹 페이지에도 helmet 헤더가 붙는다면 ① 기본 CSP가 `apis.google.com` 스크립트와 `docs.google.com` iframe을 막고, ② `referrerPolicy: no-referrer` 때문에 Referer 제한을 건 API 키가 "API developer key is invalid"로 거부될 수 있다. 웹을 어떻게 서빙하는지 확인하고, 필요하면 CSP에 두 출처를 추가하고 Picker 페이지의 Referrer-Policy를 `strict-origin-when-cross-origin`으로 둔다(API 키 제한은 앱 도메인 + `https://docs.google.com/*`).
+  - GCP: Google Picker API 사용 설정, API 키(웹사이트 제한·Picker API만), `setAppId`는 프로젝트 번호.
 
 ## 7. 활동 도구 매핑
 
@@ -195,7 +200,7 @@ studio 범위·정책 (studio 담당자 결정):
 - E. 토큰 갱신 동시성: 행 잠금 vs 낙관적 갱신
 - F. Zoom https 리다이렉트를 로컬에서 받는 방법
 - G. Drive용 Google client secret을 앱 env에 두는 예외
-- H. Picker용 짧은 수명 access token 전달
+- ~~H. Picker용 짧은 수명 access token 전달~~ → 확정(2026-10-09): 서버가 Picker 열 때만 내려줌. 남은 확인: helmet CSP·Referrer-Policy(6절 Picker 항목)
 - J. 명단에 학번 필드
 - L. xlsx 라이브러리 의존성 추가
 - M. 외부 오류 원문 메시지(`ExternalApiError.externalMessage`)를 로그에 남길지, 이메일을 가린 뒤 남길지 (studio는 "원본 응답·개인정보를 로그에 출력하지 않는다")

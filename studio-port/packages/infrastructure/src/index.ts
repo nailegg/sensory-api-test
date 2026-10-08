@@ -6,3 +6,4 @@ export * from './google-tags.ts';
 export * from './google-docs.ts';
 export * from './google-slides.ts';
 export * from './google-sheets.ts';
+export * from './google-picker.ts';
