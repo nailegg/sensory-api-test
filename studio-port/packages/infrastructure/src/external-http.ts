@@ -1,38 +1,63 @@
 import type { z } from 'zod';
 import { AppError } from '../../domain/src/index.ts';
 
-// Google REST 공통 호출. SDK 없이 fetch로 직접 부른다. Zoom은 Zoom 어댑터를 옮길 때 추가한다.
-// 오류 본문 원문은 개인정보가 섞일 수 있어 보관하지 않고 분류에 필요한 값만 남긴다.
+// Google·Zoom REST 공통 호출. SDK 없이 fetch로 직접 부른다.
 
+export type ExternalProvider = 'google' | 'zoom';
 export type Fetch = typeof fetch;
 export type AccessToken = () => Promise<string>;
 
 const RATE_LIMIT_REASONS = new Set(['rateLimitExceeded', 'userRateLimitExceeded']);
 
-// Google 오류를 studio AppError로 낸다. application은 infrastructure를 import할 수 없으므로
+const MESSAGES: Record<
+  ExternalProvider,
+  { rateLimited: string; notFound: string; failed: string }
+> = {
+  google: {
+    rateLimited: 'Google 요청 한도를 넘었습니다. 잠시 후 다시 시도하세요.',
+    notFound: 'Google에서 파일을 찾을 수 없거나 앱에 접근 권한이 없습니다.',
+    failed: 'Google 요청이 실패했습니다.',
+  },
+  zoom: {
+    rateLimited: 'Zoom 요청 한도를 넘었습니다. 잠시 후 다시 시도하세요.',
+    notFound: 'Zoom에서 미팅을 찾을 수 없습니다.',
+    failed: 'Zoom 요청이 실패했습니다.',
+  },
+};
+
+// 외부 오류를 studio AppError로 낸다. application은 infrastructure를 import할 수 없으므로
 // AppError로 "외부 호출 실패"를 알아보고, 그 밖의 예외는 버그로 보고 올린다.
 // 코드 이름은 docs/STUDIO_PORTING.md 5절 제안(결정 필요 C).
 export class ExternalApiError extends AppError {
   constructor(
+    public readonly provider: ExternalProvider,
     public readonly externalStatus: number,
-    // error.errors[0].reason. Drive는 403 rate limit과 권한 부족을 이것으로 구분한다.
+    // Google error.errors[0].reason. Drive는 403 rate limit과 권한 부족을 이것으로 구분한다.
     public readonly reason: string | null,
-    // error.status (예: RESOURCE_EXHAUSTED, PERMISSION_DENIED).
+    // Google error.status (예: RESOURCE_EXHAUSTED, PERMISSION_DENIED).
     public readonly apiStatus: string | null,
-    // Google 원문 메시지. 원인 추적용이다. 파일 ID·이메일이 섞일 수 있어 details(API 응답에 나감)에
+    // 원문 메시지. 원인 추적용이다. 파일 ID·이메일이 섞일 수 있어 details(API 응답에 나감)에
     // 넣지 않는다. 로그에 남길지·가릴지는 studio 로깅 정책을 따른다(STUDIO_PORTING.md 결정 필요 M).
     public readonly externalMessage: string | null,
+    // Zoom 본문 code (124 토큰 무효, 3001 미팅 없음, 200 유료 전용).
+    public readonly zoomCode: number | null = null,
   ) {
     const rateLimited =
       externalStatus === 429 ||
       apiStatus === 'RESOURCE_EXHAUSTED' ||
       (reason !== null && RATE_LIMIT_REASONS.has(reason));
+    const text = MESSAGES[provider];
     const [code, status, message] = rateLimited
-      ? ['EXTERNAL_RATE_LIMITED', 429, 'Google 요청 한도를 넘었습니다. 잠시 후 다시 시도하세요.']
+      ? ['EXTERNAL_RATE_LIMITED', 429, text.rateLimited]
       : externalStatus === 404
-        ? ['EXTERNAL_NOT_FOUND', 404, 'Google에서 파일을 찾을 수 없거나 앱에 접근 권한이 없습니다.']
-        : ['EXTERNAL_FAILED', 502, 'Google 요청이 실패했습니다.'];
-    super(code, status, message, { status: externalStatus, reason, api_status: apiStatus });
+        ? ['EXTERNAL_NOT_FOUND', 404, text.notFound]
+        : ['EXTERNAL_FAILED', 502, text.failed];
+    super(code, status, message, {
+      status: externalStatus,
+      reason,
+      api_status: apiStatus,
+      zoom_code: zoomCode,
+    });
     this.name = 'ExternalApiError';
   }
   get rateLimited(): boolean {
@@ -63,6 +88,7 @@ export interface HttpOptions {
 }
 
 export async function externalRequest(
+  provider: ExternalProvider,
   accessToken: string,
   request: ExternalRequest,
   options: HttpOptions = {},
@@ -86,7 +112,7 @@ export async function externalRequest(
   };
   if (body !== undefined) init.body = body;
   const response = await (options.fetch ?? fetch)(url, init);
-  if (!response.ok) throw toError(response.status, await response.text());
+  if (!response.ok) throw toError(provider, response.status, await response.text());
   return response;
 }
 
@@ -105,16 +131,33 @@ export async function readJson<T>(response: Response, schema: z.ZodType<T>): Pro
   return parsed.data;
 }
 
-// Google 오류 본문: { error: { message, status, errors: [{ reason }] } }. JSON이 아니어도 status는 남긴다.
-function toError(status: number, text: string): ExternalApiError {
-  let error: { message?: unknown; status?: unknown; errors?: { reason?: unknown }[] } = {};
+// Google 오류 본문: { error: { message, status, errors: [{ reason }] } }
+// Zoom 오류 본문: { code, message }
+// JSON이 아니어도(HTML 오류 페이지 등) status는 남긴다.
+function toError(provider: ExternalProvider, status: number, text: string): ExternalApiError {
+  let body: Record<string, unknown> = {};
   try {
-    error = (JSON.parse(text) as { error?: typeof error }).error ?? {};
+    body = (JSON.parse(text) as Record<string, unknown> | null) ?? {};
   } catch {
-    // HTML 오류 페이지 등
+    // JSON이 아님
   }
   const str = (v: unknown) => (typeof v === 'string' && v ? v : null);
+  if (provider === 'zoom')
+    return new ExternalApiError(
+      provider,
+      status,
+      null,
+      null,
+      str(body['message']),
+      typeof body['code'] === 'number' ? body['code'] : null,
+    );
+  const error = (body['error'] ?? {}) as {
+    message?: unknown;
+    status?: unknown;
+    errors?: { reason?: unknown }[];
+  };
   return new ExternalApiError(
+    provider,
     status,
     str(error.errors?.[0]?.reason),
     str(error.status),

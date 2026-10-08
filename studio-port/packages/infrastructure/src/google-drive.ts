@@ -166,7 +166,7 @@ export function createGoogleDrive(
   options: HttpOptions = {},
 ): GoogleDrivePort {
   const call = async (request: ExternalRequest) =>
-    externalRequest(await accessToken(), request, options);
+    externalRequest('google', await accessToken(), request, options);
   const document = async (request: ExternalRequest) => {
     const response = await call({
       ...request,
