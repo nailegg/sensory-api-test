@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import type { DrivePermission } from '../../packages/application/src/index.ts';
+import type { DrivePermission, GoogleDrivePort } from '../../packages/application/src/index.ts';
 import {
   closeSubmissions,
   createGroupFilesFromTemplate,
@@ -8,7 +8,7 @@ import {
 } from '../../packages/application/src/google-files.ts';
 import { AppError, renderTemplate } from '../../packages/domain/src/index.ts';
 import { documentFromDriveFile } from '../../packages/infrastructure/src/index.ts';
-import { fakeDrive, notFound } from '../fixtures/fake-drive.ts';
+import { fakePort, notFound } from '../fixtures/fake-port.ts';
 
 const doc = (id: string, name: string) =>
   documentFromDriveFile({ id, name, mimeType: 'application/vnd.google-apps.spreadsheet' });
@@ -34,7 +34,7 @@ describe('createGroupFilesFromTemplate (google_drive test_usecases.py)', () => {
   function drive(invisibleTemplate?: string, failEmail?: string) {
     const copied: { source: string; name: string; parent: string | undefined }[] = [];
     const shared: [string, string, string][] = [];
-    const port = fakeDrive({
+    const port = fakePort<GoogleDrivePort>({
       async copyFile(fileId, name, parent) {
         if (fileId === invisibleTemplate) throw notFound();
         copied.push({ source: fileId, name, parent });
@@ -152,7 +152,7 @@ describe('createGroupFilesFromTemplate (google_drive test_usecases.py)', () => {
 describe('closing and restoring edit access (google_docs test_usecases.py)', () => {
   function drive() {
     const updated: [string, string][] = [];
-    const port = fakeDrive({
+    const port = fakePort<GoogleDrivePort>({
       async listPermissions(fileId) {
         if (fileId === 'missing') throw notFound();
         return [

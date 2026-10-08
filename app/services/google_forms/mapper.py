@@ -76,8 +76,9 @@ def _question_kind(q: dict) -> tuple[str, list[str]]:
     if "textQuestion" in q:
         return ("paragraph" if q["textQuestion"].get("paragraph") else "text"), []
     if "scaleQuestion" in q:
+        # low가 0이면 Forms가 필드를 빼고 보낸다(proto3 기본값 생략, 2026-10-09 실측). 그래서 기본은 0이다.
         s = q["scaleQuestion"]
-        return "scale", [str(v) for v in range(int(s.get("low", 1)), int(s.get("high", 5)) + 1)]
+        return "scale", [str(v) for v in range(int(s.get("low", 0)), int(s.get("high", 5)) + 1)]
     if "ratingQuestion" in q:
         return "rating", [str(v) for v in range(1, int(q["ratingQuestion"].get("ratingScaleLevel", 5)) + 1)]
     for key, kind in (("dateQuestion", "date"), ("timeQuestion", "time"), ("fileUploadQuestion", "file_upload")):

@@ -87,3 +87,9 @@ def test_submission_empty_grade_means_wrong_only_for_graded_questions():
     assert sub.grades["qr"].score == 0 and not sub.grades["qr"].correct and sub.grades["qr"].max_score == 1
     # graded 없이 변환하면 점수가 있는 문항만
     assert set(submission_from_response(response, "f1").grades) == {"q404"}
+
+
+def test_scale_without_low_starts_at_zero():
+    # 2026-10-09 실측: low 0으로 만든 척도를 forms.get하면 {"high": 3}만 온다
+    form = {"items": [{"title": "난이도", "questionItem": {"question": {"questionId": "s", "scaleQuestion": {"high": 3}}}}]}
+    assert question_specs(form)[0]["options"] == ["0", "1", "2", "3"]

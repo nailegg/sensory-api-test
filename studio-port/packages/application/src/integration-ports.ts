@@ -1,4 +1,4 @@
-import type { ExternalDocument } from '../../domain/src/index.ts';
+import type { ExternalDocument, FormSubmission, QuestionSpec } from '../../domain/src/index.ts';
 
 // 외부 서비스 port. 메서드는 의미 단위이고 Google 요청 모양은 infrastructure 어댑터 뒤에 둔다.
 // 토큰은 인자로 받지 않는다. 어댑터가 만들어질 때 그 교수자의 토큰 공급자를 받는다.
@@ -74,4 +74,57 @@ export interface GoogleDrivePort {
     role: DriveRole,
   ): Promise<DrivePermission>;
   deletePermission(fileId: string, permissionId: string): Promise<void>;
+}
+
+export type EmailCollection = 'DO_NOT_COLLECT' | 'VERIFIED' | 'RESPONDER_INPUT';
+
+// Google Forms Item JSON(questionItem·questionGroupItem 등). application은 모양을 보지 않고 넘긴다.
+export type FormItem = Record<string, unknown>;
+
+// forms.get 결과 중 Synsory가 쓰는 값.
+export interface FormStructure {
+  form_id: string;
+  // 응답자에게 보이는 제목(info.title). Drive 파일 이름과 다를 수 있다.
+  title: string | null;
+  // 학생에게 줄 링크(/viewform). Drive webViewLink는 편집 화면이다.
+  responder_url: string | null;
+  // 레거시 폼(publishSettings 없음)은 null.
+  published: boolean | null;
+  accepting_responses: boolean | null;
+  email_collection: EmailCollection | null;
+  is_quiz: boolean;
+  linked_sheet_id: string | null;
+  revision_id: string | null;
+  questions: QuestionSpec[];
+}
+
+// Google Forms. drive.file scope로 앱이 만든 폼과 Picker로 고른 폼의 모든 메서드가 동작한다.
+// 응답은 읽기만 된다(제출·수정·삭제 API 없음). 폴더·권한·복사·휴지통은 GoogleDrivePort.
+export interface GoogleFormsPort {
+  // 항상 미게시로 만든다. 파라미터 없이 만들면 바로 게시·응답 받기 상태다(2026-10-06 실측, 공식 문서와 다름).
+  create(title: string): Promise<string>;
+  // batchUpdate 1회(원자적): 설정(퀴즈가 grading보다 먼저) → 제목·설명 → 질문(인덱스 0부터).
+  // quiz를 false로 바꾸면 모든 문항의 grading이 지워진다.
+  update(
+    formId: string,
+    changes: {
+      title?: string;
+      description?: string;
+      emailCollection?: EmailCollection;
+      quiz?: boolean;
+      items?: FormItem[];
+    },
+  ): Promise<void>;
+  // 마감 = (true, false), 열기·재개 = (true, true). 레거시 폼은 오류.
+  setPublishState(formId: string, published: boolean, acceptingResponses: boolean): Promise<void>;
+  get(formId: string): Promise<FormStructure>;
+  // 응답 전체(모든 페이지). since를 주면 lastSubmittedTime >= since만. 경계 응답이 다시 올 수 있어
+  // 저장할 때 id로 멱등 처리한다. graded(채점 질문 ID → 배점)를 주면 틀린 문항도 0점으로 grades에 들어간다.
+  // expensive read 쿼터(사용자당 분당 180), 페이지마다 1회.
+  listResponses(
+    formId: string,
+    options?: { since?: string; graded?: Record<string, number> },
+  ): Promise<FormSubmission[]>;
+  // 제출 현황용. 이메일만 받아 응답 크기를 줄인다.
+  listRespondentEmails(formId: string): Promise<(string | null)[]>;
 }

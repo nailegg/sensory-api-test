@@ -50,7 +50,7 @@ synsory-api의 파일 4종을 studio 층에 나누는 기준이다.
 
 | synsory-api | studio |
 | --- | --- |
-| `client.py` + usecases 안의 요청 본문 생성 함수(`replace_tag_requests`, `build_setup_requests`, `protect_range_requests`, `peer_review_items` 등) + mapper의 **응답 형식 변환** | `infrastructure`의 서비스 어댑터. application에는 "태그 치환", "폼 만들기"처럼 의미 단위 메서드만 보인다 |
+| `client.py` + usecases 안의 요청 본문 생성 함수(`replace_tag_requests`, `build_setup_requests`, `protect_range_requests` 등) + mapper의 **응답 형식 변환** | `infrastructure`의 서비스 어댑터. application에는 "태그 치환", "폼 만들기"처럼 의미 단위 메서드만 보인다. 예외: Forms `peer_review_items`는 `domain`(동료평가 폼 구조가 Synsory 규칙이고 application이 만들어 port에 넘겨야 해서, `docs/google_forms.md` 11.1절) |
 | mapper·usecases 안의 **순수 Synsory 규칙**(`summarize`, `summarize_peer_reviews`, `summarize_attendance`, `render_template`) | `domain` |
 | usecases의 **흐름**(그룹마다 복사→치환→공유, 미게시 생성→게시→응답자 제한, 수집 커서) | `application` |
 | `core/models.py` | 저장 형식(payload, `external_refs` 항목) Zod 스키마는 `domain`, 화면 DTO는 `contracts` |

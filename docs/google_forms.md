@@ -361,6 +361,7 @@ Forms API에는 **있다**(Google 4종 중 유일). 단 HTTP 콜백이 아니라
 17. **틀린 답과 채점 안 하는 문항의 `grade`가 같다.** 퀴즈 응답에서 둘 다 빈 객체 `{}`로 온다(2026-10-06 실측). 점수 집계에는 반드시 폼의 배점(`grading.pointValue`)을 함께 써서 채점 문항을 가린다. `totalScore`는 그대로 믿어도 된다.
 18. **증분 조회는 경계를 포함한다.** `timestamp >= X`는 X와 같은 시각의 응답을 다시 준다. 커서를 그대로 넘기므로 저장은 `responseId` 기준 upsert로 한다. 점수는 증분 조회로 하지 않는다(채점 변경이 `lastSubmittedTime`을 바꾸지 않는다).
 19. **시트 사본은 텍스트다.** 13번은 RAW로 써서 학번은 지키지만 점수·척도도 문자열이 된다. 교수자가 시트에서 숫자로 정렬·계산하려면 점수 열만 `USER_ENTERED`로 쓰는 것을 검토한다. 시트를 다시 내보낼 때는 지난번 열 수(`previous_columns`)까지만 지운다.
+20. **0부터 시작하는 척도는 `low`가 빠져서 온다.** `scaleQuestion.low`가 0이면 `forms.get` 응답에 `low` 필드가 없다(`{"high":3}`, proto3 기본값 생략, 2026-10-09 실측). 빠진 `low`는 0으로 읽는다. 기본을 1로 두면 0~N 척도의 `0` 선택지가 사라지고 학생이 고른 `0`은 집계에서 "(기타)"로 잡혀 평균에서도 빠진다(처음 `mapper._question_kind`가 그랬고 2026-10-09 수정, `test_scale_without_low_starts_at_zero`).
 
 ## 11. 샘플 코드 (`usecases.py`의 흐름을 기준으로)
 
@@ -426,6 +427,46 @@ again = await forms_uc.export_responses_to_sheet(forms, drive, sheets, form_id, 
 ```
 
 에러는 `FormsApiError`(`status`, `status_text`, `message`, `is_rate_limit`), `DriveApiError`, `SheetsApiError`로 올라온다. `is_rate_limit`이면 지수 백오프로 재시도한다. 토큰 만료(401)는 client가 처리하지 않으므로 호출 전에 갱신한다.
+
+### 11.1 studio 이식
+
+공통 배치·형식은 `docs/STUDIO_PORTING.md`, Drive 쪽은 `docs/google_drive.md` 11.1절. TS 이식본은 `studio-port/`에 있고 `pnpm verify` 통과, 실측 10개 항목 통과(2026-10-09). 응답은 API로 넣을 수 없어 실측은 응답 0건 상태까지이고, 응답 해석은 Python 실측 응답 모양으로 만든 단위 테스트가 맡는다.
+
+1. **파일 대응**
+
+   | synsory-api | studio |
+   | --- | --- |
+   | `google_forms/client.py` + `mapper.py` + `usecases.build_setup_requests` | `packages/infrastructure/src/google-forms.ts` `createGoogleForms(accessToken)` → `GoogleFormsPort`, `questionSpecs`, `formStructure`, `submissionFromResponse`, `updateRequests` |
+   | `core/models.py` `FormSubmission` · `AnswerGrade`, mapper `question_specs` 원소 | `packages/domain/src/google-forms-tool.ts` `FormSubmission` · `AnswerGrade` · `QuestionSpec` |
+   | usecases `summarize` · `summarize_peer_reviews` · `response_table` · `member_labels` · `peer_review_items`, mapper `graded_questions`, `get_submission_status`의 대조 부분 | 같은 파일 `summarize` · `summarizePeerReviews` · `responseTable` · `memberLabels` · `peerReviewItems` · `gradedQuestions` · `submissionStatus`, CSV는 `toCsv` |
+   | usecases `read_form` · `create_form` · `open_form` · `close_form` · `restrict_responders` · `create_group_forms` · `collect_responses` · `summarize_responses` · `get_submission_status` · `collect_quiz_scores` · `collect_peer_reviews` · `export_responses`(csv) · `create_form_from_template` | `packages/application/src/google-forms.ts` 같은 이름(camelCase). `export_responses`는 `exportResponsesCsv` |
+   | `export_responses`(xlsx) | 보류. xlsx 라이브러리 의존성 결정 뒤(`STUDIO_PORTING.md` 결정 필요 L) |
+   | `export_responses_to_sheet`(유즈케이스 13) | 보류. Sheets 이식 때 함께 |
+   | `update_settings` · `copy_form` · `list_permissions` · `allow_anyone_with_link` · `remove_anyone_with_link` · `set_publish_state` · `reopen_form` | 이식하지 않음. port 호출 한두 개라 호출부에서 바로 쓴다(`forms.update` + `readForm`, `drive.shareAsResponder(id, null)`, `drive.deletePermission(id, ANYONE_WITH_LINK_PERMISSION_ID)`, 재개는 `openForm`) |
+   | `create_raw` · `create_via_drive` | 이식하지 않음(실측용 배관) |
+
+   Python과 달라진 점:
+   - `email_collection` 값 검사(`ValueError`)는 TS 타입 `EmailCollection`이 대신한다. API 입력 검사는 studio `contracts` Zod 몫이다.
+   - `FormInfo.question_ids`는 `questions`(id·title)에서 바로 나와 뺐다.
+   - `QuestionSummary.counts`는 `{ option, count }[]` 배열이다. JS 객체는 `"1"`·`"10"` 같은 숫자형 키를 앞으로 재정렬해 선택지 순서가 깨진다.
+   - 응답 정렬·커서는 문자열이 아니라 시각으로 비교한다. 소수 초 자릿수가 다르면(`…00.5Z`와 `…00Z`) 문자열 비교가 순서를 틀린다. Python은 커서를 문자열 최댓값으로 고른다.
+   - `ResponderResult.ok`는 `error === null`, 링크 권한 삭제 결과는 `permission_id`(지웠으면 `anyoneWithLink`, 이미 없었으면 null).
+   - `peer_review_items`(Google Item JSON)는 `domain`에 둔다. `STUDIO_PORTING.md` 2절의 예외.
+
+2. **port 메서드** (`packages/application/src/integration-ports.ts` `GoogleFormsPort`)
+
+   | 메서드 | Forms 호출 | Python 대응 |
+   | --- | --- | --- |
+   | `create(title)` → formId | `forms.create?unpublished=true` | `client.create(..., unpublished=True)`. 항상 미게시 |
+   | `update(formId, { title, description, emailCollection, quiz, items })` | `forms.batchUpdate` 1회 | `build_setup_requests` + `batch_update`, `update_settings`, 템플릿 제목 변경을 하나로 |
+   | `setPublishState(formId, published, accepting)` | `forms.setPublishSettings` | `set_publish_settings` |
+   | `get(formId)` → `FormStructure` | `forms.get` | `get` + `_form_info`의 Forms 부분 |
+   | `listResponses(formId, { since, graded })` → `FormSubmission[]` | `forms.responses.list` 전 페이지 | `_list_all_responses` + `submission_from_response` |
+   | `listRespondentEmails(formId)` | `forms.responses.list` `fields` 마스크 | `get_submission_status`의 조회 부분 |
+
+3. **도구 매핑**: `google_form` 도구(`STUDIO_PORTING.md` 7절). `external_refs` 항목은 폼마다 `ExternalDocument` + `responder_url` + `questions`(저장해 두면 `forms.get` 없이 해석) + 동료평가면 `reviewees` + 수집 `cursor`. 응답은 `source_key` = `FormSubmission.id`, `payload` = `FormSubmission`, `identity` = `respondent_email`.
+4. **큐 작업**: `google-forms-collect`(group = 폼 ID). `collectResponses(since = 저장한 cursor)` → `CollectionService.commit` 100개씩 → 새 cursor 저장. 퀴즈 점수는 커서 없이 전체 재조회(10절 17·18항).
+5. **테스트**: `tests/google_forms/test_mapper.py` 5개 + `test_usecases.py` 19개 중 17개 → `studio-port/tests/unit/google-forms.test.ts`(빠진 2개: `email_collection` 값 검사는 타입으로 대체, 시트 내보내기는 보류. CSV·xlsx 테스트는 CSV만). 추가: 척도 `low` 생략(Python에도 같은 테스트 추가), 소수 초 정렬. 흐름 테스트의 가짜 port는 `tests/fixtures/fake-port.ts`, 응답 페이지는 URL별로 답하는 가짜 fetch. 실측 스크립트 `studio-port/scripts/live-google-forms.ts`는 이식하지 않는다.
 
 ## 12. 미확인 · 보류 항목
 
