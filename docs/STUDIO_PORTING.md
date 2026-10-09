@@ -1,6 +1,6 @@
 # synsory-studio 이식 공통 가이드
 
-작성일: 2026-10-08 · 작성자: 상현 · 상태: **초안. studio 담당자 확인 전**
+작성일: 2026-10-08 · 작성자: 상현 · 상태: **초안. 6절 연결 설계는 팀 승인(2026-10-09, studio 반영), 나머지는 studio 담당자 확인 전. 결정 대장은 10절**
 
 synsory-api에서 실측한 Google·Zoom 연동을 synsory-studio(TypeScript)로 옮길 때 서비스와 무관하게 공통으로 적용하는 배치·형식·흐름을 적는다. 서비스별 내용(어떤 함수가 어느 파일로, 어떤 port 메서드가 필요한지)은 각 `docs/<service>.md` 11절 끝 "studio 이식" 하위절에 적는다.
 
@@ -55,7 +55,7 @@ synsory-api의 파일 4종을 studio 층에 나누는 기준이다.
 | usecases의 **흐름**(그룹마다 복사→치환→공유, 미게시 생성→게시→응답자 제한, 수집 커서) | `application` |
 | `core/models.py` | 저장 형식(payload, `external_refs` 항목) Zod 스키마는 `domain`, 화면 DTO는 `contracts` |
 
-**[결정 필요 A]** 응답 형식 변환(mapper)을 infrastructure에 두는 이 안은 `CLAUDE.md`의 첫 대응표("mapper → domain")를 구체화한 것이다. domain은 `contracts`를 import할 수 없으므로 `ToolHandler.validateResponse`가 쓰는 payload 스키마는 domain에 있어야 하고, Google 응답 모양은 바깥 층에 가두는 편이 경계가 깔끔하다.
+**[결정 필요 A]** 응답 형식 변환(mapper)을 infrastructure에 두는 이 안은 `CLAUDE.md` 대응표("mapper → infrastructure + domain")와 같다(2026-10-09 표 정리). domain은 `contracts`를 import할 수 없으므로 `ToolHandler.validateResponse`가 쓰는 payload 스키마는 domain에 있어야 하고, Google 응답 모양은 바깥 층에 가두는 편이 경계가 깔끔하다.
 
 ## 3. 파일 배치안
 
@@ -257,30 +257,86 @@ export const externalAccounts = internal.table(
 | FastAPI `Depends`, `HTTPException` | 없음. application 함수가 port를 인자로 받고 `AppError`를 던진다 |
 | `dict.get("a", {}).get("b")` | Zod 파싱 후 접근, 또는 `?.` + `noUncheckedIndexedAccess` 대응 |
 
-## 10. 결정 필요 항목 모음
+## 10. 결정 대장 (확정 · 미정 · 보류)
 
-배치(이 레포에서 제안, studio 담당자 확인):
+2026-10-09 정리. studio 이식에 관련된 결정을 정해진 것까지 한 곳에 모은다. 상태는 **확정** / **제안·미승인**(이 레포가 한 방향으로 구현했고 studio 담당자 승인만 남음) / **미정** / **보류**(필요해질 때까지 안 정함). 서비스별 유즈케이스·동작 방식의 상세는 각 `docs/<service>.md` 1절·10절, 진행 상황은 `docs/PLAN.md`. 결정이 바뀌면 이 표의 행을 고치고 날짜를 적는다.
 
-- A. 응답 형식 변환을 infrastructure에 두고 domain에는 Synsory 규칙만 둘지 (2절)
-- B. 하위 폴더 사용 여부 (3절)
-- C. 외부 오류 `AppError` 코드 이름 (5절)
-- I. `activity_type` 이름과 Forms 도구 분할 방식 (7절)
-- K. Forms 수집 폴링 주기 (8절)
+### 10.1 전제·범위
 
-studio 범위·정책 (studio 담당자 결정):
+| # | 항목 | 상태 | 내용 |
+| --- | --- | --- | --- |
+| 1 | 인증 방식 | 확정 | OAuth 2.0 사용자 동의. 서비스 계정·Server-to-Server 안 씀 |
+| 2 | 스택 | 확정(2026-10-08) | synsory-api는 Python 유지, studio에 TS로 재작성. Google SDK 미사용, REST를 `fetch`로 직접 호출 |
+| 3 | Drive scope | 확정 | `drive.file` 하나. Docs·Sheets·Slides·Forms 전 메서드가 이걸로 동작(실측). `drive`(제한 scope)는 안 씀 |
+| 4 | 기존 파일 접근 | 확정(2026-10-04) | Google Picker로 사용자가 고름. 원본 템플릿은 수정하지 않고 복사본만 치환 |
+| 5 | 담당 분담 | 확정(2026-10-09 팀) | Google 도구는 상현, Zoom 등 비 Google은 팀원. 상현이 studio 브랜치를 열고 PR 회의로 결정 |
+| 6 | studio 외부 도구 범위 | 확정(2026-10-09) | studio `TODO.md` 1절에 "외부 도구 작업 시작" 명시. `activity_type_allowed`는 아직 빈 배열(26번과 함께 변경) |
+| 7 | Google Meet | 확정(방향, 2026-10-06) | Calendar 없이 Meet 단독, 출석 포함. 유즈케이스 초안 4개는 상현 확인 대기 |
+| 8 | Google Calendar | 보류 | Meet 단독으로 가기로 해서 1단계만 하고 중단 |
+| 9 | Sheets 성적표 동기화 | 보류 | 성적 원본은 Synsory DB. 교수자 요구가 확인되면 내보내기부터(`docs/google_sheets.md` 1.3절) |
 
-- 외부 도구 범위 열기(studio `TODO.md` 1절·`AGENTS.md`), `activity_type_allowed` 허용 목록 변경
-- ~~D. 연결 토큰 저장~~ → 확정(2026-10-09 팀 승인): `studio_auth.external_accounts(profile_id, platform, token_cipher)`, 끊기면 행 삭제(6.1·6.5). 남은 것: 연결용 암호화 키를 따로 둘지(키 교체), 로그인 이메일과 연결 계정이 다를 때 정책(6.4)
-- E. 토큰 갱신 동시성 → 추천: **Google은 잠금 불필요**(갱신해도 refresh token이 안 바뀌어 DB에 쓰지 않음), **Zoom 갱신 경로에만 행 잠금**(갱신마다 refresh token 교체, studio 세션 갱신과 같은 방식). access token은 메모리 캐시(6.2). 경과: 낙관적 갱신 → 행 잠금 → Google·Zoom 구분(2026-10-09)
-- F. Zoom https 리다이렉트를 로컬에서 받는 방법
-- G. Drive용 Google client secret을 앱 env에 두는 예외
-- ~~H. Picker용 짧은 수명 access token 전달~~ → 확정(2026-10-09): 서버가 Picker 열 때만 내려줌. 남은 확인: helmet CSP·Referrer-Policy(6절 Picker 항목)
-- J. 명단에 학번 필드
-- L. xlsx 라이브러리 의존성 추가
-- M. 외부 오류 원문 메시지(`ExternalApiError.externalMessage`)를 로그에 남길지, 이메일을 가린 뒤 남길지 (studio는 "원본 응답·개인정보를 로그에 출력하지 않는다")
-- GCP 프로젝트·동의 화면과 Zoom 앱을 studio 로그인용과 공유할지
-- N. 외부 파일·미팅을 누구 계정으로 다루나(2026-10-09 추가). studio는 한 수업에 교수자가 여럿이고 권한이 같은데, 교수자 A의 연결로 만든 폼·문서·미팅은 A 소유다. `drive.file`은 "이 사용자가 이 앱으로 만들었거나 고른 파일"에만 적용되고 Zoom 미팅도 만든 사람 계정에 속하므로, 교수자 B의 토큰으로는 A가 만든 파일을 마감·수정하지 못할 가능성이 높다(Google 계정 2개로 실측 필요). 방안: ① 활동마다 만든 교수자의 연결(`profile_id`)을 `external_refs`에 기록하고 이후 작업도 그 연결로 실행(**추천**. 단점: 그 교수자가 연결을 끊거나 수업에서 빠지면 그 활동은 다룰 수 없어 `EXTERNAL_RECONNECT_REQUIRED` 안내가 필요) ② 수업마다 공용 연결 하나(관리 화면·새 개념 필요) ③ 누르는 사람 계정으로 실행(남이 만든 파일에서 실패)
-- O. 오래 걸리는 생성 작업을 HTTP 요청 안에서 할지 worker로 넘길지(2026-10-09 추가). 실측(6개 조, 8.1절): 호출당 1.2~2초, 순차면 Forms 동료평가 87초·Docs 34초, 동시 6개로도 15초·6초. 조가 많으면 분 단위. 방안: ① 요청 안에서 처리(가장 단순, 타임아웃·중간 실패 시 일부만 생성·새로고침 중복 위험) ② 요청은 작업 등록만 하고 worker(pg-boss)가 처리, 화면은 진행 상태 표시(**추천**. 재시도·중복 방지는 큐가 맡고, 그룹 하나를 작업 하나로 나누면 흐름 코드는 그대로 둔다. 미팅 하나 수정처럼 짧은 동작은 요청 안에서)
+### 10.2 유즈케이스·동작 방식
+
+| # | 항목 | 상태 | 내용 |
+| --- | --- | --- | --- |
+| 10 | Docs 유즈케이스 | 확정 | 4개(텍스트로 생성·그룹 문서·마감·내보내기) + Google Doc 템플릿 경로(Picker, `template_document_id`) |
+| 11 | Docs 마감 방식 | 확정(2026-10-03) | `permissions.update`로 학생 권한 낮추기. `contentRestrictions` 잠금은 소유자 API도 막혀 제외 |
+| 12 | Docs 본문 생성 | 확정 | Markdown 변환 업로드(Drive). `batchUpdate` 인덱스 방식보다 우월 |
+| 13 | Slides 유즈케이스 | 확정(2026-10-04) | Docs와 같은 4개. pptx 1회 변환 업로드 → 그룹마다 `files.copy` → `replaceAllText` |
+| 14 | Sheets 유즈케이스 | 확정(2026-10-04) | 4개 + 마감 후 값 읽기. xlsx 변환 → `files.copy` → `findReplace`(수식 포함). 값 쓰기 기본 `RAW`(학번 앞자리 0 보존) |
+| 15 | Sheets 보호 범위 | 확정 | `editors.users`를 항상 명시(생략 시 학생도 편집 가능) |
+| 16 | Forms 유즈케이스 | 확정(2026-10-06) | 13개. 항상 `unpublished=true`로 만들고 질문을 넣은 뒤 게시. 자동 부여되는 `anyoneWithLink` 삭제. 응답은 폴링, 시트는 사본 내보내기 |
+| 17 | 0 시작 척도 | 확정(버그 수정) | `low` 생략 시 기본 0. Python·TS 모두 수정(`docs/google_forms.md` 10절 20항) |
+| 18 | 그룹 파일 공통 흐름 | 확정(2026-10-09) | 서비스별 함수 없이 `createGroupFilesFromTemplate` + 각 port의 `replaceTags`, 텍스트 템플릿은 `createGroupFilesFromContent` |
+| 19 | 호출 효율 | 확정(2026-10-09 실측, 8.1절) | 파일·그룹 생성은 동시 4개. 같은 파일 권한 변경은 순차, 조원 공유는 Drive 배치 1회, 배치 실패 시 실패한 사람만 단건 재시도 |
+| 20 | Sheets 유즈케이스 5의 `source_key` | **미정** | "파일 ID"로 가정만(`docs/google_sheets.md` 11.x) |
+| 21 | Forms 12 xlsx 내보내기 | **미정** | 30번(xlsx 라이브러리) 뒤. CSV만 쓸 거면 닫을 수 있음 |
+
+### 10.3 studio 배치·코드 구조
+
+| # | 항목 | 상태 | 내용 |
+| --- | --- | --- | --- |
+| 22 | 층 대응 | 확정(studio-port 구현, 2026-10-09 표현 수정) | client → infrastructure 어댑터, usecases의 흐름 → application(port 주입), mapper는 형식 변환 → infrastructure · Synsory 규칙·payload 스키마 → domain으로 갈림, `core/models.py` → **domain**(`externalDocument`·`FormSubmission`·`Meeting`). contracts에는 브라우저가 보는 것만(Picker 세션 23줄이 전부). 근거: I/O는 infrastructure(AGENTS.md), `ToolHandler`가 domain에 있어 payload·집계는 domain, 흐름은 HTTP·worker 양쪽이 공유해야 해서 application(2~4절) |
+| 23 | A. mapper 위치 | 제안·미승인 | infrastructure에 둠(2절). studio-port가 이렇게 구현. "현행 유지" 승인이면 닫힘 |
+| 24 | B. 하위 폴더 | 제안·미승인 | 평평한 파일(studio 관례, 3절). 현행 유지 가능 |
+| 25 | C. 외부 오류 코드 이름 | 제안·미승인 | `ExternalApiError extends AppError`, `details`는 `status`·`reason`·`api_status`만(5절) |
+| 26 | I. `activity_type` 이름 · Forms 분할 | **미정** | `google_group_docs`·`google_group_slides`·`google_group_sheets`·`google_form` 가칭(7절). 설문·퀴즈·동료평가를 도구로 나눌지 `config`로 구분할지. `activity_type_allowed` 마이그레이션에 바로 들어감 |
+| 27 | N. 외부 파일·미팅을 누구 계정으로 다루나 | **미정** | studio는 한 수업에 교수자가 여럿이고 권한이 같은데, 교수자 A의 연결로 만든 파일은 A 소유다. `drive.file`은 "이 사용자가 이 앱으로 만들었거나 고른 파일"에만 적용되므로 B의 토큰으로는 마감·수정이 안 될 가능성이 높다(Google 계정 2개 실측 미완). 방안: ① 활동마다 만든 교수자의 연결(`profile_id`)을 `external_refs`에 기록하고 이후 작업도 그 연결로 실행(**추천**. 그 교수자가 연결을 끊거나 수업에서 빠지면 `EXTERNAL_RECONNECT_REQUIRED` 안내 필요) ② 수업마다 공용 연결 하나(관리 화면·새 개념 필요) ③ 누르는 사람 계정으로 실행(남이 만든 파일에서 실패) |
+| 28 | O. 오래 걸리는 생성 작업의 위치 | **미정** | 실측(6개 조, 8.1절): 호출당 1.2~2초, 순차면 Forms 동료평가 87초·Docs 34초, 동시 6개로도 15초·6초. 조가 많으면 분 단위. 방안: ① 요청 안에서 처리(단순. 타임아웃·중간 실패 시 일부만 생성·새로고침 중복 위험) ② 요청은 작업 등록만 하고 worker(pg-boss)가 처리, 화면은 진행 상태(**추천**. 재시도·중복 방지는 큐가 맡고, 그룹 하나를 작업 하나로 나누면 흐름 코드는 그대로. 미팅 하나 수정처럼 짧은 동작은 요청 안에서) |
+| 29 | K. Forms 응답 폴링 주기 | **미정** | open 활동만 돌린다는 원칙만(8절). 수치 없음. 응답 목록은 비싼 읽기(사용자당 분당 180) |
+| 30 | L. xlsx 라이브러리 | **미정** | exceljs 등 추가·버전 고정 여부(9절) |
+| 31 | M. 외부 오류 원문 로그 | **미정** | `ExternalApiError.externalMessage`를 남길지, 이메일을 가린 뒤 남길지. studio 규칙은 "원본 응답·개인정보 로그 금지"(5절) |
+
+### 10.4 외부 계정 연결·토큰
+
+| # | 항목 | 상태 | 내용 |
+| --- | --- | --- | --- |
+| 32 | 연결 흐름 | 확정(설계, 6절) | Supabase 로그인과 별개 "Google/Zoom 연결" 흐름. `studio_auth.requests`에 state 10분, `access_type=offline&prompt=consent` |
+| 33 | D. 토큰 저장 | 확정(2026-10-09 팀 승인, studio 반영) | `studio_auth.external_accounts(profile_id, platform, token_cipher)` 3칸(6.1·6.5). studio 커밋 a03a27f 마이그레이션 `0009_external_accounts`. 읽고 쓰는 코드는 아직 없음 |
+| 34 | 끊김 판정 | 확정(6.3) | `invalid_grant`·403 `insufficientPermissions`면 행 삭제 → `EXTERNAL_RECONNECT_REQUIRED`. 429·5xx는 끊김 아님. 중요 작업 하루 전 갱신 시도 |
+| 35 | E. 갱신 동시성 | 확정(2026-10-09) | access token은 메모리 캐시(6.2). Google은 잠금 불필요(refresh token이 안 바뀜), Zoom 갱신 경로에만 `FOR UPDATE` 행 잠금. 경과: 낙관적 갱신 → 행 잠금 → Google·Zoom 구분 |
+| 36 | H. Picker 토큰 | 확정(2026-10-09) | 서버가 Picker를 열 때만 짧은 수명 access token 전달, 브라우저는 메모리만, revoke 안 함, 고른 ID는 `acceptPickedFiles`로 검증(6절 Picker 항목) |
+| 37 | D 잔여: 암호화 키 분리 | **미정** | 세션 키(`SESSION_ENCRYPTION_KEY`)를 같이 쓸지, 연결용 키를 따로 둘지(키 교체 시 전원 재연결, 6.1) |
+| 38 | D 잔여: 로그인 이메일 ≠ 연결 계정 | **미정** | 허용·경고·거절(6.4) |
+| 39 | G. client secret 위치 | **미정** | studio 원칙("Google secret은 Supabase에만")의 예외로 앱 env에 둘지 |
+| 40 | GCP 프로젝트·동의 화면 공유 | **미정** | studio 로그인용과 같은 프로젝트·동의 화면을 쓸지. 공유하면 scope가 늘 때 로그인 사용자도 재동의 영향 |
+| 41 | worker 권한 | **미정(2026-10-09 발견)** | 0009가 `studio_worker`에 SELECT·DELETE만 줌. Google은 괜찮지만 Zoom은 갱신마다 refresh token이 바뀌어 worker UPDATE 필요(35번). 팀원에게 전달 |
+| 42 | F. Zoom https 리다이렉트 로컬 수신 | **미정** | 팀원 몫. ngrok 고정 도메인 경험 전달(`docs/zoom.md` 2.1절) |
+| 43 | J. 명단 학번 필드 | **미정** | Zoom 출석용. `studio.profiles`는 `display_name`만(7절) |
+
+### 10.5 실측·확인 보류 (결정이 아니라 확인)
+
+| # | 항목 | 시점 |
+| --- | --- | --- |
+| 44 | helmet CSP·`no-referrer`가 Picker를 막는지 | 브랜치 작업 중. studio `apps/api/src/app.ts`에 전역 `referrerPolicy: no-referrer` 확인됨(6절 Picker 항목) |
+| 45 | Picker 후 Sheets·Docs 템플릿 복사, 태그 든 원본 재복사 | 다음 Picker 실측(`docs/google_drive.md` 12절) |
+| 46 | Picker 접근 권한의 며칠 뒤 장기 유지 | 핸드오프 전 |
+| 47 | `invalid_grant` 실제 발생 | 연결 끊고 갱신 1회(6.3) |
+| 48 | 2026년 쿼터 초과 과금 시행 | 핸드오프 직전(Docs·Sheets·Forms 공통) |
+| 49 | Drive 일일 공유 횟수 제한 | 대규모 액티비티 전 |
+| 50 | 교수자가 웹에서 만든 사본·옮긴 파일의 앱 접근 | 필요 시(`docs/google_docs.md` 12절) |
+
+브랜치를 열기 전에 정할 것은 코드 골격을 가르는 26·27·28번이다. 23·24·25번은 "현행 유지" 승인만 받으면 닫힌다. 나머지 미정은 PR 회의 안건으로 넘긴다.
 
 ## 11. 서비스별 "studio 이식" 하위절 형식
 

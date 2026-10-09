@@ -63,7 +63,7 @@ studio-port/              # studio와 같은 설정의 TS 작업 폴더. 이식 
 | `services/<service>/usecases.py` | `packages/application`. application은 infrastructure를 import할 수 없으므로 client 호출을 port 인터페이스(`ports.ts` 방식)로 받는다 |
 | `services/<service>/mapper.py` | 외부 응답 형식 변환은 `packages/infrastructure` 어댑터 안. 집계·출석 판정 같은 Synsory 규칙과 payload 스키마는 `packages/domain`(`ToolHandler` 포함). 기준은 `docs/STUDIO_PORTING.md` 2절 |
 | `services/<service>/scopes.py` | scope 상수와 사용 이유를 TS 상수로 |
-| `core/models.py` | `packages/contracts`의 Zod 스키마. `Document`는 `activities.external_refs` 항목, `FormSubmission` 등은 `activity_responses.payload`에 대응 |
+| `core/models.py` | `packages/domain`의 Zod 스키마(`externalDocument`·`FormSubmission`·`Meeting`). application·infrastructure·domain이 함께 쓰는 내부 타입이라 세 층이 모두 import할 수 있는 domain에 둔다. `Document`는 `activities.external_refs` 항목, `FormSubmission` 등은 `activity_responses.payload`에 대응. `packages/contracts`에는 브라우저와 주고받는 것만(Picker 세션, 활동 config·응답 DTO) 새로 쓴다 |
 | `core/oauth.py` · `core/token_store.py` | 새로 만든다. Supabase 로그인과 분리된 교수자용 "Google/Zoom 연결" 흐름(`apps/api`) + refresh token을 studio의 AES-GCM으로 암호화해 비공개 `studio_auth` 스키마에 저장 |
 | 폴링·웹훅 처리 | pg-boss 작업(리소스 단위 group) → `CollectionService.commit`(checkpoint revision) |
 | `samples/<service>/*.json` | studio `tests/fixtures`의 mapper·handler 단위 테스트 입력 |
