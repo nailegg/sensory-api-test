@@ -103,7 +103,7 @@ studio를 읽고 확인한 사실:
 2. 5단계 라우트: `…/google/status`(진행 상태)는 넣고, `…/google/collect`(수동 재수집)는 요구가 생길 때 추가(2026-10-09 상현 "1로 가자"). "재개 시 복원"은 **포함**(2026-10-09 상현): `closed → open`이면 `google-reopen` 작업으로 `restoreEditors`(처음 공유한 조원만 writer로)·`openForm`.
 3. 3단계 콘솔 작업(상현, 로그인용 GCP 프로젝트에서. 결정 39·40):
    1. API 6개 사용 설정: Google Drive · Docs · Slides · Sheets · Forms · Picker API(안 켜면 403 `accessNotConfigured`. 실측 프로젝트에는 이미 켜져 있음).
-   2. OAuth 클라이언트 "Synsory Drive 연결(local)"(웹 애플리케이션) 생성, 리다이렉트 URI `http://localhost:5173/api/connections/google/callback`. dev·prod는 각각 따로(환경별 클라이언트).
+   2. OAuth 클라이언트를 **새로 하나** 만든다(콘솔 › 사용자 인증 정보 › 만들기 › OAuth 클라이언트 ID, 유형 "웹 애플리케이션", 이름은 구별용으로 예: "Synsory Drive 연결(local)"). 만들 때 "승인된 리디렉션 URI" 칸에 `http://localhost:5173/api/connections/google/callback`을 넣는다(동의 뒤 Google이 일회용 코드를 돌려보낼 studio 주소. 코드가 `API_PUBLIC_ORIGIN + /api/connections/google/callback`으로 만들므로 env에는 안 넣음). 만들면 나오는 client ID·secret이 3-5의 두 값이다. 새로 만드는 이유: 로그인용 클라이언트는 Supabase 주소로, 실측용은 `localhost:8000`으로 돌려보내게 돼 있고 Drive 연결은 studio 주소로 와야 한다(용도·환경별 분리는 결정 39). 지금은 local 하나만, dev·prod 서버가 생기면 같은 방법으로 하나씩 더.
    3. Picker용 API 키: 애플리케이션 제한 = 웹사이트(`http://localhost:5173/*`, `https://docs.google.com/*`), API 제한 = Google Picker API.
    4. 동의 화면이 테스트 상태면 상현 계정을 테스트 사용자로. scope는 코드가 `drive.file`만 요청하므로 콘솔 추가 없음.
    5. studio env: `GOOGLE_CONNECT_CLIENT_ID` · `GOOGLE_CONNECT_CLIENT_SECRET`(비밀) · `GOOGLE_PICKER_API_KEY` · `GOOGLE_PROJECT_NUMBER`(비우면 client ID 앞 숫자).
