@@ -1,6 +1,6 @@
 # studio `feat/google-tools` 브랜치 작업 계획
 
-작성일: 2026-10-09 · 작성자: 상현 · 상태: 가정 G1~G5 확정(2026-10-09 상현), 1·2단계 완료, 3단계 코드 완료(라이브 확인 대기), 5단계 코드 완료(라이브 확인 대기), 6단계 전. 브랜치는 studio `main`(a03a27f)에서 `feat/google-tools`로 열었다(파일 변경 없음).
+작성일: 2026-10-09 · 작성자: 상현 · 상태: 가정 G1~G5 확정(2026-10-09 상현), 1·2단계 완료, 3단계 코드 완료(라이브 확인 대기), 5·6단계 코드 완료(라이브 확인 대기), 7단계 전. 브랜치는 studio `main`(a03a27f)에서 `feat/google-tools`로 열었다(파일 변경 없음).
 
 결정 근거는 `docs/STUDIO_PORTING.md` 10절 결정 대장(번호로 인용), 서비스별 대응은 각 `docs/<service>.md` 11.x. 이 문서는 "무엇을 어떤 순서로, 어떻게 확인하며" 넣는지만 적는다.
 
@@ -90,7 +90,9 @@ studio를 읽고 확인한 사실:
 - 검증: 단위 — 작업 핸들러를 가짜 port·가짜 Store로(그룹 2개 중 1개 실패 → 나머지 저장, 재실행 멱등). DB — `external_refs` 저장 후 `canChangeStructure`가 false, commit 100개 제한. 라이브 1회 — 조 2개 Docs 활동: open → Drive에 파일 2개·공유 → closed → commenter 강등. Forms 1회 — 설문 open → 브라우저로 응답 1건 제출(상현) → closed → `activity_responses` 1행.
 - 안 하는 것: `closes_at` 자동 마감, 주기 폴링, 재개(`closed`→`open`) 시 복원(`restoreEditors`는 있지만 요구 확인 뒤), Zoom.
 
-### 6단계. Picker 세션 (결정 36·40, 6절 Picker 항목)
+### 6단계. Picker 세션 (결정 36·40, 6절 Picker 항목) — 코드 완료 2026-10-09 (studio 커밋 1개), 라이브 확인 대기
+
+결과: `GET /api/connections/google/picker-session`(`ConnectionService.currentToken`: access token + 만료, 5분 미만이면 갱신. `developer_key` = `GOOGLE_PICKER_API_KEY`, `app_id` = `pickerAppId`(client ID 앞 숫자 또는 `GOOGLE_PROJECT_NUMBER`). 키 없으면 503), `POST …/picked-file`(`acceptPickedFile`로 서버 접근·종류 확인, 계약 `pickedFile`에 `kind` 추가, 응답 `pickedFileDto`). helmet 확인 결과: **API는 웹 HTML을 서빙하지 않는다**(정적 서빙 코드 없음). helmet 헤더는 API JSON 응답에만 붙으므로 Picker에 영향이 없고, 6절의 "미확인 위험"은 해소. 대신 웹을 서빙하는 쪽(Vite dev, 추후 배포 호스트)이 CSP를 걸 때 `apis.google.com` 스크립트·`docs.google.com` iframe 허용과 referrer 전송(`strict-origin-when-cross-origin`)이 필요하다는 점을 TODO.md에 적었다. `Cache-Control: no-store`는 API 전역 훅이 이미 붙인다. 검증: 단위(계약 `kind` 필수), DB(`currentToken` 만료·캐시), 전 검사 통과(DB 47, 단위 107). 남은 것: 임시 HTML로 Picker 열어 `picked-file` 200 확인(콘솔 키 뒤).
 
 - 바꾸는 것: `GET /api/connections/google/picker-session`(교수자 세션·CSRF 확인, `Cache-Control: no-store`, 남은 수명 5분 미만이면 갱신 후), `POST /api/connections/google/picked-file` → `acceptPickedFile`. helmet: Picker 페이지가 쓰는 출처(`apis.google.com` 스크립트, `docs.google.com` iframe)와 `Referrer-Policy` 확인·조정(미확인 위험, 6절).
 - 검증: 단위 — 응답에 refresh token 없음, 헤더 no-store, 학생 세션 403. 라이브 1회 — 임시 HTML(테스트 전용, 커밋 안 함)로 Picker 열어 파일 고르고 `picked-file`이 200.

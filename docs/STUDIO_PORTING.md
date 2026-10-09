@@ -214,7 +214,7 @@ export const externalAccounts = internal.table(
   - 세션 API(예: `GET /api/connections/google/picker-session`)는 교수자 세션·CSRF 확인 뒤 응답하고 `Cache-Control: no-store`. 남은 수명이 짧으면(예: 5분 미만) 갱신 후 준다. refresh token은 절대 내려주지 않는다.
   - 브라우저는 토큰을 메모리에만 두고 Picker를 닫으면 버린다(웹 저장소 금지). revoke하지 않는다(같은 프로젝트의 서버 refresh token까지 무효가 된다는 보고, `docs/google_drive.md` 2.1절).
   - 고른 ID(한 파일)는 서버로 보내 `acceptPickedFile`로 확인한 뒤에만 템플릿으로 쓴다.
-  - **미확인 위험**: studio API는 `@fastify/helmet`을 전역으로 등록한다. 웹 페이지에도 helmet 헤더가 붙는다면 ① 기본 CSP가 `apis.google.com` 스크립트와 `docs.google.com` iframe을 막고, ② `referrerPolicy: no-referrer` 때문에 Referer 제한을 건 API 키가 "API developer key is invalid"로 거부될 수 있다. 웹을 어떻게 서빙하는지 확인하고, 필요하면 CSP에 두 출처를 추가하고 Picker 페이지의 Referrer-Policy를 `strict-origin-when-cross-origin`으로 둔다(API 키 제한은 앱 도메인 + `https://docs.google.com/*`).
+  - ~~**미확인 위험**~~ → 확인(2026-10-09): studio API는 웹 HTML을 서빙하지 않아 helmet은 API 응답에만 붙는다. CSP·Referrer-Policy는 웹을 서빙하는 쪽의 몫(아래 내용은 그쪽에 적용). 원문: studio API는 `@fastify/helmet`을 전역으로 등록한다. 웹 페이지에도 helmet 헤더가 붙는다면 ① 기본 CSP가 `apis.google.com` 스크립트와 `docs.google.com` iframe을 막고, ② `referrerPolicy: no-referrer` 때문에 Referer 제한을 건 API 키가 "API developer key is invalid"로 거부될 수 있다. 웹을 어떻게 서빙하는지 확인하고, 필요하면 CSP에 두 출처를 추가하고 Picker 페이지의 Referrer-Policy를 `strict-origin-when-cross-origin`으로 둔다(API 키 제한은 앱 도메인 + `https://docs.google.com/*`).
   - GCP: Google Picker API 사용 설정, API 키(웹사이트 제한·Picker API만), `setAppId`는 프로젝트 번호.
 
 ## 7. 활동 도구 매핑
