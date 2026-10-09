@@ -82,8 +82,18 @@ studio를 읽고 확인한 사실:
 - studio `TODO.md`에 이 브랜치 범위·검증 기록, `docs/VERIFICATION.md`에 라이브 확인 결과(토큰·이메일 없이).
 - synsory-api: `docs/PLAN.md` 7단계 완료 표시, `docs/STUDIO_PORTING.md` 3절 현황 갱신, 팀원 전달 목록(worker UPDATE, Zoom 소회의실·`Meeting` 필드·대기실 삭제, 42·43).
 
-## 2. 상현이 확인할 것 (코드 전)
+## 2. 브랜치 뒤 후속 1순위: 호출 최적화 (물결 배치, 2026-10-09 상현)
+
+5단계는 지금 방식(조끼리 동시 4개, 호출마다 왕복)으로 만들고, 브랜치가 끝나면 **가장 먼저** 이것을 한다. 생성 작업이 조 수에 비례해 느려지는 것(6개 조 6~15초, 30개 조 분 단위)을 줄이려는 것이고, worker 결정(28)과는 무관한 어댑터 안 최적화다.
+
+- 방식: 복사 → 치환 → 공유를 조마다 순서대로 돌리는 대신 **단계(물결)마다 조 N개를 한 HTTP로 묶는다.** 1물결 `files.copy` N개를 Drive 배치 하나로, 2물결 치환, 3물결 공유 N개를 Drive 배치 하나로. 왕복이 3×N에서 3회가 된다.
+- 먼저 잴 것(synsory-api 실측 스크립트, 상현 계정): 조 6개·20개, pptx 복사 경로에서 "동시 4개" 대 "물결 배치" 소요 시간. Drive 배치가 안쪽 요청을 병렬로 처리하는지는 공식 문서에 없어 재 봐야 안다.
+- 확인할 것: ① Docs·Slides·Sheets에 파일 여러 개의 `batchUpdate`를 한 HTTP에 묶는 배치 엔드포인트가 있는지(없으면 2물결은 동시 호출 유지) ② 파일 여러 개의 `permissions.create`를 한 Drive 배치에 섞어도 되는지(지금은 파일 하나당 배치 1회만 실측) ③ 배치 안 하나가 실패할 때 나머지의 동작(공유는 전체 실패 실측 있음, 복사는 미실측).
+- 안 되는 것: 업로드 경로(Markdown·CSV `createFromContent`)는 Google 배치 제외. Forms 생성은 배치 엔드포인트 미확인.
+- 결과가 좋으면 `GoogleDrivePort`에 `copyFiles(batch)` 같은 묶음 메서드를 넣고 `createGroupFilesFromTemplate`를 물결 순서로 바꾼다. 흐름의 입력·출력(`GroupFileResult[]`)은 그대로.
+
+## 3. 상현이 확인할 것 (코드 전)
 
 1. G1(화면 범위 밖)·G2(open/closed 때 작업 시작)·G3(PR 묶음)이 맞는지.
-2. 5단계 라우트 이름(`…/google/status`·`…/google/collect`)과 "재개 시 복원" 포함 여부.
+2. 5단계 라우트: `…/google/status`(진행 상태)는 넣고, `…/google/collect`(수동 재수집)는 요구가 생길 때 추가(2026-10-09 상현 "1로 가자"). "재개 시 복원" 포함 여부는 미정.
 3. 3단계 env 이름 4개와 로그인용 GCP 프로젝트에 "Drive 연결용" 클라이언트·Picker API 키를 누가 만드는지(상현 콘솔 작업).
