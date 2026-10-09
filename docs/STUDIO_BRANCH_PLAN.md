@@ -1,6 +1,6 @@
 # studio `feat/google-tools` 브랜치 작업 계획
 
-작성일: 2026-10-09 · 작성자: 상현 · 상태: 가정 G1~G5 확정(2026-10-09 상현), 1단계 진행 중. 브랜치는 studio `main`(a03a27f)에서 `feat/google-tools`로 열었다(파일 변경 없음).
+작성일: 2026-10-09 · 작성자: 상현 · 상태: 가정 G1~G5 확정(2026-10-09 상현), 1단계 완료, 2단계 전. 브랜치는 studio `main`(a03a27f)에서 `feat/google-tools`로 열었다(파일 변경 없음).
 
 결정 근거는 `docs/STUDIO_PORTING.md` 10절 결정 대장(번호로 인용), 서비스별 대응은 각 `docs/<service>.md` 11.x. 이 문서는 "무엇을 어떤 순서로, 어떻게 확인하며" 넣는지만 적는다.
 
@@ -29,7 +29,9 @@ studio를 읽고 확인한 사실:
 
 각 단계는 커밋 하나 이상. "검증"이 통과해야 다음으로 간다. 공통 검증은 `pnpm typecheck && pnpm lint && pnpm check:boundaries && pnpm test && pnpm test:db`(e2e·build·bundle은 PR 전 `pnpm verify`에서).
 
-### 1단계. 마이그레이션 0010 (결정 26·41)
+### 1단계. 마이그레이션 0010 (결정 26·41) — 완료 2026-10-09 (studio 커밋 1개)
+
+결과: `0010_google_tools.sql`(DROP IF EXISTS + 4개 허용 CHECK + worker UPDATE). 발견: studio 테스트 하네스(`tests/fixtures/database.ts`, 마이그레이션 회귀 테스트 2개)가 `test_fixture_tool` 행을 넣으려고 `activity_type_allowed`를 직접 지우고 바꿔 끼운다. 그래서 DROP은 `IF EXISTS`, 회귀 테스트 2개의 기존 행은 `google_docs`로(0010이 기존 행을 검사하므로), 4개 허용·worker UPDATE 확인은 격리 DB 테스트 `tests/db/google-tools-migration.test.ts`로. DB 테스트 38개·단위 24개·경계 통과.
 
 - 바꾸는 것: `packages/db/src/schema.ts`의 `activity_type_allowed`를 `('google_docs','google_slides','google_sheets','google_forms')`로. `pnpm db:generate`로 SQL·스냅샷·저널 생성 후 SQL 끝에 `GRANT UPDATE ON studio_auth.external_accounts TO studio_worker;`를 덧붙인다(0009와 같은 방식).
 - 함께 고치는 문서: studio `AGENTS.md` 7행 "제품 활동 도구는 등록하지 않는다", `TODO.md` 1절 표 "실제 도구 등록 없음" → Google 4개 등록으로. `docs/SECURITY_REVIEW.md` 외부 계정 행에 worker UPDATE 사유.
