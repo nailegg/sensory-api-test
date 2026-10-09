@@ -88,6 +88,14 @@
 | E4 | 동시성 | worker당 큐 3 × 2 × 조별 4 = 최대 24 동시 호출(교수자 1명 기준). 실측은 6까지 | 낮음 |
 | U1 | UX | 화면 없음. 오류는 코드만 노출. 조·재개·수집 실패를 교수자가 알기 어려움 | 중간 |
 
+## 처리 현황 (2026-10-10, 상현 지시로 push 전 반영)
+
+- **1. B·C 해결**: 큐 하나(`google-activity`)에 group = 활동 ID → 같은 활동의 작업이 순서대로 하나씩. `singletonKey` 제거. (`google-jobs.ts`, `migrate.ts`, worker)
+- **2. A·G·D 해결**: provision이 폴더를 먼저 저장하고 빠진 조만 채움(F도 같이 완화). 수집 실패는 폼 ref `collect_error`. 상태 DTO가 `close_error`·`reopen_error`·`collect_error`를 모두 표시. `POST …/google/retry` 추가. DB 테스트 3건 추가.
+- **3. O2·E1**: studio `TODO.md`에 배포 체크리스트(마이그레이션 → 기동 순서, 0행 확인, 동의 화면 프로덕션 전환).
+- **4. H 해결**: worker가 실패를 `jobFailure`(이메일·긴 ID 마스킹) JSON 한 줄로 로그. 단위 테스트.
+- 추가 발견(재시도 라이브에서): 재개가 **파일 소유자 본인**의 권한을 writer로 바꾸려다 실패(`reopen_error`). `restoreEditors`가 소유자를 건너뛰게 수정.
+
 ## 5. 권고
 
 **배포 전 반드시**
