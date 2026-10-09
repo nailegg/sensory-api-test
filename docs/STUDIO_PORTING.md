@@ -89,7 +89,7 @@ packages/infrastructure/src/
   integration-jobs.ts      # 수집·웹훅 처리 큐 작업 스키마와 enqueue (queue.ts 패턴)
 
 packages/contracts/src/index.ts   # 연결 상태, 도구 설정 입력, 결과 DTO
-packages/db/src/schema.ts         # studio_auth.provider_connections + 마이그레이션
+packages/db/src/schema.ts         # studio_auth.external_accounts + 마이그레이션
 apps/api/src/app.ts               # 연결 라우트, Zoom 웹훅 라우트, 도구 동작 라우트
 apps/worker/src/main.ts           # 수집·웹훅 작업 등록
 tests/fixtures/                   # synsory-api samples/*.json, 가짜 port
@@ -121,14 +121,88 @@ synsory-api의 `XApiError(status, body, is_rate_limit, reason)`는 infrastructur
 
 studio의 Google 로그인(Supabase, `openid email profile`)과 **별개 흐름**이다. Supabase는 provider refresh token을 저장·갱신하지 않기 때문이다. 교수자가 "Google 연결"·"Zoom 연결"을 따로 누른다.
 
-1. **시작** `GET /api/connections/{provider}/start`: state를 `studio_auth.requests`에 `purpose='connect-google'`(또는 `connect-zoom`), browser 해시, 10분 만료로 저장한다. studio Google 로그인이 이미 `purpose='google'`로 같은 방식을 쓴다(`application/src/auth.ts` `googleStart`). 인가 URL 파라미터는 synsory-api 그대로:
+1. **시작** `GET /api/connections/{platform}/start`: state를 `studio_auth.requests`에 `purpose='connect-google'`(또는 `connect-zoom`), browser 해시, 10분 만료로 저장한다. studio Google 로그인이 이미 `purpose='google'`로 같은 방식을 쓴다(`application/src/auth.ts` `googleStart`). 인가 URL 파라미터는 synsory-api 그대로:
    - Google: `access_type=offline`, `prompt=consent`, `include_granted_scopes=true`, scope = Drive `drive.file` (+ 이후 서비스 scope)
    - Zoom: scope는 앱 설정에서 정해지지만 URL에도 넣는다. client 인증은 Basic 헤더
-2. **콜백** `GET /api/connections/{provider}/callback`: state를 1회 소비 → 코드 교환 → 받은 scope와 요청 scope 비교(누락 시 사용자에게 알림, synsory-api `missing_scopes`) → 저장.
-3. **저장** `studio_auth.provider_connections` **[결정 필요 D]**: `profile_id`, `provider`, `refresh_token_cipher`, `access_token_cipher`, `access_expires_at`, `granted_scopes`, `external_account_id`, `version`, 시각. 암호화는 기존 AES-256-GCM(`infrastructure/src/crypto.ts`).
-4. **유효 토큰 얻기**: 만료 60초 전이면 갱신. 갱신은 그 행을 `FOR UPDATE`로 잠근 짧은 트랜잭션 안에서 하고, **Zoom은 새 refresh token을 즉시 저장**한다. Google refresh 응답에 refresh token이 없으면 기존 값을 유지한다(`TokenSet.from_token_response`). 동시 갱신이 겹쳐도 한 번만 갱신되도록 잠근 뒤 만료를 다시 확인한다.
-   - 예외: 토큰 엔드포인트 HTTP 호출 동안 행 잠금을 잡는 것은 "네트워크 대기 중 트랜잭션 유지 금지" 규칙과 충돌한다. 대안은 `version` 낙관적 갱신(잠그지 않고 갱신 후 `where version=$n`으로 저장, 실패 시 다시 읽기). **[결정 필요 E]**
-5. **해제**: provider revoke 호출 후 행 삭제.
+2. **콜백** `GET /api/connections/{platform}/callback`: state를 1회 소비 → 코드 교환 → 받은 scope와 요청 scope 비교(누락 시 사용자에게 알림, synsory-api `missing_scopes`) → 저장.
+3. **저장** — 교수자 × 플랫폼당 한 행 `studio_auth.external_accounts`(아래 6.1). 토큰은 provider마다 모양이 달라 **암호화한 JSON 하나**로 담고, 암호를 풀지 않고 알아야 하는 값만 일반 칸으로 둔다. **[결정 필요 D]**
+4. **유효 access token 얻기** — 아래 6.2. access token은 메모리에만 두고 DB는 만료가 가까울 때만 읽는다.
+5. **해제** — Google·Zoom 쪽 승인 취소(revoke) 호출 후 행 삭제(아래 6.4).
+
+### 6.1 저장: `studio_auth.external_accounts` (2026-10-09 팀 승인, 이름·칸 확정)
+
+- studio에 Google·Zoom refresh token을 오래 둘 자리는 없었다. `studio_auth.sessions.token_cipher`는 Supabase 로그인 토큰이고(Google 로그인도 `access_type: online`이라 Google refresh token을 받지 않는다) 로그아웃·7일·8시간 유휴로 폐기된다. `studio_auth.requests`는 10분 일회용이다. 연결은 로그인과 수명이 분리돼야 한다(로그아웃해도 새벽 마감 작업이 써야 한다).
+- `studio_auth`(같은 PostgreSQL 안의 비공개 인증 스키마)라 "제품 테이블은 `studio` 8개" 규칙 안이다.
+- 이름: 테이블 `external_accounts`(교수자가 연결한 외부 계정), 칸 `platform`(`'google'`·`'zoom'`). `provider`는 studio에서 이미 로그인 방식(`signInWithOAuth({ provider })`)을 뜻하고, `linked`·`identity`는 Supabase 로그인 계정 연결 기능과, `service`는 synsory-api의 Docs·Forms 단위와 겹쳐 쓰지 않는다.
+- **칸은 세 개뿐**: `profile_id`·`platform`(기본키, 교수자 × 플랫폼 하나) · `token_cipher`(암호화한 JSON). 정의는 6.5.
+  - 끊긴 연결은 표시하지 않고 **행을 지운다**(6.3). "끊겼어요"와 "아직 연결 안 했어요"를 화면에서 구분해야 하면 그때 `reconnect_required_at` 칸을 더한다.
+  - `created_at`·`updated_at`·`version`은 두지 않는다. 기능이 읽지 않고, 동시 갱신은 Google은 문제가 없고 Zoom은 행 잠금으로 막는다(6.2).
+- `token_cipher` 안의 JSON(플랫폼별 Zod로 검사):
+  - google: `{ refresh_token, scope, account_email? }`. Google 안의 서비스(Drive·Docs·Sheets·Slides·Forms·Meet)는 refresh token 하나를 함께 쓴다(계정 × 앱 단위 승인).
+  - zoom: `{ refresh_token, scope, api_url? }`. 갱신마다 refresh token이 바뀐다.
+  - 새 플랫폼이 생겨도 테이블은 그대로다(`check` 값만 늘린다).
+- 암호화는 studio 세션과 같은 `Secrets.encrypt`(AES-256-GCM, `base64url(IV 12B + 태그 16B + 암호문)`). 평문 `jsonb`는 쓰지 않는다(DB 백업·관리 화면에 토큰이 보인다).
+- **키**: 지금은 `SESSION_ENCRYPTION_KEY` 하나다. 세션은 길어야 7일이라 키를 바꾸면 재로그인으로 끝나지만, 연결은 몇 달 살아서 키를 바꾸면 모든 교수자가 다시 연결해야 한다. 연결용 키를 따로 두거나(예: `CONNECTION_ENCRYPTION_KEY`) 암호문 앞에 키 번호를 붙여 옛 키도 읽게 한다. **[결정 필요 D의 일부]**
+- 권한: studio는 `studio_auth` 권한을 테이블마다 따로 준다(`0001_integrity.sql`). `studio_api`는 읽기·쓰기·수정·삭제, `studio_worker`는 읽기·삭제(갱신 거절 시 삭제). worker의 수정 권한은 Zoom refresh token 교체에만 필요해 Zoom을 붙일 때 더한다. 브라우저 역할 차단은 기존 기본 권한 회수가 적용된다.
+
+### 6.2 토큰 공급: 메모리 캐시, DB는 가끔
+
+- 어댑터는 토큰을 직접 받지 않고 `accessToken: () => Promise<string>`을 받는다(`createGoogleDrive(accessToken)` 등). 이 함수를 studio에서 아래처럼 만든다. 이미 만든 어댑터는 고칠 필요가 없다.
+- 프로세스 메모리에 `(profile_id, platform) → { access_token, expires_at }`. 남은 수명이 1분보다 길면 그대로 쓴다(대부분). 아니면 DB에서 `token_cipher`를 읽어 풀고 → provider에 갱신 요청 → 메모리에 저장.
+- DB 읽기는 프로세스마다 교수자 × 플랫폼당 대략 1시간에 1번. 그룹 10개 동료평가 폼(Google 호출 약 70회)에서 DB 읽기는 0~1회. 참고로 studio는 지금도 로그인 요청마다 세션 행을 읽는다.
+- 한 프로세스 안의 동시 요청(그룹 4개 동시 처리 등)은 진행 중인 갱신 하나를 함께 기다린다(DB 잠금 불필요).
+- access token은 DB에 저장하지 않는다(메모리에만). refresh token은 메모리에 오래 들고 있지 않고 필요할 때 DB에서 읽는다(DB가 유일한 원본).
+- **Google은 갱신해도 refresh token이 바뀌지 않으므로 갱신 때 DB에 쓰지 않는다.** 그래서 프로세스 간 동시 갱신이 겹쳐도(같은 마감 시각의 작업 여러 개, API와 worker 동시, 서버 여러 대) Google 호출이 한 번 늘 뿐 꼬이지 않는다 → **Google만 붙이는 단계에서는 행 잠금이 필요 없다.**
+- **[결정 E] Zoom은 갱신마다 refresh token이 바뀌어 DB에 다시 써야 한다.** 두 곳이 같은 옛 토큰으로 동시에 갱신하면 새 토큰이 두 개 나오고 남은 쪽이 무효일 수 있어 멀쩡한 연결을 끊김으로 잘못 판정할 수 있다. Zoom 갱신 경로에만 행을 `FOR UPDATE`로 잠그고 → 다시 읽어 아직 필요하면 갱신 → 새 refresh token 저장 → 해제한다(studio 세션 갱신과 같은 방식, 교수자당 대략 1시간에 1초 안팎). 잠금은 행 단위 기능이라 칸이 필요 없고 Zoom을 붙일 때 추가하면 된다. 교수자가 다시 연결하는 순간 worker가 갱신 중인 경우도 같은 잠금으로 순서가 정해진다.
+
+### 6.3 다시 연결이 필요한지 판정
+
+교수자가 Google·Zoom 쪽에서 앱 연결을 끊어도 DB의 refresh token은 그대로 있다. 알 수 있는 때는 그 토큰을 쓸 때뿐이다.
+
+| 신호 | 원인 | 처리 |
+| --- | --- | --- |
+| Google 갱신 400 `invalid_grant` | 사용자가 계정 설정에서 연결 끊음, 테스트 상태 앱 7일, 미사용 6개월, 계정 × 앱 100개 초과(`docs/google_docs.md` 2절) | `external_accounts` 행 삭제 → `EXTERNAL_RECONNECT_REQUIRED` |
+| Google API 403 `insufficientPermissions` | 동의 화면에서 Drive 권한을 해제하고 허용 | 같음(권한 부족 사유를 함께 안내) |
+| Zoom 갱신 실패(401, `invalid_grant` 계열) | 앱 제거, 90일 미사용 | 같음 |
+| API 401(Zoom 본문 `code 124` 포함) | access token 만료·무효 | 메모리 토큰을 버리고 **한 번만** 갱신 후 재시도. 갱신이 위 신호로 실패하면 기록 |
+| 429 · `RESOURCE_EXHAUSTED` · 5xx · 네트워크 오류 | 일시적 | **끊김으로 판정하지 않는다.** 기다렸다 재시도 |
+
+- 다시 연결하면 행을 새로 넣는다(이미 있으면 `token_cipher`를 덮어쓴다).
+- 끊긴 즉시는 모른다(다음 사용 때 안다). 중요한 작업(예: 다음 날 마감) 하루 전에 갱신을 한 번 시도해 미리 확인하고 알린다. 즉시 알림은 Google Cross-Account Protection(수신 서버 등록·서명 검증 필요), Zoom `app_deauthorized`(게시 앱만, `docs/zoom.md` 9절)로만 가능해 지금은 쓰지 않는다.
+- `invalid_grant`가 실제로 오는지는 공식 문서 기준이고 연결을 끊어 실측하지는 않았다(연결을 끊고 갱신해 보면 바로 확인된다).
+
+### 6.4 연결의 수명
+
+| 상황 | 연결 |
+| --- | --- |
+| 로그아웃, 모든 기기 로그아웃, 세션 만료 | 유지(작업이 계속 돈다) |
+| "연결 해제" 버튼, 계정 삭제 | Google·Zoom 쪽 승인 취소(revoke) 후 행 삭제 |
+| 수업에서 빠짐 | 연결은 개인 것이라 유지. 그 교수자가 만든 활동은 결정 N에 따라 다른 교수자가 못 다룰 수 있다 |
+| 갱신 거절(6.3) | 행 삭제(화면은 "연결하세요") |
+| 로그인 이메일과 연결한 Google 계정이 다름 | **결정 필요**(허용·경고·거절). 연결 계정 이메일은 `token_cipher` 안 `account_email`로 보관 |
+
+### 6.5 테이블 정의(studio `packages/db/src/schema.ts`, 마이그레이션 `0009_external_accounts`)
+
+```ts
+export const externalAccounts = internal.table(
+  'external_accounts',
+  {
+    profile_id: uuid()
+      .notNull()
+      .references(() => profiles.id),
+    platform: text().notNull(),
+    token_cipher: text().notNull(),
+  },
+  (t) => [
+    primaryKey({ columns: [t.profile_id, t.platform] }),
+    check('external_account_platform', sql`${t.platform} in ('google','zoom')`),
+  ],
+);
+```
+
+- `schema.ts`에는 주석을 달지 않는다(파일 관례). 설명은 이 절과 마이그레이션에 둔다.
+- 마이그레이션은 `pnpm db:generate`로 만든 SQL·스냅샷·저널에 권한 부여를 덧붙인다(6.1 권한). `schema.ts`와 같은 커밋.
+- `check`에 `'zoom'`을 미리 넣었다(Zoom은 팀원 담당으로 확정, 나중에 제약 변경 마이그레이션이 필요 없게).
 
 알아둘 제약(synsory-api 실측·공식 문서):
 
@@ -196,8 +270,8 @@ studio의 Google 로그인(Supabase, `openid email profile`)과 **별개 흐름*
 studio 범위·정책 (studio 담당자 결정):
 
 - 외부 도구 범위 열기(studio `TODO.md` 1절·`AGENTS.md`), `activity_type_allowed` 허용 목록 변경
-- D. 연결 토큰 테이블 위치(`studio_auth.provider_connections` 제안)
-- E. 토큰 갱신 동시성: 행 잠금 vs 낙관적 갱신
+- ~~D. 연결 토큰 저장~~ → 확정(2026-10-09 팀 승인): `studio_auth.external_accounts(profile_id, platform, token_cipher)`, 끊기면 행 삭제(6.1·6.5). 남은 것: 연결용 암호화 키를 따로 둘지(키 교체), 로그인 이메일과 연결 계정이 다를 때 정책(6.4)
+- E. 토큰 갱신 동시성 → 추천: **Google은 잠금 불필요**(갱신해도 refresh token이 안 바뀌어 DB에 쓰지 않음), **Zoom 갱신 경로에만 행 잠금**(갱신마다 refresh token 교체, studio 세션 갱신과 같은 방식). access token은 메모리 캐시(6.2). 경과: 낙관적 갱신 → 행 잠금 → Google·Zoom 구분(2026-10-09)
 - F. Zoom https 리다이렉트를 로컬에서 받는 방법
 - G. Drive용 Google client secret을 앱 env에 두는 예외
 - ~~H. Picker용 짧은 수명 access token 전달~~ → 확정(2026-10-09): 서버가 Picker 열 때만 내려줌. 남은 확인: helmet CSP·Referrer-Policy(6절 Picker 항목)
@@ -205,6 +279,8 @@ studio 범위·정책 (studio 담당자 결정):
 - L. xlsx 라이브러리 의존성 추가
 - M. 외부 오류 원문 메시지(`ExternalApiError.externalMessage`)를 로그에 남길지, 이메일을 가린 뒤 남길지 (studio는 "원본 응답·개인정보를 로그에 출력하지 않는다")
 - GCP 프로젝트·동의 화면과 Zoom 앱을 studio 로그인용과 공유할지
+- N. 외부 파일·미팅을 누구 계정으로 다루나(2026-10-09 추가). studio는 한 수업에 교수자가 여럿이고 권한이 같은데, 교수자 A의 연결로 만든 폼·문서·미팅은 A 소유다. `drive.file`은 "이 사용자가 이 앱으로 만들었거나 고른 파일"에만 적용되고 Zoom 미팅도 만든 사람 계정에 속하므로, 교수자 B의 토큰으로는 A가 만든 파일을 마감·수정하지 못할 가능성이 높다(Google 계정 2개로 실측 필요). 방안: ① 활동마다 만든 교수자의 연결(`profile_id`)을 `external_refs`에 기록하고 이후 작업도 그 연결로 실행(**추천**. 단점: 그 교수자가 연결을 끊거나 수업에서 빠지면 그 활동은 다룰 수 없어 `EXTERNAL_RECONNECT_REQUIRED` 안내가 필요) ② 수업마다 공용 연결 하나(관리 화면·새 개념 필요) ③ 누르는 사람 계정으로 실행(남이 만든 파일에서 실패)
+- O. 오래 걸리는 생성 작업을 HTTP 요청 안에서 할지 worker로 넘길지(2026-10-09 추가). 실측(6개 조, 8.1절): 호출당 1.2~2초, 순차면 Forms 동료평가 87초·Docs 34초, 동시 6개로도 15초·6초. 조가 많으면 분 단위. 방안: ① 요청 안에서 처리(가장 단순, 타임아웃·중간 실패 시 일부만 생성·새로고침 중복 위험) ② 요청은 작업 등록만 하고 worker(pg-boss)가 처리, 화면은 진행 상태 표시(**추천**. 재시도·중복 방지는 큐가 맡고, 그룹 하나를 작업 하나로 나누면 흐름 코드는 그대로 둔다. 미팅 하나 수정처럼 짧은 동작은 요청 안에서)
 
 ## 11. 서비스별 "studio 이식" 하위절 형식
 
