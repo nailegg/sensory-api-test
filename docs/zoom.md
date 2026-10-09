@@ -456,18 +456,20 @@ summary = zoom_uc.summarize_attendance(
 
    | synsory-api | studio |
    | --- | --- |
-   | `zoom/client.py` + `mapper.py` + usecases `_zoom_time` · `_meeting_body` · 소회의실·반복 본문 | `packages/infrastructure/src/zoom.ts` `createZoom(accessToken)` → `ZoomPort`, `meetingFromZoom`, `zoomTime`, `meetingBody` |
+   | `zoom/client.py` + `mapper.py` + usecases `_zoom_time` · `_meeting_body` · 반복 본문 | `packages/infrastructure/src/zoom.ts` `createZoom(accessToken)` → `ZoomPort`, `meetingFromZoom`(`zoomTime` · `meetingBody`는 파일 안 내부 함수) |
    | `ZoomApiError` | `external-http.ts` `ExternalApiError`(provider `zoom`). Zoom 본문 `{ code, message }`의 code는 `zoomCode`, message는 `externalMessage`. 404(code 3001)는 `EXTERNAL_NOT_FOUND`, 429는 `EXTERNAL_RATE_LIMITED`, 그 밖(code 124 토큰 무효, 200 유료 전용 포함)은 `EXTERNAL_FAILED` |
    | usecases `url_validation_response` · `verify_signature` | 같은 파일 `urlValidationResponse` · `verifySignature` (`node:crypto`라 infrastructure). 길이가 다른 서명도 예외 없이 false |
-   | `core/models.py` `Meeting` · `MeetingOccurrence` · `MeetingStatus`, usecases `HostProfile.has_40_minute_limit` · `summarize_attendance` | `packages/domain/src/zoom-tool.ts` `Meeting` · `MeetingOccurrence` · `MeetingStatus` · `hasFortyMinuteLimit` · `summarizeAttendance`. 시각은 RFC3339 문자열 |
+   | `core/models.py` `Meeting` · `MeetingOccurrence`, usecases `HostProfile.has_40_minute_limit` · `summarize_attendance` | `packages/domain/src/zoom-tool.ts` `Meeting` · `MeetingOccurrence` · `hasFortyMinuteLimit` · `summarizeAttendance`. 시각은 RFC3339 문자열 |
    | usecases `create_group_meetings` · `reschedule_meeting` | `packages/application/src/zoom-meetings.ts` `createGroupMeetings` · `rescheduleMeeting` |
-   | usecases `get_host_profile` · `create_breakout_meeting` · `create_recurring_meeting` · `cancel_meeting` · `get_start_url` | port 메서드 하나씩이라 application 함수를 두지 않는다(`getMe` + `hasFortyMinuteLimit`, `createBreakoutMeeting`, `createRecurringMeeting`, `deleteMeeting`, `getStartUrl`) |
+   | usecases `get_host_profile` · `create_recurring_meeting` · `cancel_meeting` · `get_start_url` | port 메서드 하나씩이라 application 함수를 두지 않는다(`getMe` + `hasFortyMinuteLimit`, `createRecurringMeeting`, `deleteMeeting`, `getStartUrl`) |
+   | usecases `create_breakout_meeting`, `MeetingStatus`, `Meeting.status` · `timezone` · `host_id`, `summarize_attendance`의 `student_id_pattern` 인자 | 이식하지 않음(2026-10-09 karpathy 재검토). 소회의실은 유즈케이스 2의 B 비교안이고, 나머지는 어떤 흐름도 읽지 않는다. `'ended'` 상태는 Zoom이 주지 않는 값이었다. 학번 정규식은 `/\d{8}/` 상수(명단 학번 필드 결정 뒤 재검토). Zoom은 팀원 담당이라 필요하면 Python을 보고 되살린다 |
 
    Python과 달라진 점:
    - 시간대 없는 시각(`ValueError`)은 JS `Date`가 항상 절대 시각이라 생기지 않는다.
    - 반복 미팅의 "끝은 날짜·횟수 중 하나"(`ValueError`)는 타입(`{ endDateTime } | { endTimes }`)이 막는다.
    - 실수로 시리즈 전체를 지우지 않게 하던 키워드 전용 `occurrence_id`는 `deleteMeeting(id, occurrenceId: string | null)`의 필수 인자로 옮겼다.
-   - `Meeting.has_recording` · `has_transcript`는 Python mapper가 채운 적이 없어(Pro 범위, 보류) 뺐다.
+   - `Meeting.has_recording` · `has_transcript`는 Python mapper가 채운 적이 없어(Pro 범위, 보류) 뺐다. `status` · `timezone` · `host_id`도 같은 기준으로 뺐다(위 표).
+   - 1절 유즈케이스 2의 "대기실·호스트 전 입장" 기본값은 Python `_meeting_body`에도 TS에도 구현돼 있지 않다(문서와 코드 불일치, `STUDIO_PORTING.md` 10절). `MeetingSchedule.settings`는 넘기는 흐름이 없어 뺐다.
    - `start_url`은 `Meeting`에 넣지 않고 `getStartUrl`로만 받는다(Python은 `get_meeting` 원본 dict에서 꺼냈다).
    - "바꿀 값 없음"은 `AppError NO_CHANGES` 422.
 
@@ -477,17 +479,15 @@ summary = zoom_uc.summarize_attendance(
    | --- | --- | --- |
    | `getMe()` → `{ plan_type, timezone }` | `GET /users/me` | `get_me` + `get_host_profile` |
    | `createMeeting(schedule)` | `POST /users/me/meetings` type 2 | `create_meeting` + `_meeting_body` |
-   | `createBreakoutMeeting(schedule, rooms)` | 같음 + `settings.breakout_room` | `create_breakout_meeting` |
    | `createRecurringMeeting(schedule, { weeklyDays, endDateTime \| endTimes })` | 같음 type 8 + `recurrence` | `create_recurring_meeting` |
    | `getMeeting(id)` | `GET /meetings/{id}` | `get_meeting` + `meeting_from_zoom` |
    | `updateMeeting(id, { startTime, durationMinutes, topic }, occurrenceId?)` | `PATCH /meetings/{id}` | `update_meeting` |
    | `deleteMeeting(id, occurrenceId \| null)` | `DELETE /meetings/{id}` | `delete_meeting` · `cancel_meeting` |
    | `getStartUrl(id)` | `GET /meetings/{id}`의 `start_url` | `get_start_url` |
 
-   `MeetingSchedule.settings`는 Zoom settings JSON을 그대로 넘긴다(Forms `FormItem`과 같은 방식).
 3. **도구 매핑**: `zoom_meeting` 도구(`STUDIO_PORTING.md` 7절). `external_refs` 항목은 미팅마다 `Meeting` + `team_id`. 출석은 `summarizeAttendance` 결과를 학생별 응답으로 저장한다(`source_key` = 미팅 uuid + 학번 또는 participant_uuid는 결정 필요). 학번 매칭은 studio 명단에 학번이 있어야 한다(`STUDIO_PORTING.md` 결정 필요 J).
 4. **큐 작업**: 웹훅 `POST /api/webhooks/zoom` → 원본 바이트로 `verifySignature` → `endpoint.url_validation`이면 `urlValidationResponse`(3초 안) → 그 밖은 이벤트를 저장하고 큐에 넣은 뒤 204. 출석 집계는 미팅 종료(`meeting.ended`) 뒤 작업으로 `summarizeAttendance`.
-5. **테스트**: `tests/zoom/test_mapper.py` 2개 + `test_usecases.py` 11개 중 10개 → `studio-port/tests/unit/zoom.test.ts`(빠진 1개: 시간대 없는 시각은 TS에서 생기지 않음. 반복 미팅 끝 조건 검사는 타입으로 대체하고 `end_date_time` 본문 확인으로 바꿈). 추가: Zoom 오류 본문 해석, 길이가 다른 서명. 실측 스크립트 `studio-port/scripts/live-zoom.ts`는 이식하지 않는다.
+5. **테스트**: `tests/zoom/test_mapper.py` 2개 + `test_usecases.py` 11개 중 9개 → `studio-port/tests/unit/zoom.test.ts`(빠진 2개: 시간대 없는 시각은 TS에서 생기지 않음, 소회의실은 미이식. 반복 미팅 끝 조건 검사는 타입으로 대체하고 `end_date_time` 본문 확인으로 바꿈). 추가: Zoom 오류 본문 해석, 길이가 다른 서명. 실측 스크립트 `studio-port/scripts/live-zoom.ts`는 이식하지 않는다.
 
 ## 12. 미확인 · 보류 항목
 

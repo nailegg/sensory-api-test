@@ -2,8 +2,6 @@
 // synsory-api app/services/zoom/usecases.py·mapper.py·core/models.py에서 외부 호출 없는 부분의 이식본.
 // 시각은 Zoom이 준 RFC3339 문자열 그대로 둔다.
 
-export type MeetingStatus = 'scheduled' | 'started' | 'ended' | 'unknown';
-
 // 반복 미팅의 한 회차. 회차만 바꾸거나 취소할 때 id(Zoom occurrence_id)를 쓴다.
 export interface MeetingOccurrence {
   id: string;
@@ -19,14 +17,10 @@ export interface Meeting {
   id: string;
   provider: 'zoom';
   topic: string;
-  // Zoom status에는 ended가 없다. 종료는 웹훅으로만 안다.
-  status: MeetingStatus;
   start_time: string | null;
   // 예정 길이. 실제 길이가 아니다.
   duration_minutes: number | null;
-  timezone: string | null;
   join_url: string | null;
-  host_id: string | null;
   // 미팅 인스턴스 식별자. 반복 미팅은 회차마다 새로 생긴다.
   uuid: string | null;
   // 반복 미팅(type 8)의 회차. 최대 50개.
@@ -133,6 +127,9 @@ function mergedSeconds(intervals: [number, number][]): [number, boolean] {
   return [total, overlap];
 }
 
+// 표시 이름 속 학번(8자리). 명단 학번 필드가 정해지면(STUDIO_PORTING.md 43번) 같이 다시 본다.
+const STUDENT_ID = /\d{8}/;
+
 // 웹훅 participant_joined/left를 학생별 출석으로 바꾼다. roster = {학번: 이름}.
 // 학생은 표시 이름을 "학번 이름"으로 넣고 들어온다(개인 계정 학생은 이메일이 빈 값이라).
 // 판정: 체류 ≥ minMinutes면 출석, 그중 첫 입장 > 시작 + lateAfterMinutes면 지각, 나머지는 결석.
@@ -144,10 +141,9 @@ export function summarizeAttendance(
     meetingStart: string;
     minMinutes: number;
     lateAfterMinutes: number;
-    studentIdPattern?: RegExp;
   },
 ): AttendanceSummary {
-  const pattern = input.studentIdPattern ?? /\d{8}/;
+  const pattern = STUDENT_ID;
   const byStudent = new Map<string, Session[]>();
   const unmatched: UnmatchedSession[] = [];
   for (const s of sessions(events, input.meetingId)) {

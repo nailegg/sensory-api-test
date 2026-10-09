@@ -84,8 +84,7 @@ packages/infrastructure/src/
   google-slides.ts
   google-sheets.ts         # A1·GridRange 헬퍼 포함
   google-forms.ts
-  zoom.ts
-  zoom-webhook.ts          # CRC 응답, 서명 검증 (node:crypto)
+  zoom.ts                  # CRC 응답·서명 검증(node:crypto)도 이 파일에 둠(zoom-webhook.ts로 나누지 않음)
   integration-jobs.ts      # 수집·웹훅 처리 큐 작업 스키마와 enqueue (queue.ts 패턴)
 
 packages/contracts/src/index.ts   # 연결 상태, 도구 설정 입력, 결과 DTO
@@ -95,6 +94,8 @@ apps/worker/src/main.ts           # 수집·웹훅 작업 등록
 tests/fixtures/                   # synsory-api samples/*.json, 가짜 port
 tests/unit/                       # pytest 케이스의 vitest 번역
 ```
+
+**현황(2026-10-09)**: 위는 계획이고 studio-port에 **있는 것**은 domain `integrations.ts` · `google-forms-tool.ts` · `zoom-tool.ts`, application `integration-ports.ts` · `google-files.ts` · `google-forms.ts` · `zoom-meetings.ts` · `google-picker.ts` · `concurrency.ts`, infrastructure `external-http.ts` · `google-drive.ts` · `google-docs.ts` · `google-slides.ts` · `google-sheets.ts` · `google-forms.ts` · `zoom.ts` · `google-picker.ts` · `google-tags.ts`, contracts·ui `google-picker.ts`다. `google-files-tool.ts`(ToolHandler), `connections.ts`, `oauth-providers.ts`, `integration-jobs.ts`, `IntegrationFactory` · `ConnectionStore`, db·apps 쪽은 **없고** studio 브랜치에서 쓴다(README "여기서 하는 것").
 
 ## 4. port 설계
 
@@ -297,9 +298,9 @@ export const externalAccounts = internal.table(
 | # | 항목 | 상태 | 내용 |
 | --- | --- | --- | --- |
 | 22 | 층 대응 | 확정(studio-port 구현, 2026-10-09 표현 수정) | client → infrastructure 어댑터, usecases의 흐름 → application(port 주입), mapper는 형식 변환 → infrastructure · Synsory 규칙·payload 스키마 → domain으로 갈림, `core/models.py` → **domain**(`externalDocument`·`FormSubmission`·`Meeting`). contracts에는 브라우저가 보는 것만(Picker 세션 23줄이 전부). 근거: I/O는 infrastructure(AGENTS.md), `ToolHandler`가 domain에 있어 payload·집계는 domain, 흐름은 HTTP·worker 양쪽이 공유해야 해서 application(2~4절) |
-| 23 | A. mapper 위치 | 제안·미승인 | infrastructure에 둠(2절). studio-port가 이렇게 구현. "현행 유지" 승인이면 닫힘 |
+| 23 | A. mapper 위치 | 확정(2026-10-09 상현) | **현행 유지**: 응답 형식 변환은 infrastructure 어댑터 안(Google JSON 모양은 바깥 층에 가둠, application·domain은 깨끗한 타입만 봄), 계산·규칙은 domain. 이유: Google에는 "문서 하나"를 통째로 주는 API가 없어 Docs+Drive 응답을 합친 모양은 우리 것, Google 함정(빈 grade·`low` 생략·휴지통 200)을 한 곳에서 보정, 이메일 등 개인정보를 걸러 저장, studio도 경계에서 자기 모양으로 바꾸는 방식(`ToolHandler.validateResponse`). **단, 필드는 studio가 실제 쓰는 것만 남긴다**: `externalDocument` 13개 중 application이 쓰는 건 `title`·`kind`·`trashed`뿐이고 `text`·`mime_type`·`created_at`·`modified_at`은 미사용. studio에 넣을 때 `external_refs` 항목(7절)에 맞춰 줄인다 |
 | 24 | B. 하위 폴더 | 제안·미승인 | 평평한 파일(studio 관례, 3절). 현행 유지 가능 |
-| 25 | C. 외부 오류 코드 이름 | 제안·미승인 | `ExternalApiError extends AppError`, `details`는 `status`·`reason`·`api_status`만(5절) |
+| 25 | C. 외부 오류 코드 이름 | 제안·미승인 | `ExternalApiError extends AppError`, `details`는 `status`·`reason`·`api_status`만(5절). 코드도 같다(2026-10-09 `zoom_code`를 details에서 뺌. `zoomCode` 속성은 연결 계층의 401 판정용으로 남김) |
 | 26 | I. `activity_type` 이름 · Forms 분할 | **미정** | `google_group_docs`·`google_group_slides`·`google_group_sheets`·`google_form` 가칭(7절). 설문·퀴즈·동료평가를 도구로 나눌지 `config`로 구분할지. `activity_type_allowed` 마이그레이션에 바로 들어감 |
 | 27 | N. 외부 파일·미팅을 누구 계정으로 다루나 | **미정** | studio는 한 수업에 교수자가 여럿이고 권한이 같은데, 교수자 A의 연결로 만든 파일은 A 소유다. `drive.file`은 "이 사용자가 이 앱으로 만들었거나 고른 파일"에만 적용되므로 B의 토큰으로는 마감·수정이 안 될 가능성이 높다(Google 계정 2개 실측 미완). 방안: ① 활동마다 만든 교수자의 연결(`profile_id`)을 `external_refs`에 기록하고 이후 작업도 그 연결로 실행(**추천**. 그 교수자가 연결을 끊거나 수업에서 빠지면 `EXTERNAL_RECONNECT_REQUIRED` 안내 필요) ② 수업마다 공용 연결 하나(관리 화면·새 개념 필요) ③ 누르는 사람 계정으로 실행(남이 만든 파일에서 실패) |
 | 28 | O. 오래 걸리는 생성 작업의 위치 | **미정** | 실측(6개 조, 8.1절): 호출당 1.2~2초, 순차면 Forms 동료평가 87초·Docs 34초, 동시 6개로도 15초·6초. 조가 많으면 분 단위. 방안: ① 요청 안에서 처리(단순. 타임아웃·중간 실패 시 일부만 생성·새로고침 중복 위험) ② 요청은 작업 등록만 하고 worker(pg-boss)가 처리, 화면은 진행 상태(**추천**. 재시도·중복 방지는 큐가 맡고, 그룹 하나를 작업 하나로 나누면 흐름 코드는 그대로. 미팅 하나 수정처럼 짧은 동작은 요청 안에서) |
@@ -336,7 +337,15 @@ export const externalAccounts = internal.table(
 | 49 | Drive 일일 공유 횟수 제한 | 대규모 액티비티 전 |
 | 50 | 교수자가 웹에서 만든 사본·옮긴 파일의 앱 접근 | 필요 시(`docs/google_docs.md` 12절) |
 
-브랜치를 열기 전에 정할 것은 코드 골격을 가르는 26·27·28번이다. 23·24·25번은 "현행 유지" 승인만 받으면 닫힌다. 나머지 미정은 PR 회의 안건으로 넘긴다.
+브랜치를 열기 전에 정할 것은 코드 골격을 가르는 26·27·28번이다. 24·25번은 "현행 유지" 승인만 받으면 닫힌다. 나머지 미정은 PR 회의 안건으로 넘긴다.
+
+### 10.6 karpathy 재검토(2026-10-09) 처리 현황
+
+이식 코드에서 "Python에 있어서 따라왔지만 아무도 안 쓰는 것"을 찾아 정리했다. 기준은 application 흐름의 호출 유무(grep).
+
+- **① 삭제 완료**(vitest 92 → 87, 동작 불변): Sheets `lockRanges`·`unlockRanges`와 GridRange 헬퍼(보류 기능), Drive `listFiles`(디버그용)·`listPermissions`의 `includePublishedView`(미구현 흐름용), Zoom `createBreakoutMeeting`(B 비교안)·`MeetingSchedule.settings`; 한 값으로만 쓰던 인자 `removeLinkAccess`·`excludeSelf`·`includeEmail`·`studentIdPattern`·`toRole`·`mapConcurrently(limit)`·`timeoutMs`·`shareWithUsers(role)`·`Sheets.create(sheetTitles)`; 읽지 않는 필드 `FormStructure.linked_sheet_id`·`revision_id`, `DrivePermission.display_name`·`view`, `Meeting.status`·`timezone`·`host_id`, `SheetInfo.hidden`, `SheetValues.range`; `ExternalApiError.rateLimited` getter와 `details.zoom_code`(5절과 불일치); 어댑터 내부 함수 export 8개. 각 서비스 문서 11.x에 반영.
+- **② 문서·규칙 수정(상현 확인 뒤)**: `CLAUDE.md`의 "Document의 owner·created_at·modified_at·url은 Drive files.get에서 온다"(13필드 모델의 근원 → "흐름이 쓰는 필드가 필요할 때만 조회"로), "google_docs 폴더를 복사해서 시작"(미사용 client 메서드를 퍼뜨림 → "유즈케이스가 부르는 메서드만 남긴다" 추가), Drive 호출 목록의 `changes.watch`; 6.1 `account_email` 선저장(38번 미정인데 데이터 먼저), 6.3 "하루 전 갱신 점검"(요구 없는 선제 기능), 8절 "100개씩 commit"(근거 없음); 7절 `external_refs` 항목(`checkpoint_revision`·`cursor` 등은 studio 확인 전 가정); zoom.md 1절 유즈케이스 2 "대기실·호스트 전 입장" 기본값이 코드에 없음(구현할지 문서를 고칠지). Python 쪽 미사용 코드: Drive client `rename_file`·`delete_file`·`set_read_only`·`get_start_page_token`·`list_changes`·`share_with_user(expiration_time)`·`move_file(from_folder_id)`, Sheets `batch_update_values`·`append_values`, Forms `get_response`, `Meeting.has_recording`·`has_transcript`, Docs 비교용 B `create_document_with_docs_api`.
+- **③ 확인 필요(상현 답)**: 공유 `notify`·`shareMessage` 옵션(비 Google 이메일 초대에 알림이 필요하다는 실측 근거 있음 → 남길지), Picker 다중 선택(`multiple`·최대 20개 → 한 파일로 줄일지), `ExportFormat` 12종(각 서비스 1절 표보다 많음, Docs md·html·txt), Drive `docx` 업로드(Docs 템플릿을 docx로 올리는 경로를 둘지), `FormSubmission.created_at`(payload에 저장할지).
 
 ## 11. 서비스별 "studio 이식" 하위절 형식
 

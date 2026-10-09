@@ -11,11 +11,12 @@ import {
 import { batchUpdateReplies, tag, tagCounts } from './google-tags.ts';
 
 // Google Sheets v4 어댑터. synsory-api app/services/google_sheets/client.py + mapper.py(좌표)
-// + usecases(태그 치환·보호 범위·값 읽기)의 이식본. 함정은 synsory-api docs/google_sheets.md 10절.
+// + usecases(태그 치환·값 읽기)의 이식본. 함정은 synsory-api docs/google_sheets.md 10절.
+// 보호 범위(lock_ranges)는 보류 기능이라 옮기지 않았다(docs/google_sheets.md 1절 메모 3).
 
 const BASE_URL = 'https://sheets.googleapis.com/v4';
 // 구조만 받는다. includeGridData는 큰 시트에서 180초 타임아웃 위험.
-const SHEETS_FIELDS = 'sheets(properties(sheetId,title,index,hidden))';
+const SHEETS_FIELDS = 'sheets(properties(sheetId,title,index))';
 
 // ---------- 좌표 ----------
 
@@ -27,57 +28,10 @@ export function columnLetter(index: number): string {
   return letters;
 }
 
-// 열 문자 → 0 기반 인덱스. A→0, Z→25, AA→26.
-export function columnIndex(letters: string): number {
-  if (!/^[A-Za-z]+$/.test(letters)) throw new RangeError(`열 문자가 아닙니다: ${letters}`);
-  return [...letters.toUpperCase()].reduce((n, ch) => n * 26 + ch.charCodeAt(0) - 64, 0) - 1;
-}
-
 // '시트 이름'!A1:C3. 이름 안의 작은따옴표는 두 번 쓴다. 항상 감싸도 Sheets는 받아들인다.
 export function a1(sheetTitle: string, cellRange?: string): string {
   const quoted = `'${sheetTitle.replaceAll("'", "''")}'`;
   return cellRange ? `${quoted}!${cellRange}` : quoted;
-}
-
-// A1 셀 범위(시트 이름 없이: "B6:B9", "A:B", "2:2", "C5") → GridRange(0 기반, end는 반열림).
-// 열만·행만 지정하면 그 축은 무한(해당 start/end 생략).
-export function gridRange(sheetId: number, cellRange: string): Record<string, number> {
-  const parts = cellRange.split(':');
-  const [from, to] = parts.length === 1 ? [parts[0], parts[0]] : parts;
-  const cell = (c: string | undefined) => /^([A-Za-z]*)(\d*)$/.exec(c ?? '');
-  const start = cell(from);
-  const end = cell(to);
-  if (parts.length > 2 || !from || !start || !end || !(start[1] || start[2]))
-    throw new RangeError(`범위가 아닙니다: ${cellRange}`);
-  const range: Record<string, number> = { sheetId };
-  if (start[1] && end[1]) {
-    range['startColumnIndex'] = columnIndex(start[1]);
-    range['endColumnIndex'] = columnIndex(end[1]) + 1;
-  }
-  if (start[2] && end[2]) {
-    range['startRowIndex'] = Number(start[2]) - 1;
-    range['endRowIndex'] = Number(end[2]);
-  }
-  return range;
-}
-
-// addProtectedRange 요청. editors를 항상 명시한다(users: [] = 소유자만).
-export function protectRangeRequests(
-  sheetId: number,
-  cellRanges: string[],
-  description: string,
-  editorEmails: string[] = [],
-) {
-  return cellRanges.map((r) => ({
-    addProtectedRange: {
-      protectedRange: {
-        description,
-        warningOnly: false,
-        editors: { users: editorEmails },
-        range: gridRange(sheetId, r),
-      },
-    },
-  }));
 }
 
 const sheetList = z.object({
@@ -88,7 +42,6 @@ const sheetList = z.object({
           sheetId: z.number().default(0),
           title: z.string(),
           index: z.number().default(0),
-          hidden: z.boolean().default(false),
         }),
       }),
     )
@@ -126,7 +79,6 @@ export function createGoogleSheets(
         sheet_id: p.sheetId,
         title: p.title,
         index: p.index,
-        hidden: p.hidden,
       }))
       .sort((a, b) => a.index - b.index);
   }
@@ -149,15 +101,13 @@ export function createGoogleSheets(
     },
 
     // spreadsheets.create. locale·timeZone은 날짜 표시와 USER_ENTERED 파싱에 영향을 주므로 명시한다.
-    async create(title, sheetTitles) {
+    async create(title, firstSheetTitle) {
       const response = await call({
         method: 'POST',
         url: `${BASE_URL}/spreadsheets`,
         json: {
           properties: { title, locale: 'ko_KR', timeZone: 'Asia/Seoul' },
-          ...(sheetTitles?.length && {
-            sheets: sheetTitles.map((t, index) => ({ properties: { title: t, index } })),
-          }),
+          sheets: [{ properties: { title: firstSheetTitle, index: 0 } }],
         },
       });
       return (await readJson(response, z.object({ spreadsheetId: z.string() }))).spreadsheetId;
@@ -181,12 +131,9 @@ export function createGoogleSheets(
       });
       const data = await readJson(
         response,
-        z.object({
-          range: z.string().default(''),
-          values: z.array(z.array(z.unknown())).default([]),
-        }),
+        z.object({ values: z.array(z.array(z.unknown())).default([]) }),
       );
-      return { sheet_id: sheet.sheet_id, sheet_title: sheet.title, ...data };
+      return { sheet_id: sheet.sheet_id, sheet_title: sheet.title, values: data.values };
     },
 
     async writeValues(spreadsheetId, sheetTitle, cellRange, values) {
@@ -204,30 +151,5 @@ export function createGoogleSheets(
       await call({ method: 'POST', url: `${valuesUrl(spreadsheetId, range)}:clear`, json: {} });
     },
 
-    async lockRanges(
-      spreadsheetId,
-      sheetId,
-      cellRanges,
-      { description = '마감', editorEmails } = {},
-    ) {
-      const replies = await batchUpdate(
-        spreadsheetId,
-        protectRangeRequests(sheetId, cellRanges, description, editorEmails),
-      );
-      return replies.map(
-        (r) =>
-          (r['addProtectedRange'] as { protectedRange: { protectedRangeId: number } })
-            .protectedRange.protectedRangeId,
-      );
-    },
-
-    async unlockRanges(spreadsheetId, protectedRangeIds) {
-      await batchUpdate(
-        spreadsheetId,
-        protectedRangeIds.map((protectedRangeId) => ({
-          deleteProtectedRange: { protectedRangeId },
-        })),
-      );
-    },
   };
 }

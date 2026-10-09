@@ -17,8 +17,6 @@ const perm = (id: string, role: string, email: string): DrivePermission => ({
   type: 'user',
   role,
   email,
-  display_name: null,
-  view: null,
 });
 
 it('renderTemplate replaces known tags and keeps unknown ones (test_render_template…)', () => {
@@ -40,7 +38,7 @@ describe('createGroupFilesFromTemplate (google_drive test_usecases.py)', () => {
         copied.push({ source: fileId, name, parent });
         return doc(`copy-${copied.length}`, name);
       },
-      async shareWithUsers(fileId, emails, role) {
+      async shareWithUsers(fileId, emails) {
         return emails.map((email) => {
           if (email === failEmail)
             return {
@@ -48,7 +46,7 @@ describe('createGroupFilesFromTemplate (google_drive test_usecases.py)', () => {
               permission_id: null,
               error: new AppError('EXTERNAL_FAILED', 502, '공유하지 못했습니다.'),
             };
-          shared.push([fileId, email, role]);
+          shared.push([fileId, email, 'writer']);
           return { email, permission_id: `perm-${email}`, error: null };
         });
       },

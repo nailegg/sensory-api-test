@@ -39,7 +39,7 @@ try {
   for (const g of groups) if (g.meeting) created.push(g.meeting.id);
   check(
     'createGroupMeetings: one meeting per team, topic rendered, UTC start kept',
-    groups.every((g) => g.meeting?.status === 'scheduled' && !!g.meeting.join_url) &&
+    groups.every((g) => !!g.meeting?.join_url) &&
       groups[1]?.meeting?.topic === '[studio-port 실측] 과제1 - B조' &&
       Date.parse(groups[0]?.meeting?.start_time ?? '') === start.getTime(),
     `start_time=${groups[0]?.meeting?.start_time}`,

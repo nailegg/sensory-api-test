@@ -7,7 +7,6 @@ import {
 import { mapConcurrently } from './concurrency.ts';
 import type {
   DrivePermission,
-  DriveRole,
   GoogleDrivePort,
   PermissionResult,
   UploadSource,
@@ -59,7 +58,7 @@ export async function shareFile(
   options: { notify?: boolean; message?: string } = {},
 ): Promise<ShareResult[]> {
   const [results, error] = await attempt(() =>
-    drive.shareWithUsers(fileId, emails, 'writer', options),
+    drive.shareWithUsers(fileId, emails, options),
   );
   return results ?? emails.map((email) => ({ email, permission_id: null, error }));
 }
@@ -162,20 +161,20 @@ export async function createGroupFilesFromContent(
   });
 }
 
-// 파일 하나의 writer를 toRole로 낮춘다. 소유자(owner)는 조건에 안 걸려 남는다.
+// 파일 하나의 writer를 commenter로 낮춘다(마감 = 권한 낮추기). 소유자(owner)는 조건에 안 걸려 남는다.
 // 조교·공동 교수자처럼 writer를 유지할 사람은 keepEmails로 뺀다(대소문자 무시).
 // 같은 파일의 권한 변경이라 순서대로 한다(동시에 하면 마지막 쓰기만 남는다).
 export async function downgradeEditors(
   drive: GoogleDrivePort,
   fileId: string,
-  options: { toRole?: DriveRole; keepEmails?: string[] } = {},
+  options: { keepEmails?: string[] } = {},
 ): Promise<DrivePermission[]> {
   const keep = new Set((options.keepEmails ?? []).map((e) => e.toLowerCase()));
   const changed: DrivePermission[] = [];
   for (const p of await drive.listPermissions(fileId)) {
     if (p.role !== 'writer' || (p.type !== 'user' && p.type !== 'group')) continue;
     if (keep.has((p.email ?? '').toLowerCase())) continue;
-    changed.push(await drive.updatePermissionRole(fileId, p.id, options.toRole ?? 'commenter'));
+    changed.push(await drive.updatePermissionRole(fileId, p.id, 'commenter'));
   }
   return changed;
 }
@@ -191,7 +190,7 @@ export interface CloseResult {
 export async function closeSubmissions(
   drive: GoogleDrivePort,
   fileIds: string[],
-  options: { toRole?: DriveRole; keepEmails?: string[] } = {},
+  options: { keepEmails?: string[] } = {},
 ): Promise<CloseResult[]> {
   return mapConcurrently(fileIds, async (fileId) => {
     const [downgraded, error] = await attempt(() => downgradeEditors(drive, fileId, options));

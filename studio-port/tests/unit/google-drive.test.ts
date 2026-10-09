@@ -81,14 +81,6 @@ describe('GoogleDrivePort requests', () => {
     expect(http.requests[1]?.url.searchParams.has('removeParents')).toBe(false);
   });
 
-  it('lists only untrashed files', async () => {
-    const http = recordingFetch({ json: { files: [DRIVE_FILE] } });
-    const files = await createGoogleDrive(token, http).listFiles(5);
-    expect(http.requests[0]?.url.searchParams.get('q')).toBe('trashed = false');
-    expect(http.requests[0]?.url.searchParams.get('pageSize')).toBe('5');
-    expect(files.map((f) => f.id)).toEqual(['file-1']);
-  });
-
   it('uploads with conversion as multipart/related', async () => {
     const http = recordingFetch({ json: DRIVE_FILE });
     await createGoogleDrive(token, http).createFromContent({
@@ -183,7 +175,6 @@ describe('GoogleDrivePort requests', () => {
     const results = await createGoogleDrive(token, http).shareWithUsers(
       'file-1',
       ['a@example.com', 'b@example.com'],
-      'writer',
       { message: '알림 꺼짐이면 무시' },
     );
     const [r] = http.requests;
@@ -227,7 +218,6 @@ describe('GoogleDrivePort requests', () => {
     const results = await createGoogleDrive(token, { fetch: fetchImpl }).shareWithUsers(
       'file-1',
       ['a@example.com', 'nobody@x.invalid'],
-      'writer',
     );
     expect(requests.map((u) => (u.includes('/batch/') ? 'batch' : 'single'))).toEqual([
       'batch',
@@ -254,10 +244,15 @@ describe('GoogleDrivePort requests', () => {
     expect(http.requests[0]?.body).toContain('sendNotificationEmail=false');
   });
 
-  it('reads Forms responder permissions with includePermissionsForView', async () => {
-    const http = recordingFetch({ json: { permissions: [] } });
-    await createGoogleDrive(token, http).listPermissions('form-1', { includePublishedView: true });
-    expect(http.requests[0]?.url.searchParams.get('includePermissionsForView')).toBe('published');
+  it('lists permissions with only the fields the flows read', async () => {
+    const http = recordingFetch({
+      json: { permissions: [{ id: 'p1', type: 'user', role: 'writer', emailAddress: 'a@x.com' }] },
+    });
+    const perms = await createGoogleDrive(token, http).listPermissions('file-1');
+    expect(http.requests[0]?.url.searchParams.get('fields')).toBe(
+      'permissions(id,type,role,emailAddress)',
+    );
+    expect(perms).toEqual([{ id: 'p1', type: 'user', role: 'writer', email: 'a@x.com' }]);
   });
 
   it('trashes files and accepts an empty 204 body when deleting a permission', async () => {
@@ -318,10 +313,12 @@ describe('external errors', () => {
   });
 
   it('treats 429 and RESOURCE_EXHAUSTED as rate limited', async () => {
-    expect(await failing({ status: 429, text: 'busy' })).toMatchObject({ rateLimited: true });
+    expect(await failing({ status: 429, text: 'busy' })).toMatchObject({
+      code: 'EXTERNAL_RATE_LIMITED',
+    });
     expect(
       await failing({ status: 400, json: { error: { status: 'RESOURCE_EXHAUSTED' } } }),
-    ).toMatchObject({ rateLimited: true });
+    ).toMatchObject({ code: 'EXTERNAL_RATE_LIMITED' });
   });
 
   it('survives non-JSON error bodies', async () => {

@@ -213,12 +213,11 @@ export interface PeerScore {
 export const ALL_CRITERIA = '(전체)';
 
 // 격자 행 질문 → 피평가자, 열 값 → 점수(숫자만).
-// reviewees(행 질문 ID → 이메일)를 주면 평가자 이메일과 비교해 자기 평가를 뺄 수 있다.
+// reviewees(행 질문 ID → 이메일)를 주면 평가자 이메일과 비교해 자기 평가를 뺀다.
 export function summarizePeerReviews(
   questions: QuestionSpec[],
   submissions: FormSubmission[],
   reviewees: Record<string, string> | null = null,
-  excludeSelf = true,
 ): PeerScore[] {
   const scores = new Map<string, { reviewee: string; criterion: string; values: number[] }>();
   const excluded = new Map<string, number>();
@@ -233,7 +232,6 @@ export function summarizePeerReviews(
       for (const v of s.answers[q.id] ?? []) {
         if (!isNumber(v)) continue;
         const self =
-          excludeSelf &&
           reviewees !== null &&
           s.respondent_email !== null &&
           s.respondent_email.toLowerCase() === reviewee.toLowerCase();
@@ -270,7 +268,6 @@ export function responseTable(
   questions: QuestionSpec[],
   submissions: FormSubmission[],
   timeZone = 'Asia/Seoul',
-  includeEmail = true,
 ): string[][] {
   const isQuiz = questions.some((q) => q.point_value !== null);
   // sv-SE 형식이 "YYYY-MM-DD HH:mm:ss"다.
@@ -286,13 +283,13 @@ export function responseTable(
   });
   const header = [
     '제출 시각',
-    ...(includeEmail ? ['이메일'] : []),
+    '이메일',
     ...(isQuiz ? ['점수'] : []),
     ...questions.map((q) => q.title),
   ];
   const rows = submissions.map((s) => [
     s.submitted_at ? format.format(new Date(s.submitted_at)) : '',
-    ...(includeEmail ? [s.respondent_email ?? ''] : []),
+    s.respondent_email ?? '',
     ...(isQuiz ? [s.total_score === null ? '' : String(s.total_score)] : []),
     ...questions.map((q) => {
       const answers = s.answers[q.id] ?? [];

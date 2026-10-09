@@ -71,15 +71,13 @@ export const form = z.object({
     })
     .optional(),
   responderUri: z.string().optional(),
-  linkedSheetId: z.string().optional(),
-  revisionId: z.string().optional(),
   items: z.array(item).optional(),
 });
 export type Form = z.infer<typeof form>;
 
 const answerList = <T extends z.ZodType>(entry: T) =>
   z.object({ answers: z.array(entry).optional() }).optional();
-export const formResponse = z.object({
+const formResponse = z.object({
   responseId: z.string(),
   respondentEmail: z.string().optional(),
   createTime: z.string().optional(),
@@ -167,8 +165,6 @@ export function formStructure(f: Form): FormStructure {
     accepting_responses: state ? (state.isAcceptingResponses ?? false) : null,
     email_collection: f.settings?.emailCollectionType ?? null,
     is_quiz: f.settings?.quizSettings?.isQuiz ?? false,
-    linked_sheet_id: f.linkedSheetId ?? null,
-    revision_id: f.revisionId ?? null,
     questions: questionSpecs(f),
   };
 }

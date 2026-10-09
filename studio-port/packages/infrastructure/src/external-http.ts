@@ -39,7 +39,8 @@ export class ExternalApiError extends AppError {
     // 원문 메시지. 원인 추적용이다. 파일 ID·이메일이 섞일 수 있어 details(API 응답에 나감)에
     // 넣지 않는다. 로그에 남길지·가릴지는 studio 로깅 정책을 따른다(STUDIO_PORTING.md 결정 필요 M).
     public readonly externalMessage: string | null,
-    // Zoom 본문 code (124 토큰 무효, 3001 미팅 없음, 200 유료 전용).
+    // Zoom 본문 code (124 토큰 무효, 3001 미팅 없음, 200 유료 전용). 연결 계층이 401 판정에 쓴다.
+    // details에는 넣지 않는다(details는 status·reason·api_status만, STUDIO_PORTING.md 5절).
     public readonly zoomCode: number | null = null,
   ) {
     const rateLimited =
@@ -56,12 +57,8 @@ export class ExternalApiError extends AppError {
       status: externalStatus,
       reason,
       api_status: apiStatus,
-      zoom_code: zoomCode,
     });
     this.name = 'ExternalApiError';
-  }
-  get rateLimited(): boolean {
-    return this.code === 'EXTERNAL_RATE_LIMITED';
   }
 }
 
@@ -82,10 +79,12 @@ export interface ExternalRequest {
   headers?: Record<string, string>;
 }
 
+// fetch는 테스트 주입용.
 export interface HttpOptions {
   fetch?: Fetch;
-  timeoutMs?: number;
 }
+
+const TIMEOUT_MS = 30_000;
 
 export async function externalRequest(
   provider: ExternalProvider,
@@ -108,7 +107,7 @@ export async function externalRequest(
   const init: RequestInit = {
     method: request.method,
     headers,
-    signal: AbortSignal.timeout(options.timeoutMs ?? 30_000),
+    signal: AbortSignal.timeout(TIMEOUT_MS),
   };
   if (body !== undefined) init.body = body;
   const response = await (options.fetch ?? fetch)(url, init);

@@ -127,11 +127,7 @@ try {
 
   if (shareEmail) {
     // 배치 요청 하나에 실제 계정 + Google 계정이 아닌 주소. 사람별 결과가 따로 온다.
-    const [ok, bad] = await drive.shareWithUsers(
-      doc.id,
-      [shareEmail, 'nobody@synsory.invalid'],
-      'writer',
-    );
+    const [ok, bad] = await drive.shareWithUsers(doc.id, [shareEmail, 'nobody@synsory.invalid']);
     const id = ok?.permission_id ?? '';
     const lowered = await drive.updatePermissionRole(doc.id, id, 'commenter');
     check(
@@ -143,9 +139,6 @@ try {
     const after = await drive.listPermissions(doc.id);
     check('deletePermission', !after.some((x) => x.id === id));
   }
-
-  const files = await drive.listFiles(5);
-  check('listFiles', files.length > 0 && files.every((f) => !f.trashed), `${files.length} file(s)`);
 
   const missing = await failure(drive.getFile('nonexistent-id-123'));
   check(

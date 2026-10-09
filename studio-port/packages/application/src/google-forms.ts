@@ -114,7 +114,6 @@ export async function restrictResponders(
   drive: GoogleDrivePort,
   formId: string,
   emails: string[],
-  removeLinkAccess = true,
 ): Promise<ResponderResult[]> {
   const results: ResponderResult[] = [];
   try {
@@ -123,7 +122,7 @@ export async function restrictResponders(
     if (!(e instanceof AppError)) throw e;
     results.push(...emails.map((email) => ({ email, permission_id: null, error: e })));
   }
-  if (removeLinkAccess && results.some((r) => r.error === null)) {
+  if (results.some((r) => r.error === null)) {
     try {
       await drive.deletePermission(formId, ANYONE_WITH_LINK_PERMISSION_ID);
       results.push({ email: null, permission_id: ANYONE_WITH_LINK_PERMISSION_ID, error: null });
@@ -293,13 +292,12 @@ export async function collectPeerReviews(
   forms: GoogleFormsPort,
   formId: string,
   reviewees: Record<string, string> | null = null,
-  excludeSelf = true,
 ): Promise<PeerScore[]> {
   const [{ questions }, collected] = await Promise.all([
     forms.get(formId),
     collectResponses(forms, formId),
   ]);
-  return summarizePeerReviews(questions, collected.submissions, reviewees, excludeSelf);
+  return summarizePeerReviews(questions, collected.submissions, reviewees);
 }
 
 // 유즈케이스 12. Synsory가 CSV를 만든다(폼은 Drive 내보내기가 안 된다). Excel 한글 깨짐 방지로 UTF-8 BOM.
@@ -359,9 +357,7 @@ export async function exportResponsesToSheet(
   let spreadsheetId = input.spreadsheetId;
   let sheetTitle = '응답';
   if (spreadsheetId === undefined) {
-    spreadsheetId = await sheets.create(input.title ?? `${structure.title || formId} 응답`, [
-      sheetTitle,
-    ]);
+    spreadsheetId = await sheets.create(input.title ?? `${structure.title || formId} 응답`, sheetTitle);
     if (input.folderId) await drive.moveFile(spreadsheetId, input.folderId);
   } else {
     const [first] = await sheets.listSheets(spreadsheetId);

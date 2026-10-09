@@ -142,9 +142,6 @@ try {
       second.values[0]?.[0] === 'A조 역할',
     `replaced=${JSON.stringify(sheetGroup?.replaced)} sheetIds=${tabs.map((t) => t.sheet_id).join(',')}`,
   );
-  const locked = await sheets.lockRanges(sheetId, tabs[0]?.sheet_id ?? 0, ['B3:B3']);
-  await sheets.unlockRanges(sheetId, locked);
-  check('Sheets: lock and unlock a range', locked.length === 1);
   const [csvGroup] = await createGroupFilesFromContent(drive, {
     ...common,
     folderId: folder.id,

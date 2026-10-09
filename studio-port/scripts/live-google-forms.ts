@@ -95,13 +95,13 @@ try {
   );
 
   const restricted = await restrictResponders(drive, quiz.document.id, [shareEmail]);
-  const perms = await drive.listPermissions(quiz.document.id, { includePublishedView: true });
+  // 응답자 권한(view=published)은 listPermissions에 안 오므로 결과와 anyone 삭제로 확인한다.
+  const perms = await drive.listPermissions(quiz.document.id);
   check(
     'restrictResponders adds the student and removes anyoneWithLink',
     restricted.every((r) => r.error === null) &&
-      perms.some((p) => p.view === 'published' && p.type === 'user') &&
+      restricted.some((r) => r.email === shareEmail && r.permission_id !== null) &&
       !perms.some((p) => p.type === 'anyone'),
-    `${perms.filter((p) => p.view === 'published').length} responder permission(s)`,
   );
   const rerun = await restrictResponders(drive, quiz.document.id, [shareEmail]);
   check(

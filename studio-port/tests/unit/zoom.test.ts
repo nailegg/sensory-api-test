@@ -23,16 +23,14 @@ import { recordingFetch, token } from '../fixtures/http.ts';
 
 // ---------- 응답 해석 (synsory-api tests/zoom/test_mapper.py) ----------
 
+// Zoom 응답에는 host_id·status·timezone 등도 오지만 Meeting에 넣지 않는다(흐름이 안 읽는다).
 const SCHEDULED = {
   id: 81234567890,
   uuid: 'abc/def==',
-  host_id: 'h1',
   topic: '과제1 - A조',
   type: 2,
-  status: 'waiting',
   start_time: '2026-10-10T05:00:00Z',
   duration: 40,
-  timezone: 'Asia/Seoul',
   join_url: 'https://zoom.us/j/81234567890',
   start_url: 'https://zoom.us/s/secret',
 };
@@ -42,20 +40,17 @@ describe('meetingFromZoom', () => {
     const m = meetingFromZoom(SCHEDULED);
     expect(m).toMatchObject({
       id: '81234567890', // int64 → 문자열
-      status: 'scheduled',
       start_time: '2026-10-10T05:00:00Z',
       duration_minutes: 40,
-      timezone: 'Asia/Seoul',
       uuid: 'abc/def==',
     });
     expect(JSON.stringify(m)).not.toContain('zoom.us/s/'); // 호스트 권한 링크는 넣지 않는다
   });
 
-  it('maps occurrences and unknown status', () => {
+  it('maps occurrences', () => {
     const m = meetingFromZoom({
       id: 1,
       topic: '수업',
-      status: 'ended?',
       occurrences: [
         {
           occurrence_id: 1791000000000,
@@ -71,7 +66,6 @@ describe('meetingFromZoom', () => {
         },
       ],
     });
-    expect(m.status).toBe('unknown');
     expect(m.occurrences.map((o) => [o.id, o.deleted])).toEqual([
       ['1791000000000', false],
       ['1791600000000', true],
@@ -125,7 +119,7 @@ it('group meetings render the topic, send UTC time and continue after a failure'
       if (schedule.topic === '과제1 - B조')
         throw new AppError('EXTERNAL_RATE_LIMITED', 429, 'daily limit');
       created.push({ ...schedule });
-      return meetingFromZoom({ id: created.length, topic: schedule.topic, status: 'waiting' });
+      return meetingFromZoom({ id: created.length, topic: schedule.topic });
     },
   });
   const results = await createGroupMeetings(zoom, {
@@ -158,24 +152,6 @@ it('group meetings render the topic, send UTC time and continue after a failure'
     start_time: '2026-10-10T05:00:00Z',
     duration: 40,
     timezone: 'Asia/Seoul',
-  });
-});
-
-it('breakout meeting keeps given settings and adds pre-assigned rooms', async () => {
-  const http = recordingFetch({ json: { id: 1 } });
-  await createZoom(token, http).createBreakoutMeeting(
-    {
-      topic: '과제1',
-      startTime: KST_14,
-      durationMinutes: 40,
-      timezone: 'Asia/Seoul',
-      settings: { waiting_room: true },
-    },
-    { A조: ['a@x.com'] },
-  );
-  expect((http.requests[0]?.json as { settings: unknown }).settings).toEqual({
-    waiting_room: true,
-    breakout_room: { enable: true, rooms: [{ name: 'A조', participants: ['a@x.com'] }] },
   });
 });
 
@@ -212,7 +188,7 @@ it('recurring meeting is type 8 with a weekly recurrence', async () => {
 it('reschedule sends only the given fields for an occurrence, then reads back', async () => {
   const http = recordingFetch(
     { status: 204 },
-    { json: { id: 9, topic: '바뀐 주제', status: 'waiting' } },
+    { json: { id: 9, topic: '바뀐 주제' } },
   );
   const zoom = createZoom(token, http);
   const m = await rescheduleMeeting(zoom, '9', { durationMinutes: 30 }, 'o1');

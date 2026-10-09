@@ -24,9 +24,6 @@ export interface DrivePermission {
   type: 'user' | 'group' | 'domain' | 'anyone';
   role: string;
   email: string | null;
-  display_name: string | null;
-  // Forms 응답자 권한이면 'published'.
-  view: string | null;
 }
 
 // 변환 업로드: Markdown·docx → Docs, pptx → Slides, xlsx·csv → Sheets.
@@ -62,27 +59,21 @@ export interface GoogleDrivePort {
   copyFile(fileId: string, name: string, parentFolderId?: string): Promise<ExternalDocument>;
   // Docs·Slides·Sheets·Forms 생성 API는 폴더를 못 정해서 만든 뒤 옮긴다.
   moveFile(fileId: string, toFolderId: string): Promise<ExternalDocument>;
-  // 휴지통 파일은 뺀다.
-  listFiles(pageSize?: number): Promise<ExternalDocument[]>;
   // 파일 종류에 맞는 형식표로 내보낸다. 파일 이름은 Drive 이름 + 확장자. 10MB 상한.
   exportFile(fileId: string, format: ExportFormat): Promise<ExportedFile>;
   trashFile(fileId: string): Promise<void>;
-  // 여러 명에게 편집·보기 권한. 같은 파일의 권한 변경은 동시에 하면 안 되므로(마지막 쓰기만 남음)
+  // 여러 명에게 편집(writer) 권한. 같은 파일의 권한 변경은 동시에 하면 안 되므로(마지막 쓰기만 남음)
   // Drive 배치 요청 한 번에 담는다(공식 권장: 순차 또는 배치). 사람별로 성공·실패를 돌려준다.
   // 같은 이메일을 다시 공유하면 기존 permission이 온다(재시도 안전).
   shareWithUsers(
     fileId: string,
     emails: string[],
-    role: DriveRole,
     options?: { notify?: boolean; message?: string },
   ): Promise<PermissionResult[]>;
   // Forms 응답자 권한(view=published). 알림은 보내지 않는다. 배치 요청 하나.
   shareAsResponders(fileId: string, emails: string[]): Promise<PermissionResult[]>;
-  // includePublishedView면 Forms 응답자 권한도 함께 온다.
-  listPermissions(
-    fileId: string,
-    options?: { includePublishedView?: boolean },
-  ): Promise<DrivePermission[]>;
+  // 편집·보기 권한만 온다(Forms 응답자 권한 view=published는 안 온다).
+  listPermissions(fileId: string): Promise<DrivePermission[]>;
   // 마감: 편집자(writer)를 commenter·reader로 낮춘다.
   updatePermissionRole(
     fileId: string,
@@ -109,8 +100,6 @@ export interface FormStructure {
   accepting_responses: boolean | null;
   email_collection: EmailCollection | null;
   is_quiz: boolean;
-  linked_sheet_id: string | null;
-  revision_id: string | null;
   questions: QuestionSpec[];
 }
 
@@ -146,13 +135,11 @@ export interface GoogleFormsPort {
 }
 
 // 미팅 예약 입력. start_time은 UTC로 보내고 표시 시간대는 timezone으로 따로 준다.
-// settings는 Zoom 미팅 settings JSON(대기실 등)이고 application은 모양을 보지 않고 넘긴다.
 export interface MeetingSchedule {
   topic: string;
   startTime: Date;
   durationMinutes: number;
   timezone: string;
-  settings?: Record<string, unknown>;
 }
 
 // Zoom. 사용자 단위 OAuth(General App). 생성·수정은 사용자당 하루 100회(UTC)라 호출자가 센다.
@@ -161,13 +148,6 @@ export interface ZoomPort {
   getMe(): Promise<{ plan_type: number; timezone: string | null }>;
   // 예약 미팅(type 2).
   createMeeting(schedule: MeetingSchedule): Promise<Meeting>;
-  // 미팅 하나 + 그룹별 소회의실 사전 배정. rooms = {그룹명: [학생 이메일]}.
-  // 학생이 그 이메일의 Zoom 계정으로 로그인해야 자동 배정된다. 계정 설정 "예약 시 참가자를
-  // 소회의실에 할당"이 꺼져 있으면 200인데 배정이 조용히 버려진다(docs/zoom.md 10절).
-  createBreakoutMeeting(
-    schedule: MeetingSchedule,
-    rooms: Record<string, string[]>,
-  ): Promise<Meeting>;
   // 매주 반복(type 8). weeklyDays는 1=일 … 7=토. 끝은 날짜 또는 횟수(≤60) 중 하나.
   // join_url은 모든 회차가 같고, 회차별 변경·취소는 occurrences[].id로 한다.
   createRecurringMeeting(
@@ -207,14 +187,11 @@ export interface SheetInfo {
   sheet_id: number;
   title: string;
   index: number;
-  hidden: boolean;
 }
 
 export interface SheetValues {
   sheet_id: number;
   sheet_title: string;
-  // 실제 응답 범위(A1). 뒤쪽 빈 행·열은 잘려 있다.
-  range: string;
   // UNFORMATTED_VALUE: 숫자는 숫자, 날짜는 1899-12-30 기준 일련번호. 행 끝 빈 칸은 빠진다.
   values: unknown[][];
 }
@@ -224,8 +201,8 @@ export interface SheetValues {
 export interface GoogleSheetsPort {
   // findReplace(allSheets, 수식 안 태그 포함).
   replaceTags(spreadsheetId: string, variables: Record<string, string>): Promise<TagCounts>;
-  // 빈 스프레드시트(locale ko_KR, Asia/Seoul). 폴더는 못 정해서 Drive moveFile로 옮긴다.
-  create(title: string, sheetTitles?: string[]): Promise<string>;
+  // 시트 한 장짜리 빈 스프레드시트(locale ko_KR, Asia/Seoul). 폴더는 못 정해서 Drive moveFile로 옮긴다.
+  create(title: string, firstSheetTitle: string): Promise<string>;
   // index 순.
   listSheets(spreadsheetId: string): Promise<SheetInfo[]>;
   // 시트 하나의 값. sheetId(불변)로 고르면 현재 이름을 찾아 읽는다. 없으면 첫 시트.
@@ -242,13 +219,4 @@ export interface GoogleSheetsPort {
   ): Promise<void>;
   // A열부터 columns개 열의 값만 지운다(서식·검증은 남는다). 그 오른쪽 열은 건드리지 않는다.
   clearColumns(spreadsheetId: string, sheetTitle: string, columns: number): Promise<void>;
-  // 마감 선택지: 파일은 열어 두고 학생 입력 범위만 보호. editors를 항상 명시한다(생략하면 학생 writer도
-  // 편집 가능으로 들어가 보호가 무의미, 2026-10-04 실측). 보호는 소유자 토큰의 API 쓰기를 막지 않는다.
-  lockRanges(
-    spreadsheetId: string,
-    sheetId: number,
-    cellRanges: string[],
-    options?: { description?: string; editorEmails?: string[] },
-  ): Promise<number[]>;
-  unlockRanges(spreadsheetId: string, protectedRangeIds: number[]): Promise<void>;
 }

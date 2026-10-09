@@ -24,10 +24,10 @@ import {
 const BASE_URL = 'https://www.googleapis.com/drive/v3';
 const UPLOAD_URL = 'https://www.googleapis.com/upload/drive/v3';
 
-// ExternalDocument를 채우는 데 필요한 최소 필드. Docs·Sheets·Slides·Forms 어댑터도 쓴다.
-export const DOCUMENT_META_FIELDS =
+// ExternalDocument를 채우는 데 필요한 최소 필드.
+const DOCUMENT_META_FIELDS =
   'id,name,mimeType,webViewLink,createdTime,modifiedTime,owners(displayName),parents,trashed,contentRestrictions(readOnly,reason,restrictionTime)';
-const PERMISSION_FIELDS = 'id,type,role,emailAddress,displayName,view';
+const PERMISSION_FIELDS = 'id,type,role,emailAddress';
 
 const FOLDER_MIME = 'application/vnd.google-apps.folder';
 const NATIVE_MIME: Record<UploadTarget | 'form', string> = {
@@ -83,7 +83,7 @@ const EXPORT_MIME: Partial<Record<DocumentKind, Partial<Record<ExportFormat, str
   },
 };
 
-export const driveFile = z.object({
+const driveFile = z.object({
   id: z.string(),
   name: z.string().optional(),
   mimeType: z.string().optional(),
@@ -102,8 +102,6 @@ const drivePermission = z.object({
   type: z.enum(['user', 'group', 'domain', 'anyone']),
   role: z.string(),
   emailAddress: z.string().optional(),
-  displayName: z.string().optional(),
-  view: z.string().optional(),
 });
 
 export function kindFromMime(mimeType: string | undefined): DocumentKind {
@@ -139,8 +137,6 @@ function permissionFromDrive(p: z.infer<typeof drivePermission>): DrivePermissio
     type: p.type,
     role: p.role,
     email: p.emailAddress ?? null,
-    display_name: p.displayName ?? null,
-    view: p.view ?? null,
   };
 }
 
@@ -167,7 +163,7 @@ const BATCH_URL = 'https://www.googleapis.com/batch/drive/v3';
 const BATCH_MAX = 100;
 
 // Drive 배치 본문(multipart/mixed). 안쪽 요청은 바깥 요청의 Authorization을 따른다.
-export function batchBody(requests: { path: string; json: unknown }[], boundary: string): string {
+function batchBody(requests: { path: string; json: unknown }[], boundary: string): string {
   const parts = requests.map(
     (r, i) =>
       `--${boundary}\r\nContent-Type: application/http\r\nContent-ID: <item-${i}>\r\n\r\n` +
@@ -178,7 +174,7 @@ export function batchBody(requests: { path: string; json: unknown }[], boundary:
 }
 
 // 배치 응답의 파트마다 요청 순서(index), HTTP 상태, 본문. 파트 순서는 요청 순서와 다를 수 있어 Content-ID로 맞춘다.
-export function parseBatchResponse(
+function parseBatchResponse(
   text: string,
   boundary: string,
 ): { index: number; status: number; body: string }[] {
@@ -319,17 +315,6 @@ export function createGoogleDrive(
         json: {},
       }),
 
-    // files.list (쿼터 100, 비싸다). 휴지통 파일도 기본으로 오므로 항상 뺀다.
-    async listFiles(pageSize = 20) {
-      const response = await call({
-        method: 'GET',
-        url: `${BASE_URL}/files`,
-        query: { pageSize, q: 'trashed = false', fields: `files(${DOCUMENT_META_FIELDS})` },
-      });
-      const data = await readJson(response, z.object({ files: z.array(driveFile).default([]) }));
-      return data.files.map((f) => documentFromDriveFile(f));
-    },
-
     // files.get + files.export (쿼터 5 + 200). 결과는 10MB까지.
     async exportFile(fileId, format) {
       const meta = await readJson(
@@ -370,7 +355,7 @@ export function createGoogleDrive(
     },
 
     // permissions.create를 배치 하나로. Google 계정이 아닌 이메일은 알림 없이 공유하면 400 invalidSharingRequest.
-    shareWithUsers: (fileId, emails, role, { notify = false, message } = {}) =>
+    shareWithUsers: (fileId, emails, { notify = false, message } = {}) =>
       createPermissions(
         fileId,
         emails,
@@ -378,7 +363,7 @@ export function createGoogleDrive(
           sendNotificationEmail: String(notify),
           ...(notify && message ? { emailMessage: message } : {}),
         },
-        (email) => ({ type: 'user', role, emailAddress: email }),
+        (email) => ({ type: 'user', role: 'writer', emailAddress: email }),
       ),
 
     // 편집 공유(view 없음)와 다르다. synsory-api docs/google_forms.md 10절 4항.
@@ -390,14 +375,11 @@ export function createGoogleDrive(
         emailAddress: email,
       })),
 
-    async listPermissions(fileId, { includePublishedView = false } = {}) {
+    async listPermissions(fileId) {
       const response = await call({
         method: 'GET',
         url: `${BASE_URL}/files/${fileId}/permissions`,
-        query: {
-          fields: `permissions(${PERMISSION_FIELDS})`,
-          includePermissionsForView: includePublishedView ? 'published' : undefined,
-        },
+        query: { fields: `permissions(${PERMISSION_FIELDS})` },
       });
       const data = await readJson(
         response,

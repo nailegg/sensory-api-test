@@ -10,7 +10,6 @@ import {
 import { AppError, type FormSubmission } from '../../packages/domain/src/index.ts';
 import {
   a1,
-  columnIndex,
   columnLetter,
   createGoogleDocs,
   createGoogleSheets,
@@ -18,8 +17,6 @@ import {
   documentFromDriveFile,
   form,
   formStructure,
-  gridRange,
-  protectRangeRequests,
 } from '../../packages/infrastructure/src/index.ts';
 import { fakePort } from '../fixtures/fake-port.ts';
 import { recordingFetch, token } from '../fixtures/http.ts';
@@ -76,9 +73,9 @@ describe('Docs and Slides replaceTags (replaceAllText)', () => {
     const drive = fakePort<GoogleDrivePort>({
       copyFile: async (_id, name, parent) =>
         documentFromDriveFile({ id: 'copy-1', name, parents: parent ? [parent] : [] }),
-      shareWithUsers: async (fileId, emails, role) =>
+      shareWithUsers: async (fileId, emails) =>
         emails.map((email) => {
-          shared.push(`${fileId} ${email} ${role}`);
+          shared.push(`${fileId} ${email}`);
           return { email, permission_id: 'p', error: null };
         }),
     });
@@ -92,7 +89,7 @@ describe('Docs and Slides replaceTags (replaceAllText)', () => {
     });
     expect(result?.document?.title).toBe('과제1 - A조');
     expect(result?.replaced).toEqual({ team_name: 1, activity_name: 0, due: 0 });
-    expect(shared).toEqual(['copy-1 a1@example.com writer']);
+    expect(shared).toEqual(['copy-1 a1@example.com']);
   });
 });
 
@@ -108,35 +105,12 @@ describe('Sheets coordinates (synsory-api tests/google_sheets/test_mapper.py)', 
       'ZZ',
       'AAA',
     ]);
-    expect(['A', 'Z', 'AA', 'AB', 'ZZ', 'AAA'].map(columnIndex)).toEqual([0, 25, 26, 27, 701, 702]);
-    expect(() => columnIndex('A1')).toThrow(RangeError);
   });
 
   it('a1 always quotes the sheet title and doubles inner quotes', () => {
     expect(a1('평가')).toBe("'평가'");
     expect(a1("A조's 시트")).toBe("'A조''s 시트'");
     expect(a1('팀 A', 'B6:B9')).toBe("'팀 A'!B6:B9");
-  });
-
-  it('gridRange is zero-based and half-open; open axes are omitted', () => {
-    expect(gridRange(0, 'B6:B9')).toEqual({
-      sheetId: 0,
-      startColumnIndex: 1,
-      endColumnIndex: 2,
-      startRowIndex: 5,
-      endRowIndex: 9,
-    });
-    expect(gridRange(5, 'C5')).toEqual({
-      sheetId: 5,
-      startColumnIndex: 2,
-      endColumnIndex: 3,
-      startRowIndex: 4,
-      endRowIndex: 5,
-    });
-    expect(gridRange(0, 'A:B')).toEqual({ sheetId: 0, startColumnIndex: 0, endColumnIndex: 2 });
-    expect(gridRange(0, '2:2')).toEqual({ sheetId: 0, startRowIndex: 1, endRowIndex: 2 });
-    expect(() => gridRange(0, '')).toThrow(RangeError);
-    expect(() => gridRange(0, 'A1:B2:C3')).toThrow(RangeError);
   });
 });
 
@@ -166,27 +140,6 @@ describe('GoogleSheetsPort (synsory-api tests/google_sheets/test_usecases.py)', 
       },
     });
     expect(counts).toEqual({ team_name: 3, due: 0 });
-  });
-
-  it('protected ranges name editors explicitly: owner only by default', () => {
-    const [owner] = protectRangeRequests(0, ['B6:B9'], '마감');
-    expect(owner?.addProtectedRange.protectedRange.editors).toEqual({ users: [] });
-    const [ta] = protectRangeRequests(0, ['B6:B9'], '마감', ['ta@x.com']);
-    expect(ta?.addProtectedRange.protectedRange.editors).toEqual({ users: ['ta@x.com'] });
-  });
-
-  it('lockRanges returns protected range ids from one batchUpdate', async () => {
-    const http = recordingFetch({
-      json: {
-        replies: [
-          { addProtectedRange: { protectedRange: { protectedRangeId: 1000 } } },
-          { addProtectedRange: { protectedRange: { protectedRangeId: 1001 } } },
-        ],
-      },
-    });
-    const ids = await createGoogleSheets(token, http).lockRanges('s-1', 0, ['B6:B9', 'C6:C9']);
-    expect(ids).toEqual([1000, 1001]);
-    expect(http.requests).toHaveLength(1);
   });
 
   it('listSheets sorts by index', async () => {
@@ -253,9 +206,9 @@ it('createGroupFilesFromContent renders title and body, uploads into the folder,
       uploads.push({ name, content: String(content), source, target, parent: parentFolderId });
       return documentFromDriveFile({ id: `id-${uploads.length}`, name });
     },
-    async shareWithUsers(fileId, emails, role) {
+    async shareWithUsers(fileId, emails) {
       return emails.map((email) => {
-        shared.push(`${fileId} ${email} ${role}`);
+        shared.push(`${fileId} ${email}`);
         return { email, permission_id: 'p', error: null };
       });
     },
@@ -286,7 +239,7 @@ it('createGroupFilesFromContent renders title and body, uploads into the folder,
     ['A조', 'id-1', null],
     ['B조', null, 'EXTERNAL_FAILED'],
   ]);
-  expect(shared).toEqual(['id-1 a1@example.com writer']);
+  expect(shared).toEqual(['id-1 a1@example.com']);
 });
 
 // ---------- Forms 유즈케이스 13: 시트로 내보내기 ----------
@@ -324,11 +277,11 @@ it('exportResponsesToSheet creates once, then clears only the columns Synsory wr
     },
   });
   const sheets = fakePort<GoogleSheetsPort>({
-    create: async (title, sheetTitles) => {
-      calls.push(['create', title, sheetTitles]);
+    create: async (title, sheetTitle) => {
+      calls.push(['create', title, sheetTitle]);
       return 's1';
     },
-    listSheets: async () => [{ sheet_id: 7, title: '응답(수정됨)', index: 0, hidden: false }],
+    listSheets: async () => [{ sheet_id: 7, title: '응답(수정됨)', index: 0 }],
     clearColumns: async (_id, sheet, columns) => {
       calls.push(['clear', sheet, columns]);
     },
@@ -340,7 +293,7 @@ it('exportResponsesToSheet creates once, then clears only the columns Synsory wr
   const first = await exportResponsesToSheet(forms, drive, sheets, 'f1', { folderId: 'folder1' });
   expect(first).toMatchObject({ created: true, spreadsheet_id: 's1', columns: 3, rows_written: 2 });
   expect(calls).toEqual([
-    ['create', '퀴즈 응답', ['응답']],
+    ['create', '퀴즈 응답', '응답'],
     ['move', 's1', 'folder1'],
     ['write', '응답', 'A1', 3, '0123'],
   ]);
