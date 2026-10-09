@@ -1,6 +1,6 @@
 # studio `feat/google-tools` 브랜치 작업 계획
 
-작성일: 2026-10-09 · 작성자: 상현 · 상태: 계획(코드 변경 전). 브랜치는 studio `main`(a03a27f)에서 `feat/google-tools`로 열었다(파일 변경 없음).
+작성일: 2026-10-09 · 작성자: 상현 · 상태: 가정 G1~G5 확정(2026-10-09 상현), 1단계 진행 중. 브랜치는 studio `main`(a03a27f)에서 `feat/google-tools`로 열었다(파일 변경 없음).
 
 결정 근거는 `docs/STUDIO_PORTING.md` 10절 결정 대장(번호로 인용), 서비스별 대응은 각 `docs/<service>.md` 11.x. 이 문서는 "무엇을 어떤 순서로, 어떻게 확인하며" 넣는지만 적는다.
 
@@ -66,7 +66,8 @@ studio를 읽고 확인한 사실:
     - `google-provision`: `ActivityService.state(…, 'open')` 안에서 Google 도구면 enqueue(G2). 작업은 만든 교수자의 `accessToken`으로 폴더 생성 → `createGroupFilesFromTemplate`/`createGroupFilesFromContent`/`createForm`/`createGroupForms` → `setExternalRefs`. 실패한 그룹은 `external_refs`에 `error`로 남긴다(흐름이 이미 그렇게 돌려줌).
     - `google-close`: `state(…, 'closed')`에서 enqueue. `closeSubmissions` 또는 `closeForm`.
     - `google-forms-collect`: `google-close` 끝에 1회(결정 29). `collectResponses` → 100개씩 `CollectionService.commit`.
-  - 라우트: 작업 상태 조회 `GET /api/courses/:c/activities/:a/google/status`(`external_refs` 요약). 수동 재수집 `POST …/google/collect`(교수자, enqueue만).
+  - `google-reopen`: `state(…, 'open')`인데 이미 provision된 활동이면 enqueue. `restoreEditors`(external_refs에 저장된 조원 이메일만) 또는 `openForm`.
+  - 라우트: 작업 상태 조회 `GET /api/courses/:c/activities/:a/google/status`(`external_refs` 요약). 수동 재수집은 보류.
   - 연결 없으면 `state(…, 'open')`이 409 `EXTERNAL_RECONNECT_REQUIRED` + start URL(결정 40, on-demand 동의).
 - 검증: 단위 — 작업 핸들러를 가짜 port·가짜 Store로(그룹 2개 중 1개 실패 → 나머지 저장, 재실행 멱등). DB — `external_refs` 저장 후 `canChangeStructure`가 false, commit 100개 제한. 라이브 1회 — 조 2개 Docs 활동: open → Drive에 파일 2개·공유 → closed → commenter 강등. Forms 1회 — 설문 open → 브라우저로 응답 1건 제출(상현) → closed → `activity_responses` 1행.
 - 안 하는 것: `closes_at` 자동 마감, 주기 폴링, 재개(`closed`→`open`) 시 복원(`restoreEditors`는 있지만 요구 확인 뒤), Zoom.
@@ -95,5 +96,5 @@ studio를 읽고 확인한 사실:
 ## 3. 상현이 확인할 것 (코드 전)
 
 1. G1(화면 범위 밖)·G2(open/closed 때 작업 시작)·G3(PR 묶음)이 맞는지.
-2. 5단계 라우트: `…/google/status`(진행 상태)는 넣고, `…/google/collect`(수동 재수집)는 요구가 생길 때 추가(2026-10-09 상현 "1로 가자"). "재개 시 복원" 포함 여부는 미정.
+2. 5단계 라우트: `…/google/status`(진행 상태)는 넣고, `…/google/collect`(수동 재수집)는 요구가 생길 때 추가(2026-10-09 상현 "1로 가자"). "재개 시 복원"은 **포함**(2026-10-09 상현): `closed → open`이면 `google-reopen` 작업으로 `restoreEditors`(처음 공유한 조원만 writer로)·`openForm`.
 3. 3단계 env 이름 4개와 로그인용 GCP 프로젝트에 "Drive 연결용" 클라이언트·Picker API 키를 누가 만드는지(상현 콘솔 작업).
