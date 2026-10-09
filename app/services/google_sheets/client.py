@@ -112,32 +112,6 @@ class SheetsClient:
         body = {"range": a1_range, "majorDimension": "ROWS", "values": values}
         return await self._request("PUT", f"{BASE_URL}/spreadsheets/{spreadsheet_id}/values/{a1_range}", params=params, json=body)
 
-    async def batch_update_values(
-        self, spreadsheet_id: str, data: list[tuple[str, list[list]]], value_input_option: str = "RAW"
-    ) -> dict:
-        """values.batchUpdate (쓰기 쿼터 1회, 범위 수 무관). 여러 범위를 한 번에 → 쿼터(사용자당 분당 60)의 기본 대응."""
-        body = {
-            "valueInputOption": value_input_option,
-            "data": [{"range": a1, "majorDimension": "ROWS", "values": values} for a1, values in data],
-        }
-        return await self._request("POST", f"{BASE_URL}/spreadsheets/{spreadsheet_id}/values:batchUpdate", json=body)
-
-    async def append_values(
-        self,
-        spreadsheet_id: str,
-        a1_range: str,
-        values: list[list],
-        value_input_option: str = "RAW",
-        insert_data_option: str = "INSERT_ROWS",
-    ) -> dict:
-        """values.append (쓰기 쿼터). a1_range 안에서 "표"를 찾아 그 다음 행에 쓴다. 응답 tableRange가 찾은 표.
-        한 번에 여러 행을 넘긴다(행마다 호출하지 않는다)."""
-        params = {"valueInputOption": value_input_option, "insertDataOption": insert_data_option}
-        body = {"range": a1_range, "majorDimension": "ROWS", "values": values}
-        return await self._request(
-            "POST", f"{BASE_URL}/spreadsheets/{spreadsheet_id}/values/{a1_range}:append", params=params, json=body
-        )
-
     async def clear_values(self, spreadsheet_id: str, a1_range: str) -> dict:
         """values.clear (쓰기 쿼터). 값만 지우고 서식·검증은 남긴다."""
         return await self._request("POST", f"{BASE_URL}/spreadsheets/{spreadsheet_id}/values/{a1_range}:clear", json={})

@@ -39,7 +39,6 @@ export interface FormSubmission {
   form_id: string;
   // 이메일 수집이 VERIFIED·RESPONDER_INPUT일 때만 온다.
   respondent_email: string | null;
-  created_at: string | null;
   // lastSubmittedTime. 교수자가 점수를 고쳐도 바뀌지 않는다.
   submitted_at: string | null;
   answers: Record<string, string[]>;

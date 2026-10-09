@@ -80,7 +80,6 @@ const answerList = <T extends z.ZodType>(entry: T) =>
 const formResponse = z.object({
   responseId: z.string(),
   respondentEmail: z.string().optional(),
-  createTime: z.string().optional(),
   lastSubmittedTime: z.string().optional(),
   totalScore: z.number().optional(),
   answers: z
@@ -200,7 +199,6 @@ export function submissionFromResponse(
     id: r.responseId,
     form_id: formId,
     respondent_email: r.respondentEmail ?? null,
-    created_at: r.createTime ?? null,
     submitted_at: r.lastSubmittedTime ?? null,
     answers,
     file_ids: fileIds,

@@ -6,7 +6,7 @@
 6 제출 현황 → get_submission_status          7·8 마감·재개·열기 → close_form / reopen_form / open_form
 9 응답 수집·집계 → collect_responses / summarize_responses
 10 퀴즈 점수 → collect_quiz_scores           11 동료평가 집계 → collect_peer_reviews
-12 CSV·xlsx → export_responses               13 시트로 내보내기 → export_responses_to_sheet
+12 CSV → export_responses               13 시트로 내보내기 → export_responses_to_sheet
 결과의 원본은 Synsory DB다. 9~12는 Synsory로 가져오는 데까지, 13은 교수자 Drive에 쓰는 한 방향 사본이다.
 """
 
@@ -558,33 +558,16 @@ def response_table(
     return rows
 
 
-async def export_responses(forms: FormsClient, form_id: str, fmt: str = "csv", tz: str = "Asia/Seoul") -> ExportedFile:
-    """12. responses.list → Synsory 서버가 CSV·xlsx를 만든다(Google 내보내기 아님. 폼은 Drive 내보내기 불가).
-    CSV는 Excel 한글 깨짐 방지로 UTF-8 BOM. xlsx는 모든 셀을 텍스트로 넣어 학번 앞자리 0을 지킨다."""
+async def export_responses(forms: FormsClient, form_id: str, tz: str = "Asia/Seoul") -> ExportedFile:
+    """12. responses.list → Synsory 서버가 CSV를 만든다(Google 내보내기 아님. 폼은 Drive 내보내기 불가).
+    Excel 한글 깨짐 방지로 UTF-8 BOM. xlsx는 2026-10-09 결정으로 뺐다(스프레드시트가 필요하면 13번 시트 내보내기)."""
     form = await forms.get(form_id)
     collected = await collect_responses(forms, form_id)
     table = response_table(question_specs(form), collected.submissions, tz)
     base = (form.get("info") or {}).get("title") or form_id
-    if fmt == "csv":
-        buf = io.StringIO()
-        csv.writer(buf).writerows(table)
-        return ExportedFile(form_id, f"{base} 응답.csv", "text/csv", buf.getvalue().encode("utf-8-sig"))
-    if fmt == "xlsx":
-        from openpyxl import Workbook
-
-        wb = Workbook()
-        ws = wb.active
-        ws.title = "응답"
-        for row in table:
-            ws.append(row)
-        for col in ws.iter_cols():
-            for cell in col:
-                cell.number_format = "@"
-        ws.freeze_panes = "A2"
-        out = io.BytesIO()
-        wb.save(out)
-        return ExportedFile(form_id, f"{base} 응답.xlsx", "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet", out.getvalue())
-    raise ValueError("fmt는 csv | xlsx")
+    buf = io.StringIO()
+    csv.writer(buf).writerows(table)
+    return ExportedFile(form_id, f"{base} 응답.csv", "text/csv", buf.getvalue().encode("utf-8-sig"))
 
 
 @dataclass

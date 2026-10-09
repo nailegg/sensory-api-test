@@ -29,7 +29,7 @@ class FakeDrive:
         self.converted.append({"name": name, "content": content, "source": source_mime_type, "target": target_mime_type, "parent": parent_folder_id})
         return self._new(name, parent_folder_id)
 
-    async def share_with_user(self, file_id, email, role="reader", notify=False, message=None, expiration_time=None):
+    async def share_with_user(self, file_id, email, role="reader", notify=False, message=None):
         self.shared.append((file_id, email, role))
         return {"id": f"perm-{email}", "role": role}
 

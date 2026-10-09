@@ -106,7 +106,7 @@ tests/unit/                       # pytest 케이스의 vitest 번역
 
 ## 5. 오류 변환
 
-synsory-api의 `XApiError(status, body, is_rate_limit, reason)`는 infrastructure의 `ExternalApiError`로 옮긴다. `ExternalApiError`는 domain `AppError`를 상속한다(studio-port 구현, 2026-10-09). application은 infrastructure를 import할 수 없으므로 `AppError`로 외부 호출 실패를 알아보고 "기록하고 다음으로" 처리하며, 그 밖의 예외는 버그로 올린다. `details`(API 응답에 나감)에는 `status`·`reason`·`api_status`만 둔다. Google 원문 메시지는 원인 추적용으로 별도 필드 `externalMessage`에 둔다. 파일 ID·이메일이 섞일 수 있어 응답으로 내보내지 않고, 로그에 남길지·가릴지는 **[결정 필요 M]**. 코드 이름 제안 **[결정 필요 C]** (Google 오류 중 아래 세 개만 구현, 연결 관련 두 개는 연결 흐름을 만들 때):
+synsory-api의 `XApiError(status, body, is_rate_limit, reason)`는 infrastructure의 `ExternalApiError`로 옮긴다. `ExternalApiError`는 domain `AppError`를 상속한다(studio-port 구현, 2026-10-09). application은 infrastructure를 import할 수 없으므로 `AppError`로 외부 호출 실패를 알아보고 "기록하고 다음으로" 처리하며, 그 밖의 예외는 버그로 올린다. `details`(API 응답에 나감)에는 `status`·`reason`·`api_status`만 둔다. Google 원문 메시지는 원인 추적용으로 별도 필드 `externalMessage`에 둔다. 파일 ID·이메일이 섞일 수 있어 응답으로 내보내지 않고, 로그에는 **외부 오류 전용 구조화 필드로, 이메일·파일 ID를 가린 뒤** 남긴다(결정 31, 2026-10-09. studio 로거가 `err.message`를 redacted로 바꾸므로 별도 필드가 필요하다). 코드 이름 제안 **[결정 필요 C]** (Google 오류 중 아래 세 개만 구현, 연결 관련 두 개는 연결 흐름을 만들 때):
 
 | 상황 | 판별 (synsory-api 근거) | AppError code · status |
 | --- | --- | --- |
@@ -122,7 +122,7 @@ synsory-api의 `XApiError(status, body, is_rate_limit, reason)`는 infrastructur
 
 studio의 Google 로그인(Supabase, `openid email profile`)과 **별개 흐름**이다. Supabase는 provider refresh token을 저장·갱신하지 않기 때문이다. 교수자가 "Google 연결"·"Zoom 연결"을 따로 누른다.
 
-1. **시작** `GET /api/connections/{platform}/start`: state를 `studio_auth.requests`에 `purpose='connect-google'`(또는 `connect-zoom`), browser 해시, 10분 만료로 저장한다. studio Google 로그인이 이미 `purpose='google'`로 같은 방식을 쓴다(`application/src/auth.ts` `googleStart`). 인가 URL 파라미터는 synsory-api 그대로:
+1. **시작** `GET /api/connections/{platform}/start`: 교수자가 **첫 Google 활동을 저장할 때** 연결이 없으면 409 `EXTERNAL_RECONNECT_REQUIRED` + 이 URL을 돌려주고, 웹이 여기로 보낸다(결정 40, on-demand. 설정 화면의 "연결" 버튼도 같은 URL). state에 돌아갈 경로(작성 화면)를 담는다. state를 `studio_auth.requests`에 `purpose='connect-google'`(또는 `connect-zoom`), browser 해시, 10분 만료로 저장한다. studio Google 로그인이 이미 `purpose='google'`로 같은 방식을 쓴다(`application/src/auth.ts` `googleStart`). 인가 URL 파라미터는 synsory-api 그대로:
    - Google: `access_type=offline`, `prompt=consent`, `include_granted_scopes=true`, scope = Drive `drive.file` (+ 이후 서비스 scope)
    - Zoom: scope는 앱 설정에서 정해지지만 URL에도 넣는다. client 인증은 Basic 헤더
 2. **콜백** `GET /api/connections/{platform}/callback`: state를 1회 소비 → 코드 교환 → 받은 scope와 요청 scope 비교(누락 시 사용자에게 알림, synsory-api `missing_scopes`) → 저장.
@@ -139,12 +139,12 @@ studio의 Google 로그인(Supabase, `openid email profile`)과 **별개 흐름*
   - 끊긴 연결은 표시하지 않고 **행을 지운다**(6.3). "끊겼어요"와 "아직 연결 안 했어요"를 화면에서 구분해야 하면 그때 `reconnect_required_at` 칸을 더한다.
   - `created_at`·`updated_at`·`version`은 두지 않는다. 기능이 읽지 않고, 동시 갱신은 Google은 문제가 없고 Zoom은 행 잠금으로 막는다(6.2).
 - `token_cipher` 안의 JSON(플랫폼별 Zod로 검사):
-  - google: `{ refresh_token, scope, account_email? }`. Google 안의 서비스(Drive·Docs·Sheets·Slides·Forms·Meet)는 refresh token 하나를 함께 쓴다(계정 × 앱 단위 승인).
+  - google: `{ refresh_token, scope, account_email }`(`account_email`은 연결 계정 표시용, 결정 38). Google 안의 서비스(Drive·Docs·Sheets·Slides·Forms·Meet)는 refresh token 하나를 함께 쓴다(계정 × 앱 단위 승인).
   - zoom: `{ refresh_token, scope, api_url? }`. 갱신마다 refresh token이 바뀐다.
   - 새 플랫폼이 생겨도 테이블은 그대로다(`check` 값만 늘린다).
 - 암호화는 studio 세션과 같은 `Secrets.encrypt`(AES-256-GCM, `base64url(IV 12B + 태그 16B + 암호문)`). 평문 `jsonb`는 쓰지 않는다(DB 백업·관리 화면에 토큰이 보인다).
 - **키**: 지금은 `SESSION_ENCRYPTION_KEY` 하나다. 세션은 길어야 7일이라 키를 바꾸면 재로그인으로 끝나지만, 연결은 몇 달 살아서 키를 바꾸면 모든 교수자가 다시 연결해야 한다. 연결용 키를 따로 두거나(예: `CONNECTION_ENCRYPTION_KEY`) 암호문 앞에 키 번호를 붙여 옛 키도 읽게 한다. **[결정 필요 D의 일부]**
-- 권한: studio는 `studio_auth` 권한을 테이블마다 따로 준다(`0001_integrity.sql`). `studio_api`는 읽기·쓰기·수정·삭제, `studio_worker`는 읽기·삭제(갱신 거절 시 삭제). worker의 수정 권한은 Zoom refresh token 교체에만 필요해 Zoom을 붙일 때 더한다. 브라우저 역할 차단은 기존 기본 권한 회수가 적용된다.
+- 권한: studio는 `studio_auth` 권한을 테이블마다 따로 준다(`0001_integrity.sql`). `studio_api`는 읽기·쓰기·수정·삭제, `studio_worker`는 읽기·수정·삭제(Zoom 갱신 토큰 저장에 수정 필요, 결정 41. 0009는 읽기·삭제만이라 마이그레이션 추가)(갱신 거절 시 삭제). worker의 수정 권한은 Zoom refresh token 교체에만 필요해 Zoom을 붙일 때 더한다. 브라우저 역할 차단은 기존 기본 권한 회수가 적용된다.
 
 ### 6.2 토큰 공급: 메모리 캐시, DB는 가끔
 
@@ -169,7 +169,7 @@ studio의 Google 로그인(Supabase, `openid email profile`)과 **별개 흐름*
 | 429 · `RESOURCE_EXHAUSTED` · 5xx · 네트워크 오류 | 일시적 | **끊김으로 판정하지 않는다.** 기다렸다 재시도 |
 
 - 다시 연결하면 행을 새로 넣는다(이미 있으면 `token_cipher`를 덮어쓴다).
-- 끊긴 즉시는 모른다(다음 사용 때 안다). 중요한 작업(예: 다음 날 마감) 하루 전에 갱신을 한 번 시도해 미리 확인하고 알린다. 즉시 알림은 Google Cross-Account Protection(수신 서버 등록·서명 검증 필요), Zoom `app_deauthorized`(게시 앱만, `docs/zoom.md` 9절)로만 가능해 지금은 쓰지 않는다.
+- 끊긴 즉시는 모른다(다음 사용 때 안다). 즉시 알림은 Google Cross-Account Protection(수신 서버 등록·서명 검증 필요), Zoom `app_deauthorized`(게시 앱만, `docs/zoom.md` 9절)로만 가능해 지금은 쓰지 않는다.
 - `invalid_grant`가 실제로 오는지는 공식 문서 기준이고 연결을 끊어 실측하지는 않았다(연결을 끊고 갱신해 보면 바로 확인된다).
 
 ### 6.4 연결의 수명
@@ -180,7 +180,7 @@ studio의 Google 로그인(Supabase, `openid email profile`)과 **별개 흐름*
 | "연결 해제" 버튼, 계정 삭제 | Google·Zoom 쪽 승인 취소(revoke) 후 행 삭제 |
 | 수업에서 빠짐 | 연결은 개인 것이라 유지. 그 교수자가 만든 활동은 결정 N에 따라 다른 교수자가 못 다룰 수 있다 |
 | 갱신 거절(6.3) | 행 삭제(화면은 "연결하세요") |
-| 로그인 이메일과 연결한 Google 계정이 다름 | **결정 필요**(허용·경고·거절). 연결 계정 이메일은 `token_cipher` 안 `account_email`로 보관 |
+| 로그인 이메일과 연결한 Google 계정이 다름 | 허용하되 화면에 연결 계정 이메일을 표시(결정 38). 이메일은 `token_cipher` 안 `account_email` |
 
 ### 6.5 테이블 정의(studio `packages/db/src/schema.ts`, 마이그레이션 `0009_external_accounts`)
 
@@ -213,16 +213,16 @@ export const externalAccounts = internal.table(
 - Picker는 브라우저에 access token이 필요하다(`docs/google_drive.md` 2.1절). **결정 H 확정(2026-10-09, 상현): Picker를 열 때만 서버가 그 교수자의 짧은 수명 access token을 내려준다.** studio-port 이식분: `contracts` `pickerSession`·`pickedFiles`, `application` `acceptPickedFiles`(서버가 볼 수 있는지·템플릿 종류인지 확인), `infrastructure` `pickerAppId`, `ui` `pickGoogleFiles`(브라우저, 토큰은 인자로만). studio에서 할 것과 지킬 것:
   - 세션 API(예: `GET /api/connections/google/picker-session`)는 교수자 세션·CSRF 확인 뒤 응답하고 `Cache-Control: no-store`. 남은 수명이 짧으면(예: 5분 미만) 갱신 후 준다. refresh token은 절대 내려주지 않는다.
   - 브라우저는 토큰을 메모리에만 두고 Picker를 닫으면 버린다(웹 저장소 금지). revoke하지 않는다(같은 프로젝트의 서버 refresh token까지 무효가 된다는 보고, `docs/google_drive.md` 2.1절).
-  - 고른 ID는 서버로 보내 `acceptPickedFiles`로 확인한 뒤에만 템플릿으로 쓴다.
+  - 고른 ID(한 파일)는 서버로 보내 `acceptPickedFile`로 확인한 뒤에만 템플릿으로 쓴다.
   - **미확인 위험**: studio API는 `@fastify/helmet`을 전역으로 등록한다. 웹 페이지에도 helmet 헤더가 붙는다면 ① 기본 CSP가 `apis.google.com` 스크립트와 `docs.google.com` iframe을 막고, ② `referrerPolicy: no-referrer` 때문에 Referer 제한을 건 API 키가 "API developer key is invalid"로 거부될 수 있다. 웹을 어떻게 서빙하는지 확인하고, 필요하면 CSP에 두 출처를 추가하고 Picker 페이지의 Referrer-Policy를 `strict-origin-when-cross-origin`으로 둔다(API 키 제한은 앱 도메인 + `https://docs.google.com/*`).
   - GCP: Google Picker API 사용 설정, API 키(웹사이트 제한·Picker API만), `setAppId`는 프로젝트 번호.
 
 ## 7. 활동 도구 매핑
 
-| 도구(가칭 `activity_type`) **[결정 필요 I]** | 근거 서비스 | `external_refs` 항목 | `activity_responses` |
+| 도구(`activity_type`, 26번 확정) | 근거 서비스 | `external_refs` 항목 | `activity_responses` |
 | --- | --- | --- | --- |
-| `google_group_docs` · `google_group_slides` · `google_group_sheets` | Docs·Slides·Sheets 유즈케이스 2~4 | 팀마다 `{ id: fileId, provider: 'google', kind, team_id, url, checkpoint_revision }` | 거의 안 씀(파일 배포형). 마감·복원은 `external_refs`를 돌며 권한 변경 |
-| `google_form` (설문·퀴즈·동료평가는 `config`로 구분할지 도구를 나눌지 결정) | Forms | 폼마다 `{ id: formId, team_id?, responder_url, reviewees?, cursor, checkpoint_revision }` | `source_key` = Forms `responseId`, `payload` = FormSubmission, `identity` = `respondent_email` → 명단 이메일로 매칭 |
+| `google_docs` · `google_slides` · `google_sheets` | Docs·Slides·Sheets 유즈케이스 2~4 | 팀마다 `{ id: fileId, provider: 'google', kind, team_id, url, checkpoint_revision }` | 거의 안 씀(파일 배포형). 마감·복원은 `external_refs`를 돌며 권한 변경 |
+| `google_forms` (설문·퀴즈·동료평가는 `config.mode`로 구분, 26번 확정) | Forms | 폼마다 `{ id: formId, team_id?, responder_url, reviewees?, cursor, checkpoint_revision }` | `source_key` = Forms `responseId`, `payload` = FormSubmission, `identity` = `respondent_email` → 명단 이메일로 매칭 |
 | `zoom_meeting` | Zoom | 미팅마다 `{ id: meetingId, team_id?, join_url, occurrences? }` | `source_key` = `participant_uuid`(또는 미팅 uuid + participant_uuid), `identity` = 표시 이름 속 학번 |
 
 - 팀 정보는 studio의 팀 스냅샷(`activities.config.team_snapshot` = `{ id, name, student_ids }[]`)에서 온다. 스냅샷에는 이메일이 없으므로 공유·응답자 지정 때 `course_members`에서 한 번에 조회한다(N+1 금지).
@@ -231,7 +231,7 @@ export const externalAccounts = internal.table(
 
 ## 8. 큐 · 수집 · 웹훅
 
-- **Forms 응답 수집**: 작업 `google-forms-collect`, group = 폼 ID. 작업이 `listResponses(formId, since=cursor)` → 100개씩 `CollectionService.commit(…, { resource_id, checkpoint_revision, payloads, next_cursor, page_complete })`. `since`는 `>=`라 경계 응답이 다시 오지만 `unique(activity_id, source_key)`가 멱등 처리한다.
+- **Forms 응답 수집**: 작업 `google-forms-collect`, group = 폼 ID. 작업이 `listResponses(formId, since=cursor)` → **100개씩** `CollectionService.commit(…, { resource_id, checkpoint_revision, payloads, next_cursor, page_complete })`. 100은 studio `packages/application/src/collection.ts`의 제약이다(`payloads.length <= 100`, 합계 1MB, 초과 시 `BATCH_TOO_LARGE` 413). Drive 공유 배치의 100(요청 하나에 permissions 100개)과는 다른 숫자다. `since`는 `>=`라 경계 응답이 다시 오지만 `unique(activity_id, source_key)`가 멱등 처리한다.
 - **퀴즈 점수**: `lastSubmittedTime`이 채점 변경을 반영하지 않으므로 커서 없이 전체 재조회한다. 같은 `source_key`로 다시 저장되면 studio가 `revision`을 올린다.
 - **폴링 주기**: Forms 응답 목록은 "비싼 읽기"(사용자당 분당 180). 활동이 `open`인 동안만 돌린다. 주기 **[결정 필요 K]**.
 - **Zoom 웹훅**: `POST /api/webhooks/zoom`. 이 라우트만 Fastify JSON 파싱 전 **원본 바이트**를 받아 서명 검증(`v0:{ts}:{raw body}` HMAC-SHA256, 상수 시간 비교) → `endpoint.url_validation`이면 CRC 응답(3초 안) → 그 밖은 큐에 넣고 즉시 204. 처리는 worker에서. 72시간마다 재검증, 6회 연속 실패 시 구독 중지.
@@ -254,7 +254,7 @@ export const externalAccounts = internal.table(
 | `datetime.fromisoformat`, aware datetime | `new Date(iso)`. Zoom `start_time`은 UTC `Z` 문자열 + `timezone` 필드 |
 | `hmac.new(...).hexdigest()`, `hmac.compare_digest` | `createHmac('sha256', secret).update(raw).digest('hex')`, `timingSafeEqual` (`node:crypto`, infrastructure에서만) |
 | `re` 정규식 | JS 정규식 (학번 `\d{8}`, 템플릿 `{{ key }}`) |
-| `openpyxl` (xlsx 내보내기) | 새 의존성 필요(예: exceljs). 버전 고정 **[결정 필요 L]** |
+| `openpyxl` (xlsx 내보내기) | 옮기지 않는다. Forms 12는 CSV만(결정 30, 2026-10-09). Python 쪽 xlsx도 삭제 |
 | FastAPI `Depends`, `HTTPException` | 없음. application 함수가 port를 인자로 받고 `AppError`를 던진다 |
 | `dict.get("a", {}).get("b")` | Zod 파싱 후 접근, 또는 `?.` + `noUncheckedIndexedAccess` 대응 |
 
@@ -275,6 +275,7 @@ export const externalAccounts = internal.table(
 | 7 | Google Meet | 확정(방향, 2026-10-06) | Calendar 없이 Meet 단독, 출석 포함. 유즈케이스 초안 4개는 상현 확인 대기 |
 | 8 | Google Calendar | 보류 | Meet 단독으로 가기로 해서 1단계만 하고 중단 |
 | 9 | Sheets 성적표 동기화 | 보류 | 성적 원본은 Synsory DB. 교수자 요구가 확인되면 내보내기부터(`docs/google_sheets.md` 1.3절) |
+| 9a | 명단 이메일은 Google 계정 | 확정(2026-10-09 상현) | Drive 공유는 알림 없이 하고(`shareWithUsers` 옵션 없음) 비 Google 주소는 그 사람만 실패로 기록한다. studio 명단 안내 문구 필요. 비 Google 주소가 실제로 들어오면 알림 켜기(`sendNotificationEmail=true`)를 실측한 뒤 재검토 |
 
 ### 10.2 유즈케이스·동작 방식
 
@@ -291,7 +292,7 @@ export const externalAccounts = internal.table(
 | 18 | 그룹 파일 공통 흐름 | 확정(2026-10-09) | 서비스별 함수 없이 `createGroupFilesFromTemplate` + 각 port의 `replaceTags`, 텍스트 템플릿은 `createGroupFilesFromContent` |
 | 19 | 호출 효율 | 확정(2026-10-09 실측, 8.1절) | 파일·그룹 생성은 동시 4개. 같은 파일 권한 변경은 순차, 조원 공유는 Drive 배치 1회, 배치 실패 시 실패한 사람만 단건 재시도 |
 | 20 | Sheets 유즈케이스 5의 `source_key` | **미정** | "파일 ID"로 가정만(`docs/google_sheets.md` 11.x) |
-| 21 | Forms 12 xlsx 내보내기 | **미정** | 30번(xlsx 라이브러리) 뒤. CSV만 쓸 거면 닫을 수 있음 |
+| 21 | Forms 12 xlsx 내보내기 | 확정(2026-10-09 상현) | **CSV만.** Python·TS 모두 xlsx 제거(30번). 이전 메모: | 30번(xlsx 라이브러리) 뒤. CSV만 쓸 거면 닫을 수 있음 |
 
 ### 10.3 studio 배치·코드 구조
 
@@ -301,12 +302,12 @@ export const externalAccounts = internal.table(
 | 23 | A. mapper 위치 | 확정(2026-10-09 상현) | **현행 유지**: 응답 형식 변환은 infrastructure 어댑터 안(Google JSON 모양은 바깥 층에 가둠, application·domain은 깨끗한 타입만 봄), 계산·규칙은 domain. 이유: Google에는 "문서 하나"를 통째로 주는 API가 없어 Docs+Drive 응답을 합친 모양은 우리 것, Google 함정(빈 grade·`low` 생략·휴지통 200)을 한 곳에서 보정, 이메일 등 개인정보를 걸러 저장, studio도 경계에서 자기 모양으로 바꾸는 방식(`ToolHandler.validateResponse`). **단, 필드는 studio가 실제 쓰는 것만 남긴다**: `externalDocument` 13개 중 application이 쓰는 건 `title`·`kind`·`trashed`뿐이고 `text`·`mime_type`·`created_at`·`modified_at`은 미사용. studio에 넣을 때 `external_refs` 항목(7절)에 맞춰 줄인다 |
 | 24 | B. 하위 폴더 | 제안·미승인 | 평평한 파일(studio 관례, 3절). 현행 유지 가능 |
 | 25 | C. 외부 오류 코드 이름 | 제안·미승인 | `ExternalApiError extends AppError`, `details`는 `status`·`reason`·`api_status`만(5절). 코드도 같다(2026-10-09 `zoom_code`를 details에서 뺌. `zoomCode` 속성은 연결 계층의 401 판정용으로 남김) |
-| 26 | I. `activity_type` 이름 · Forms 분할 | **미정** | `google_group_docs`·`google_group_slides`·`google_group_sheets`·`google_form` 가칭(7절). 설문·퀴즈·동료평가를 도구로 나눌지 `config`로 구분할지. `activity_type_allowed` 마이그레이션에 바로 들어감 |
-| 27 | N. 외부 파일·미팅을 누구 계정으로 다루나 | **미정** | studio는 한 수업에 교수자가 여럿이고 권한이 같은데, 교수자 A의 연결로 만든 파일은 A 소유다. `drive.file`은 "이 사용자가 이 앱으로 만들었거나 고른 파일"에만 적용되므로 B의 토큰으로는 마감·수정이 안 될 가능성이 높다(Google 계정 2개 실측 미완). 방안: ① 활동마다 만든 교수자의 연결(`profile_id`)을 `external_refs`에 기록하고 이후 작업도 그 연결로 실행(**추천**. 그 교수자가 연결을 끊거나 수업에서 빠지면 `EXTERNAL_RECONNECT_REQUIRED` 안내 필요) ② 수업마다 공용 연결 하나(관리 화면·새 개념 필요) ③ 누르는 사람 계정으로 실행(남이 만든 파일에서 실패) |
-| 28 | O. 오래 걸리는 생성 작업의 위치 | **미정** | 실측(6개 조, 8.1절): 호출당 1.2~2초, 순차면 Forms 동료평가 87초·Docs 34초, 동시 6개로도 15초·6초. 조가 많으면 분 단위. 방안: ① 요청 안에서 처리(단순. 타임아웃·중간 실패 시 일부만 생성·새로고침 중복 위험) ② 요청은 작업 등록만 하고 worker(pg-boss)가 처리, 화면은 진행 상태(**추천**. 재시도·중복 방지는 큐가 맡고, 그룹 하나를 작업 하나로 나누면 흐름 코드는 그대로. 미팅 하나 수정처럼 짧은 동작은 요청 안에서) |
-| 29 | K. Forms 응답 폴링 주기 | **미정** | open 활동만 돌린다는 원칙만(8절). 수치 없음. 응답 목록은 비싼 읽기(사용자당 분당 180) |
-| 30 | L. xlsx 라이브러리 | **미정** | exceljs 등 추가·버전 고정 여부(9절) |
-| 31 | M. 외부 오류 원문 로그 | **미정** | `ExternalApiError.externalMessage`를 남길지, 이메일을 가린 뒤 남길지. studio 규칙은 "원본 응답·개인정보 로그 금지"(5절) |
+| 26 | I. `activity_type` 이름 · Forms 분할 | 확정(2026-10-09 상현) | **서비스마다 도구 하나, 4개**: `google_docs` · `google_slides` · `google_sheets` · `google_forms`(설문·퀴즈·동료평가는 `config.mode`로 구분). 이유: 확장성·통일성. 이름은 `zoom_meeting`과 같은 snake_case. `activity_type_allowed` 마이그레이션에 이 4개 + Zoom. 이전 안:  `google_docs`·`google_slides`·`google_sheets`·`google_forms` 가칭(7절). 설문·퀴즈·동료평가를 도구로 나눌지 `config`로 구분할지. `activity_type_allowed` 마이그레이션에 바로 들어감 |
+| 27 | N. 외부 파일·미팅을 누구 계정으로 다루나 | 확정(2026-10-09 상현) | **활동을 만든 교수자의 연결로 실행**(`external_refs`에 `profile_id` 기록, 이후 마감·수정도 그 연결). 교수자가 수업에서 빠지거나 연결을 끊는 상황은 지금 상정하지 않고 **기획 회의**에서 정한다. 원래 분석:  studio는 한 수업에 교수자가 여럿이고 권한이 같은데, 교수자 A의 연결로 만든 파일은 A 소유다. `drive.file`은 "이 사용자가 이 앱으로 만들었거나 고른 파일"에만 적용되므로 B의 토큰으로는 마감·수정이 안 될 가능성이 높다(Google 계정 2개 실측 미완). 방안: ① 활동마다 만든 교수자의 연결(`profile_id`)을 `external_refs`에 기록하고 이후 작업도 그 연결로 실행(**추천**. 그 교수자가 연결을 끊거나 수업에서 빠지면 `EXTERNAL_RECONNECT_REQUIRED` 안내 필요) ② 수업마다 공용 연결 하나(관리 화면·새 개념 필요) ③ 누르는 사람 계정으로 실행(남이 만든 파일에서 실패) |
+| 28 | O. 오래 걸리는 생성 작업의 위치 | 확정(2026-10-09 상현): **worker(pg-boss)**. 요청은 작업 등록만, 그룹 하나 = 작업 하나, 화면은 진행 상태. 미팅 하나 수정 같은 짧은 동작은 요청 안에서. (맥락: 다른 세션에서 논의한 "배치 요청"은 Drive 공유 배치(요청 하나에 permissions 100개)이고 8.1절 실측 수치는 이미 그 배치 + 동시 4개를 적용한 값이다. 즉 배치로는 더 줄일 수 없고, 남는 것은 그룹당 복사 1 + 치환 1 + 공유 1 호출의 지연이다) | 실측(6개 조, 8.1절): 호출당 1.2~2초, 순차면 Forms 동료평가 87초·Docs 34초, 동시 6개로도 15초·6초. 조가 많으면 분 단위. 방안: ① 요청 안에서 처리(단순. 타임아웃·중간 실패 시 일부만 생성·새로고침 중복 위험) ② 요청은 작업 등록만 하고 worker(pg-boss)가 처리, 화면은 진행 상태(**추천**. 재시도·중복 방지는 큐가 맡고, 그룹 하나를 작업 하나로 나누면 흐름 코드는 그대로. 미팅 하나 수정처럼 짧은 동작은 요청 안에서) |
+| 29 | K. Forms 응답 폴링 주기 | 확정(방향, 2026-10-09 상현) | **실시간(on-demand 리더보드)은 범위 밖.** 그래서 짧은 주기 폴링이 필요 없다. 제안: 마감 시각 작업에서 전체 재조회 1회 + 교수자가 결과 화면을 열 때 "새로고침"으로 수동 수집, open 중 주기 폴링은 두지 않거나 길게(예: 30분, 가정). 수치는 studio 화면 설계 때. 원래 메모:  open 활동만 돌린다는 원칙만(8절). 수치 없음. 응답 목록은 비싼 읽기(사용자당 분당 180) |
+| 30 | L. xlsx 라이브러리 | 확정(2026-10-09 상현) | **추가하지 않는다.** Forms 12는 CSV(UTF-8 BOM, Excel에서 바로 열림)만, 스프레드시트는 13번 시트 내보내기로. 9절 변환표 반영 |
+| 31 | M. 외부 오류 원문 로그 | 확정(2026-10-09 상현) | **외부 오류만 구조화 로그로 남긴다**: `request_id`(worker는 job id)·provider·`status`·`reason`·`api_status`·`external_message`(이메일·파일 ID를 가린 뒤). studio 로거는 `err.message`를 `'redacted'`로 바꾸므로 이 필드를 따로 찍어야 원인을 볼 수 있다. API 응답 `details`에는 지금처럼 넣지 않는다. studio 쪽 구현(오류 핸들러·worker). 원래 질문: | `ExternalApiError.externalMessage`를 남길지, 이메일을 가린 뒤 남길지. studio 규칙은 "원본 응답·개인정보 로그 금지"(5절) |
 
 ### 10.4 외부 계정 연결·토큰
 
@@ -314,16 +315,16 @@ export const externalAccounts = internal.table(
 | --- | --- | --- | --- |
 | 32 | 연결 흐름 | 확정(설계, 6절) | Supabase 로그인과 별개 "Google/Zoom 연결" 흐름. `studio_auth.requests`에 state 10분, `access_type=offline&prompt=consent` |
 | 33 | D. 토큰 저장 | 확정(2026-10-09 팀 승인, studio 반영) | `studio_auth.external_accounts(profile_id, platform, token_cipher)` 3칸(6.1·6.5). studio 커밋 a03a27f 마이그레이션 `0009_external_accounts`. 읽고 쓰는 코드는 아직 없음 |
-| 34 | 끊김 판정 | 확정(6.3) | `invalid_grant`·403 `insufficientPermissions`면 행 삭제 → `EXTERNAL_RECONNECT_REQUIRED`. 429·5xx는 끊김 아님. 중요 작업 하루 전 갱신 시도 |
+| 34 | 끊김 판정 | 확정(6.3) | `invalid_grant`·403 `insufficientPermissions`면 행 삭제 → `EXTERNAL_RECONNECT_REQUIRED`. 429·5xx는 끊김 아님. 다음 사용 때 알게 되면 재연결 안내 |
 | 35 | E. 갱신 동시성 | 확정(2026-10-09) | access token은 메모리 캐시(6.2). Google은 잠금 불필요(refresh token이 안 바뀜), Zoom 갱신 경로에만 `FOR UPDATE` 행 잠금. 경과: 낙관적 갱신 → 행 잠금 → Google·Zoom 구분 |
 | 36 | H. Picker 토큰 | 확정(2026-10-09) | 서버가 Picker를 열 때만 짧은 수명 access token 전달, 브라우저는 메모리만, revoke 안 함, 고른 ID는 `acceptPickedFiles`로 검증(6절 Picker 항목) |
-| 37 | D 잔여: 암호화 키 분리 | **미정** | 세션 키(`SESSION_ENCRYPTION_KEY`)를 같이 쓸지, 연결용 키를 따로 둘지(키 교체 시 전원 재연결, 6.1) |
-| 38 | D 잔여: 로그인 이메일 ≠ 연결 계정 | **미정** | 허용·경고·거절(6.4) |
-| 39 | G. client secret 위치 | **미정** | studio 원칙("Google secret은 Supabase에만")의 예외로 앱 env에 둘지 |
-| 40 | GCP 프로젝트·동의 화면 공유 | **미정** | studio 로그인용과 같은 프로젝트·동의 화면을 쓸지. 공유하면 scope가 늘 때 로그인 사용자도 재동의 영향 |
-| 41 | worker 권한 | **미정(2026-10-09 발견)** | 0009가 `studio_worker`에 SELECT·DELETE만 줌. Google은 괜찮지만 Zoom은 갱신마다 refresh token이 바뀌어 worker UPDATE 필요(35번). 팀원에게 전달 |
-| 42 | F. Zoom https 리다이렉트 로컬 수신 | **미정** | 팀원 몫. ngrok 고정 도메인 경험 전달(`docs/zoom.md` 2.1절) |
-| 43 | J. 명단 학번 필드 | **미정** | Zoom 출석용. `studio.profiles`는 `display_name`만(7절) |
+| 37 | D 잔여: 암호화 키 분리 | 확정(2026-10-09 상현) | **분리하지 않는다.** `SESSION_ENCRYPTION_KEY` 하나로 세션과 연결 토큰을 같이 잠근다. 키를 바꿀 계획이 생기면 그때 암호문에 키 번호를 붙이는 방식을 더한다. 원래 메모: | 세션 키(`SESSION_ENCRYPTION_KEY`)를 같이 쓸지, 연결용 키를 따로 둘지(키 교체 시 전원 재연결, 6.1) |
+| 38 | D 잔여: 로그인 이메일 ≠ 연결 계정 | 확정(2026-10-09 상현) | **허용하되 화면에 연결 계정 이메일을 표시한다.** 그래서 연결 계정 이메일을 저장한다: `token_cipher.google.account_email`(암호문 안, 6.1에 다시 넣음). 거절하면 KAIST 메일이 Google 계정이 아닐 때 막히고, 조용히 허용하면 어느 Drive에 파일이 생겼는지 모른다 |
+| 39 | G. client secret 위치 | 확정(2026-10-09 상현) | **앱 env에 둔다.** studio 앱 env에는 이미 더 위험한 `SUPABASE_SECRET_KEY`·`SESSION_ENCRYPTION_KEY`가 있고, "Google secret은 Supabase에만"은 로그인용 secret의 중복 저장 금지라 Drive 연결용(다른 OAuth 클라이언트)은 해당 없음. 조건: ① **환경별 OAuth 클라이언트**(local·dev·prod 각각 자기 ID·secret·리다이렉트 URI. 하나가 새도 그 환경만, prod에는 localhost 미등록) ② `.env.dev.local.example` 문구를 "로그인용은 Supabase, Drive 연결용은 앱 env"로 ③ 교체 절차(새 secret 추가 → env 교체 → 옛것 비활성화) 한 줄. 검토한 대안: Supabase Edge Function(코드가 갈라지고 worker 갱신마다 호출), 로그인에 scope 얹기(갱신에 결국 secret 필요), PKCE(서버형 불가), 비밀 관리 서비스(배포 방식 미정, 주입처만 바뀜) |
+| 40 | GCP 프로젝트·동의 화면 공유 | 확정(2026-10-09 상현) | **로그인용과 같은 GCP 프로젝트**에 "Drive 연결용" OAuth 클라이언트(39번대로 환경별)와 Picker API 키를 만든다. 확인할 것: 로그인용 프로젝트 소유(상현 개인/Synsory 조직). 실측용 프로젝트는 synsory-api에 그대로. 교수자가 실제로 쓰기 전에 프로젝트를 프로덕션으로 전환(`drive.file`은 비민감이라 심사 없음. 테스트 상태면 refresh token 7일 만료·테스트 사용자 100명). 경과: ~~공유하면 로그인 사용자도 재동의 영향~~ → 틀림: 동의 화면은 **그 요청이 묻는 scope만** 보여주고, Drive는 교수자가 첫 Google 활동을 만들 때 따로 요청하므로(on-demand) 학생 로그인 화면에는 Drive가 나오지 않는다. 남는 차이는 관리뿐: 같은 프로젝트면 브랜드·동의 화면·프로덕션 전환이 한 곳(그 안에 "Drive 연결용" OAuth 클라이언트를 따로 만든다), 다른 프로젝트면 두 곳. 어느 쪽이든 **첫 Google 활동 생성 때 동의**(409 `EXTERNAL_RECONNECT_REQUIRED` → 연결 시작 URL → 콜백 → 작성 화면 복귀) |
+| 41 | worker 권한 | 확정(2026-10-09 상현) | **`studio_worker`에 UPDATE를 추가한다**(0009는 SELECT·DELETE만). Zoom은 갱신마다 refresh token이 바뀌어 worker가 새 토큰을 써야 한다(35번). Google 도구 브랜치에서 마이그레이션으로 넣고 팀원에게 알린다 |
+| 42 | F. Zoom https 리다이렉트 로컬 수신 | 팀원 파트(2026-10-09 상현) | 상현 범위 밖. ngrok 고정 도메인·학교망 차단·앱 재설치 뒤 웹훅 수신 경험만 전달(`docs/zoom.md` 2.1절) |
+| 43 | J. 명단 학번 필드 | 팀원 파트(2026-10-09 상현) | Zoom 출석용이라 상현 범위 밖. `studio.profiles`는 `display_name`만이고 공용 테이블이라 PR 회의 안건(7절) |
 
 ### 10.5 실측·확인 보류 (결정이 아니라 확인)
 
@@ -344,8 +345,8 @@ export const externalAccounts = internal.table(
 이식 코드에서 "Python에 있어서 따라왔지만 아무도 안 쓰는 것"을 찾아 정리했다. 기준은 application 흐름의 호출 유무(grep).
 
 - **① 삭제 완료**(vitest 92 → 87, 동작 불변): Sheets `lockRanges`·`unlockRanges`와 GridRange 헬퍼(보류 기능), Drive `listFiles`(디버그용)·`listPermissions`의 `includePublishedView`(미구현 흐름용), Zoom `createBreakoutMeeting`(B 비교안)·`MeetingSchedule.settings`; 한 값으로만 쓰던 인자 `removeLinkAccess`·`excludeSelf`·`includeEmail`·`studentIdPattern`·`toRole`·`mapConcurrently(limit)`·`timeoutMs`·`shareWithUsers(role)`·`Sheets.create(sheetTitles)`; 읽지 않는 필드 `FormStructure.linked_sheet_id`·`revision_id`, `DrivePermission.display_name`·`view`, `Meeting.status`·`timezone`·`host_id`, `SheetInfo.hidden`, `SheetValues.range`; `ExternalApiError.rateLimited` getter와 `details.zoom_code`(5절과 불일치); 어댑터 내부 함수 export 8개. 각 서비스 문서 11.x에 반영.
-- **② 문서·규칙 수정(상현 확인 뒤)**: `CLAUDE.md`의 "Document의 owner·created_at·modified_at·url은 Drive files.get에서 온다"(13필드 모델의 근원 → "흐름이 쓰는 필드가 필요할 때만 조회"로), "google_docs 폴더를 복사해서 시작"(미사용 client 메서드를 퍼뜨림 → "유즈케이스가 부르는 메서드만 남긴다" 추가), Drive 호출 목록의 `changes.watch`; 6.1 `account_email` 선저장(38번 미정인데 데이터 먼저), 6.3 "하루 전 갱신 점검"(요구 없는 선제 기능), 8절 "100개씩 commit"(근거 없음); 7절 `external_refs` 항목(`checkpoint_revision`·`cursor` 등은 studio 확인 전 가정); zoom.md 1절 유즈케이스 2 "대기실·호스트 전 입장" 기본값이 코드에 없음(구현할지 문서를 고칠지). Python 쪽 미사용 코드: Drive client `rename_file`·`delete_file`·`set_read_only`·`get_start_page_token`·`list_changes`·`share_with_user(expiration_time)`·`move_file(from_folder_id)`, Sheets `batch_update_values`·`append_values`, Forms `get_response`, `Meeting.has_recording`·`has_transcript`, Docs 비교용 B `create_document_with_docs_api`.
-- **③ 확인 필요(상현 답)**: 공유 `notify`·`shareMessage` 옵션(비 Google 이메일 초대에 알림이 필요하다는 실측 근거 있음 → 남길지), Picker 다중 선택(`multiple`·최대 20개 → 한 파일로 줄일지), `ExportFormat` 12종(각 서비스 1절 표보다 많음, Docs md·html·txt), Drive `docx` 업로드(Docs 템플릿을 docx로 올리는 경로를 둘지), `FormSubmission.created_at`(payload에 저장할지).
+- **② 문서·규칙 수정**: (완료 2026-10-09) `CLAUDE.md` 규칙 3개 수정, Python 미사용 코드 삭제(Drive client 5개 메서드 + `expiration_time`·`from_folder_id` 인자, Sheets 2개, Forms 1개, `Meeting.has_recording`·`has_transcript`. pytest 91 통과. `list_app_files`·`create_empty_native_file`은 실측 보조라 유지, Docs 비교용 B는 ③). (완료) 문서의 추측값 2개(`account_email` 선저장, "하루 전 갱신 점검")와 zoom.md 1절의 "대기실·호스트 전 입장"(코드·샘플에 없던 문구)을 삭제. "100개씩 commit"은 재검토 보고가 "근거 없음"이라 했으나 studio `collection.ts`의 실제 제약(≤100, 1MB)이어서 지웠다가 되돌렸다(8절). 원래 목록: `CLAUDE.md`의 "Document의 owner·created_at·modified_at·url은 Drive files.get에서 온다"(13필드 모델의 근원 → "흐름이 쓰는 필드가 필요할 때만 조회"로), "google_docs 폴더를 복사해서 시작"(미사용 client 메서드를 퍼뜨림 → "유즈케이스가 부르는 메서드만 남긴다" 추가), Drive 호출 목록의 `changes.watch`; 6.1 `account_email` 선저장(38번 미정인데 데이터 먼저), 6.3 "하루 전 갱신 점검"(요구 없는 선제 기능), 8절 "100개씩 commit"(근거 없음); 7절 `external_refs` 항목(`checkpoint_revision`·`cursor` 등은 studio 확인 전 가정); zoom.md 1절 유즈케이스 2 "대기실·호스트 전 입장" 기본값이 코드에 없음(구현할지 문서를 고칠지). Python 쪽 미사용 코드: Drive client `rename_file`·`delete_file`·`set_read_only`·`get_start_page_token`·`list_changes`·`share_with_user(expiration_time)`·`move_file(from_folder_id)`, Sheets `batch_update_values`·`append_values`, Forms `get_response`, `Meeting.has_recording`·`has_transcript`, Docs 비교용 B `create_document_with_docs_api`.
+- **③ 확인(2026-10-09 상현)**: (완료) Picker는 한 파일(`pickGoogleFile`·`pickedFile`·`acceptPickedFile`), `ExportFormat`은 각 서비스 1절 표대로 10종(Docs md·html·txt 삭제), Drive `docx` 업로드는 Docs 템플릿 경로로 **지원**(google_docs.md 1절), `FormSubmission.created_at`은 TS·Python 모두 삭제. 공유 `notify`·`shareMessage` 옵션은 **삭제**(상현: 명단 이메일은 Google 계정 전제. 비 Google 주소는 그 사람만 실패로 기록. 비 Google 주소가 실제로 들어오면 그때 알림 켜기를 실측). ③ 완료.
 
 ## 11. 서비스별 "studio 이식" 하위절 형식
 

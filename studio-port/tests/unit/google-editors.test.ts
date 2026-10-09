@@ -249,7 +249,6 @@ it('exportResponsesToSheet creates once, then clears only the columns Synsory wr
     id: 'r1',
     form_id: 'f1',
     respondent_email: 'a@x.com',
-    created_at: null,
     submitted_at: '2026-10-05T10:00:00Z',
     answers: { sid: ['0123'] },
     file_ids: {},

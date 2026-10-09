@@ -367,7 +367,6 @@ const sub = (
   id,
   form_id: 'f1',
   respondent_email: email,
-  created_at: null,
   submitted_at: when,
   answers,
   file_ids: {},

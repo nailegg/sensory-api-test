@@ -122,13 +122,13 @@ describe('GoogleDrivePort requests', () => {
   it('exports with the format table of the file kind', async () => {
     const http = recordingFetch(
       { json: { id: 'file-1', name: '회의록', mimeType: 'application/vnd.google-apps.document' } },
-      { bytes: new TextEncoder().encode('# 회의록') },
+      { bytes: new TextEncoder().encode('%PDF-') },
     );
-    const file = await createGoogleDrive(token, http).exportFile('file-1', 'md');
+    const file = await createGoogleDrive(token, http).exportFile('file-1', 'pdf');
     expect(http.requests[1]?.url.pathname).toBe('/drive/v3/files/file-1/export');
-    expect(http.requests[1]?.url.searchParams.get('mimeType')).toBe('text/markdown');
-    expect(file.filename).toBe('회의록.md');
-    expect(new TextDecoder().decode(file.content)).toBe('# 회의록');
+    expect(http.requests[1]?.url.searchParams.get('mimeType')).toBe('application/pdf');
+    expect(file.filename).toBe('회의록.pdf');
+    expect(new TextDecoder().decode(file.content)).toBe('%PDF-');
   });
 
   it('refuses a format the kind does not support without exporting', async () => {
@@ -175,7 +175,6 @@ describe('GoogleDrivePort requests', () => {
     const results = await createGoogleDrive(token, http).shareWithUsers(
       'file-1',
       ['a@example.com', 'b@example.com'],
-      { message: '알림 꺼짐이면 무시' },
     );
     const [r] = http.requests;
     expect(r?.url.toString()).toBe('https://www.googleapis.com/batch/drive/v3');

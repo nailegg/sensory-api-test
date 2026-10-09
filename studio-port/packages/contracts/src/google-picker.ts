@@ -16,8 +16,8 @@ export const pickerSession = z.object({
 });
 export type PickerSession = z.infer<typeof pickerSession>;
 
-// 고른 파일 ID. 서버가 실제로 볼 수 있는지·템플릿 종류인지 확인한다.
-export const pickedFiles = z.object({
-  file_ids: z.array(z.string().min(1)).min(1).max(20),
+// 고른 파일 ID(활동당 템플릿 하나). 서버가 실제로 볼 수 있는지·템플릿 종류인지 확인한다.
+export const pickedFile = z.object({
+  file_id: z.string().min(1),
 });
-export type PickedFiles = z.infer<typeof pickedFiles>;
+export type PickedFile = z.infer<typeof pickedFile>;

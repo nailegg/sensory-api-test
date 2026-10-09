@@ -58,13 +58,7 @@ const UPLOAD_MIME: Record<UploadSource, string> = {
 
 // files.export 형식표. 파일 종류마다 가능한 형식이 다르다.
 const EXPORT_MIME: Partial<Record<DocumentKind, Partial<Record<ExportFormat, string>>>> = {
-  doc: {
-    docx: DOCX,
-    pdf: 'application/pdf',
-    txt: 'text/plain',
-    md: 'text/markdown',
-    html: 'text/html',
-  },
+  doc: { docx: DOCX, pdf: 'application/pdf' },
   // Slides 이미지(png 등)는 Drive export에 없다. 슬라이드 이미지는 Slides getThumbnail.
   slides: {
     pptx: PPTX,
@@ -354,17 +348,13 @@ export function createGoogleDrive(
       });
     },
 
-    // permissions.create를 배치 하나로. Google 계정이 아닌 이메일은 알림 없이 공유하면 400 invalidSharingRequest.
-    shareWithUsers: (fileId, emails, { notify = false, message } = {}) =>
-      createPermissions(
-        fileId,
-        emails,
-        {
-          sendNotificationEmail: String(notify),
-          ...(notify && message ? { emailMessage: message } : {}),
-        },
-        (email) => ({ type: 'user', role: 'writer', emailAddress: email }),
-      ),
+    // permissions.create를 배치 하나로. 알림은 항상 끈다. Google 계정이 아닌 이메일은 400 invalidSharingRequest.
+    shareWithUsers: (fileId, emails) =>
+      createPermissions(fileId, emails, { sendNotificationEmail: 'false' }, (email) => ({
+        type: 'user',
+        role: 'writer',
+        emailAddress: email,
+      })),
 
     // 편집 공유(view 없음)와 다르다. synsory-api docs/google_forms.md 10절 4항.
     shareAsResponders: (fileId, emails) =>

@@ -62,7 +62,7 @@
 | # | 유즈케이스 | 호출 순서 | usecases 함수 |
 | --- | --- | --- | --- |
 | 1 | 교수자 플랜을 확인한다(Basic이면 40분 넘는 예약에 경고) | `GET /users/me` → `type`(1 Basic · 2 Licensed), `timezone` | `get_host_profile` |
-| 2 | 액티비티의 그룹마다 미팅을 예약하고 `join_url`을 돌려준다 | **A(기본)** 그룹마다 `POST /users/me/meetings`(type 2, 주제 템플릿, `start_time`·`duration`·`timezone`, 대기실·호스트 전 입장) → 그룹별 `Meeting`. **B(비교용)** `POST` 1회 + `settings.breakout_room.rooms[]{name, participants[이메일]}` → `Meeting` 1개 | `create_group_meetings` (A), `create_breakout_meeting` (B) |
+| 2 | 액티비티의 그룹마다 미팅을 예약하고 `join_url`을 돌려준다 | **A(기본)** 그룹마다 `POST /users/me/meetings`(type 2, 주제 템플릿, `start_time`·`duration`·`timezone`) → 그룹별 `Meeting`. **B(비교용)** `POST` 1회 + `settings.breakout_room.rooms[]{name, participants[이메일]}` → `Meeting` 1개 | `create_group_meetings` (A), `create_breakout_meeting` (B) |
 | 3 | 정기 회의(매주 반복 수업)를 만든다 | `POST /users/me/meetings`(type 8, `recurrence{type 2 매주, repeat_interval, weekly_days, end_date_time 또는 end_times≤60}`) 1회 → `Meeting` + 회차 목록(`occurrences[]`) | `create_recurring_meeting` |
 | 4 | 일정을 바꾸거나 취소한다(반복 미팅은 한 회차만 또는 시리즈 전체) | 변경: `PATCH /meetings/{id}`(회차면 `occurrence_id`, 204) → `GET /meetings/{id}`로 바뀐 값 반환. 취소: `DELETE /meetings/{id}`(회차면 `occurrence_id`, 204) | `reschedule_meeting`, `cancel_meeting` |
 | 5 | 교수자가 Synsory에서 "시작"을 누르면 호스트로 미팅을 연다 | 누를 때마다 `GET /meetings/{id}` → `start_url` → 라우터가 302 리다이렉트. 저장하지 않음 | `get_start_url` |
@@ -237,7 +237,7 @@ Pro 전제 웹훅(`meeting.deleted` · `recording.completed` · `recording.trans
 | 파일 | 유즈케이스 | 내용 |
 | --- | --- | --- |
 | `uc1-host-profile.json` | 1 | `plan_type 1`, `has_40_minute_limit true` |
-| `uc2-create-group-meetings.json` | 2-A | 그룹 2개 → POST 2회. `14:00+09:00` → `05:00Z` 변환, 대기실 설정 |
+| `uc2-create-group-meetings.json` | 2-A | 그룹 2개 → POST 2회. `14:00+09:00` → `05:00Z` 변환 |
 | `uc2b-create-breakout-meeting.json` | 2-B | 계정 설정을 켠 뒤 생성(그 전에는 방 목록이 버려졌다) |
 | `uc3-create-recurring-meeting.json` | 3 | 월·수 4회, `occurrences[].id` |
 | `uc4-reschedule.json` · `uc4-reschedule-occurrence.json` | 4 | 단일 미팅 변경 / 한 회차만 변경 |
@@ -468,8 +468,8 @@ summary = zoom_uc.summarize_attendance(
    - 시간대 없는 시각(`ValueError`)은 JS `Date`가 항상 절대 시각이라 생기지 않는다.
    - 반복 미팅의 "끝은 날짜·횟수 중 하나"(`ValueError`)는 타입(`{ endDateTime } | { endTimes }`)이 막는다.
    - 실수로 시리즈 전체를 지우지 않게 하던 키워드 전용 `occurrence_id`는 `deleteMeeting(id, occurrenceId: string | null)`의 필수 인자로 옮겼다.
-   - `Meeting.has_recording` · `has_transcript`는 Python mapper가 채운 적이 없어(Pro 범위, 보류) 뺐다. `status` · `timezone` · `host_id`도 같은 기준으로 뺐다(위 표).
-   - 1절 유즈케이스 2의 "대기실·호스트 전 입장" 기본값은 Python `_meeting_body`에도 TS에도 구현돼 있지 않다(문서와 코드 불일치, `STUDIO_PORTING.md` 10절). `MeetingSchedule.settings`는 넘기는 흐름이 없어 뺐다.
+   - `Meeting.has_recording` · `has_transcript`는 Python mapper가 채운 적이 없어(Pro 범위, 보류) 뺐다(Python 모델에서도 2026-10-09 삭제. `samples/zoom/`의 옛 캡처에는 `false`로 남아 있다). `status` · `timezone` · `host_id`도 같은 기준으로 뺐다(위 표).
+   - 미팅 `settings`(대기실 등)는 Python·TS 어느 쪽도 보내지 않는다(Zoom 계정 기본값을 따른다). 1절에 있던 "대기실·호스트 전 입장" 문구는 코드·샘플에 없어 2026-10-09 지웠다. `MeetingSchedule.settings`도 넘기는 흐름이 없어 뺐다.
    - `start_url`은 `Meeting`에 넣지 않고 `getStartUrl`로만 받는다(Python은 `get_meeting` 원본 dict에서 꺼냈다).
    - "바꿀 값 없음"은 `AppError NO_CHANGES` 422.
 

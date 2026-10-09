@@ -359,7 +359,7 @@ doc = await slides_uc.read_presentation(slides, drive, presentation_id)
    | `client.create` · `get`, mapper `plain_text` · `speaker_notes` · `document_from_slides`, usecases `read_presentation` · `create_empty_presentation` | 이식하지 않음(유즈케이스 1~4가 쓰지 않는 배관) |
 
 2. **port 메서드**: `GoogleSlidesPort.replaceTags(presentationId, variables)`. `presentations.batchUpdate` 1회(`replaceAllText`, `matchCase`).
-3. **도구 매핑**: 그룹 파일 도구(`google_group_slides`).
+3. **도구 매핑**: 그룹 파일 도구(`google_slides`).
 4. **큐 작업**: 없음.
 5. **테스트**: 치환 요청 모양은 `google-editors.test.ts`, 복사→치환→공유·실패 처리는 `google-files.test.ts`(공통 흐름), 내보내기 형식은 `google-drive.test.ts`. `test_mapper.py` 4개(평문·노트)는 읽기를 이식하지 않아 옮기지 않았다. 실측: python-pptx로 만든 템플릿(태그 3개)을 변환 업로드 → 복사 → 치환 횟수 1·1·1.
 

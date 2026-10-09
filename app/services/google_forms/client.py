@@ -105,7 +105,3 @@ class FormsClient:
         if fields:
             params["fields"] = fields
         return await self._request("GET", f"{BASE_URL}/forms/{form_id}/responses", params=params or None)
-
-    async def get_response(self, form_id: str, response_id: str) -> dict:
-        """forms.responses.get (읽기 쿼터)."""
-        return await self._request("GET", f"{BASE_URL}/forms/{form_id}/responses/{response_id}")

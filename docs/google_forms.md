@@ -82,7 +82,7 @@
 | 9 | 응답을 Synsory로 가져와 문항별 분포·평균을 보여 준다 | (저장해 둔 질문 ID 매핑, 없으면 `forms.get`) → `responses.list` (`filter=timestamp >= 마지막 조회`, `pageToken`) → mapper가 응답 목록과 문항별 집계로 변환 | `collect_responses` / `summarize_responses` (구현·실측) |
 | 10 | 퀴즈 자동 채점 점수를 가져와 Synsory 성적에 반영한다 | `responses.list` (필터 없이 전체) → 응답마다 `totalScore`, 문항별 `grade{score, correct}` → 학생 이메일별 점수 반환 | `collect_quiz_scores` (구현·실측) |
 | 11 | 동료평가 응답을 학생별 평균 점수로 집계한다 | 3의 폼마다 `responses.list` → 격자 행 질문 ID를 조원으로 매핑 → 평가자·피평가자·항목별 점수 → 학생별 평균 반환 | `collect_peer_reviews` / `summarize_peer_reviews` (구현·실측) |
-| 12 | 응답 결과를 CSV·xlsx 파일로 받는다 | `responses.list` → Synsory 서버가 파일 생성. 9와 같은 Google 호출이고 그 외 호출은 없다 | `export_responses` (구현·실측) |
+| 12 | 응답 결과를 CSV 파일로 받는다(xlsx는 2026-10-09 제외) | `responses.list` → Synsory 서버가 파일 생성. 9와 같은 Google 호출이고 그 외 호출은 없다 | `export_responses` (구현·실측) |
 | 13 | 응답을 교수자 Drive의 스프레드시트로 내보낸다 | (저장해 둔 질문 ID 매핑, 없으면 `forms.get`) → `responses.list` → 처음: Sheets `create` (시트 이름 "응답") + Drive `files.update` (`addParents`=액티비티 폴더) → `values.update` 1회 (`RAW`, 헤더 + 전체 행). 다시 내보내기: `spreadsheets.get`(첫 시트 이름) → 지난번 열 범위까지 `values.clear` → `values.update` | `export_responses_to_sheet` (구현·실측. Sheets의 `create_empty_spreadsheet`·`write_values` 재사용) |
 
 **유즈케이스별 메모**
@@ -110,7 +110,7 @@
 - 10: 실측(2026-10-06, `raw-responses-list.json`): 퀴즈 폼은 모든 답에 `grade`가 붙는다. 맞힌 문항만 `{score, correct: true}`이고, **틀린 문항과 채점 대상이 아닌 문항이 똑같이 빈 객체 `{}`** 로 온다. 그래서 `collect_quiz_scores`는 `forms.get`의 배점으로 채점 문항을 가리고, 빈 `grade`는 0점·오답으로 채운다. 만점(`max_score`)은 배점 합이다.
 - 10: `lastSubmittedTime`은 채점 변경을 반영하지 않는다(레퍼런스 명시). 교수자가 UI에서 점수를 고친 뒤에는 증분 필터로 잡히지 않으므로 **점수 수집은 필터 없이 전체를 다시 읽는다.** 응답 수가 5,000개 이하면 호출 1회다.
 - 11: 격자 질문은 행마다 질문 ID가 따로 있다(10절 7항). 열 값 중 숫자만 점수로 쓴다. 결과는 피평가자 × 평가 항목 평균과 피평가자별 전체 평균(모든 점수의 평균)이다. 자기 평가 제외는 `reviewees`가 있을 때만 된다. 실측은 퀴즈 폼의 격자 질문 응답으로 했고(`uc11-peer-reviews.json`), 자기 평가 제외는 단위 테스트로 확인했다. 1에서 저장한 "행 질문 ID → 조원" 매핑으로 피평가자를 찾는다.
-- 12: Sheets 1.2절 결정에 따라 Sheets를 거치지 않고 Synsory 서버가 만든다. CSV는 Excel 한글 깨짐을 막으려고 UTF-8 BOM을 붙인다. xlsx는 `openpyxl`로 만들고(2026-10-06 의존성 추가) 모든 셀을 텍스트 형식으로 넣어 학번 앞자리 0을 지킨다. 제출 시각은 Asia/Seoul로 바꿔 쓴다. 폼은 Drive 내보내기가 안 된다(10절 11항).
+- 12: Sheets 1.2절 결정에 따라 Sheets를 거치지 않고 Synsory 서버가 만든다. CSV는 Excel 한글 깨짐을 막으려고 UTF-8 BOM을 붙인다. **xlsx는 2026-10-09 상현 결정으로 뺐다**(CSV가 Excel에서 바로 열리고, 스프레드시트가 필요하면 13번 시트 내보내기가 있다. TS에 xlsx 라이브러리를 더하지 않으려고. openpyxl 구현은 git 이력에 남음). 제출 시각은 Asia/Seoul로 바꿔 쓴다. 폼은 Drive 내보내기가 안 된다(10절 11항).
 - 13: UI의 "Sheets에 연결"을 대신하는 기능이다. 차이는 세 가지다. ① UI 연결 시트는 새 응답이 자동으로 쌓이지만, 13은 **호출한 시점의 사본**이다. 마감(7) 직후 한 번 내보내는 것을 기본으로 하고, 진행 중 갱신이 필요하면 Synsory가 다시 내보낸다. ② 앱이 만든 시트라 `drive.file`로 계속 다룰 수 있다. UI에서 연결한 시트는 Forms가 만든 파일이라 앱이 못 읽을 것으로 본다(12절). ③ 열 구성을 Synsory가 정한다.
 - 13: 열은 제출 시각, 이메일(5를 켠 경우), 점수(퀴즈인 경우), 질문별 한 열이다. 헤더는 질문 제목이다. 체크박스 답은 ", "로 이어 한 칸에 넣고, 격자 질문은 "질문 [행]"처럼 행마다 한 열로 편다. 값은 `RAW`로 쓴다. 그래야 학번처럼 앞자리가 0인 답이 숫자로 바뀌지 않는다(`docs/google_sheets.md` 10절 3항).
 - 13: 다시 내보낼 때는 같은 스프레드시트를 덮어쓴다. 서비스는 처음 결과의 `spreadsheet_id`와 `columns`(쓴 열 수)를 폼 ID와 함께 저장하고, 다음 호출에 `previous_columns`로 넘긴다. `values.clear`는 `max(이번 열 수, previous_columns)`까지만 지운다. 1행 너비로 추정하지 않는 것은 교수자가 오른쪽에 덧붙인 메모 열까지 지우게 되기 때문이다. 실측(2026-10-06): J열 메모가 다시 내보내기 뒤에도 남았다(`uc13-export-to-sheet.json`). 값은 RAW 문자열이라 점수도 텍스트로 들어간다. 시트에서 숫자 정렬이 필요하면 점수 열만 `USER_ENTERED`로 쓰는 것을 검토한다. 응답이 많아도 쓰기는 1회라 Sheets 쓰기 쿼터(사용자당 분당 60)에 걸리지 않는다.
@@ -223,7 +223,7 @@ Base URL: `https://forms.googleapis.com/v1`. Discovery: `https://forms.googleapi
 | 9 응답 수집(증분 경계), 문항별 집계 | `uc9-collect-responses.json`, `uc9-summary.json` |
 | 10 퀴즈 점수 | `uc10-quiz-scores.json` |
 | 11 동료평가 집계 | `uc11-peer-reviews.json` |
-| 12 CSV·xlsx | `uc12-export-file.json` |
+| 12 CSV | `uc12-export-file.json` |
 | 13 시트로 내보내기(처음, 다시) | `uc13-export-to-sheet.json` |
 | 참고: `responses.list` 원본 | `raw-responses-list.json` |
 
@@ -251,7 +251,7 @@ Base URL: `https://forms.googleapis.com/v1`. Discovery: `https://forms.googleapi
 | --- | --- | --- |
 | `id` | `responseId` | 멱등 처리 키 |
 | `respondent_email` | `respondentEmail` | 이메일 수집을 켠 폼만 |
-| `created_at` / `submitted_at` | `createTime` / `lastSubmittedTime` | `submitted_at`은 채점 변경을 반영하지 않는다 |
+| `submitted_at` | `lastSubmittedTime` | 채점 변경을 반영하지 않는다. `createTime`은 읽는 흐름이 없어 모델에서 뺐다(2026-10-09) |
 | `answers` | `answers{questionId: textAnswers.answers[].value}` | 질문 ID → 문자열 목록. 체크박스는 여러 개, 격자는 행 질문 ID마다 하나 |
 | `file_ids` | `fileUploadAnswers.answers[].fileId` | 파일 업로드 질문(API로 못 만들지만 UI 폼에는 있을 수 있다) |
 | `total_score` | `totalScore` | 퀴즈만 |
@@ -418,7 +418,7 @@ for s in await forms_uc.collect_quiz_scores(forms, quiz_form_id):
 scores = await forms_uc.collect_peer_reviews(forms, group_form_id, reviewees=saved_reviewees)
 
 # 12. 파일(Synsory 서버가 생성)
-exported = await forms_uc.export_responses(forms, form_id, fmt="xlsx")   # csv | xlsx
+exported = await forms_uc.export_responses(forms, form_id)   # CSV(UTF-8 BOM)
 
 # 13. 교수자 Drive 시트로(한 방향 사본). 처음 결과의 spreadsheet_id·columns를 저장해 다음에 넘긴다.
 sheets = SheetsClient(access_token)
@@ -440,7 +440,7 @@ again = await forms_uc.export_responses_to_sheet(forms, drive, sheets, form_id, 
    | `core/models.py` `FormSubmission` · `AnswerGrade`, mapper `question_specs` 원소 | `packages/domain/src/google-forms-tool.ts` `FormSubmission` · `AnswerGrade` · `QuestionSpec` |
    | usecases `summarize` · `summarize_peer_reviews` · `response_table` · `member_labels` · `peer_review_items`, mapper `graded_questions`, `get_submission_status`의 대조 부분 | 같은 파일 `summarize` · `summarizePeerReviews` · `responseTable` · `memberLabels` · `peerReviewItems` · `gradedQuestions` · `submissionStatus`, CSV는 `toCsv` |
    | usecases `read_form` · `create_form` · `open_form` · `close_form` · `restrict_responders` · `create_group_forms` · `collect_responses` · `summarize_responses` · `get_submission_status` · `collect_quiz_scores` · `collect_peer_reviews` · `export_responses`(csv) · `create_form_from_template` | `packages/application/src/google-forms.ts` 같은 이름(camelCase). `export_responses`는 `exportResponsesCsv` |
-   | `export_responses`(xlsx) | 보류. xlsx 라이브러리 의존성 결정 뒤(`STUDIO_PORTING.md` 결정 필요 L) |
+   | `export_responses`(xlsx) | 제외(2026-10-09 결정 30: CSV만). Python에서도 삭제 |
    | `export_responses_to_sheet`(유즈케이스 13) | `google-forms.ts` `exportResponsesToSheet(forms, drive, sheets, formId, …)` (2026-10-09, Sheets 이식 때). 지울 범위는 `sheets.clearColumns(…, max(이번 열 수, previousColumns))` |
    | `update_settings` · `copy_form` · `list_permissions` · `allow_anyone_with_link` · `remove_anyone_with_link` · `set_publish_state` · `reopen_form` | 이식하지 않음. port 호출 한두 개라 호출부에서 바로 쓴다(`forms.update` + `readForm`, `drive.deletePermission(id, ANYONE_WITH_LINK_PERMISSION_ID)`, 재개는 `openForm`). "링크가 있는 모든 사용자" 다시 열기는 쓰는 흐름이 없어 port에서도 뺐다 |
    | `create_raw` · `create_via_drive` | 이식하지 않음(실측용 배관) |
@@ -469,7 +469,7 @@ again = await forms_uc.export_responses_to_sheet(forms, drive, sheets, form_id, 
 
    조별 동료평가 폼 하나의 호출(조원 m명): Forms `create`·`batchUpdate`·`setPublishSettings`·`get` 4 + Drive 폴더 이동 1 + 응답자 배치 1 + 링크 권한 삭제 1 = 7회(이식 전 Python은 6 + m + 1 = 11회, m=4). 실측 2026-10-09: 호출당 평균 약 1.2~1.3초.
 
-3. **도구 매핑**: `google_form` 도구(`STUDIO_PORTING.md` 7절). `external_refs` 항목은 폼마다 `ExternalDocument` + `responder_url` + `questions`(저장해 두면 `forms.get` 없이 해석) + 동료평가면 `reviewees` + 수집 `cursor`. 응답은 `source_key` = `FormSubmission.id`, `payload` = `FormSubmission`, `identity` = `respondent_email`.
+3. **도구 매핑**: `google_forms` 도구(`STUDIO_PORTING.md` 7절). `external_refs` 항목은 폼마다 `ExternalDocument` + `responder_url` + `questions`(저장해 두면 `forms.get` 없이 해석) + 동료평가면 `reviewees` + 수집 `cursor`. 응답은 `source_key` = `FormSubmission.id`, `payload` = `FormSubmission`, `identity` = `respondent_email`.
 4. **큐 작업**: `google-forms-collect`(group = 폼 ID). `collectResponses(since = 저장한 cursor)` → `CollectionService.commit` 100개씩 → 새 cursor 저장. 퀴즈 점수는 커서 없이 전체 재조회(10절 17·18항).
 5. **테스트**: `tests/google_forms/test_mapper.py` 5개 + `test_usecases.py` 19개 중 17개 → `studio-port/tests/unit/google-forms.test.ts`(빠진 1개: `email_collection` 값 검사는 타입으로 대체. CSV·xlsx 테스트는 CSV만. 시트 내보내기 테스트는 Sheets 이식 때 `google-editors.test.ts`로). 추가: 척도 `low` 생략(Python에도 같은 테스트 추가), 소수 초 정렬. 흐름 테스트의 가짜 port는 `tests/fixtures/fake-port.ts`, 응답 페이지는 URL별로 답하는 가짜 fetch. 실측 스크립트 `studio-port/scripts/live-google-forms.ts`는 이식하지 않는다.
 

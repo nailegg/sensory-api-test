@@ -30,9 +30,19 @@ export interface DrivePermission {
 export type UploadSource = 'markdown' | 'docx' | 'pptx' | 'xlsx' | 'csv';
 export type UploadTarget = 'doc' | 'slides' | 'sheet';
 
-// files.export 형식. Drive에는 Slides 이미지 형식이 없고, Sheets csv·tsv는 첫 시트만 나온다.
+// files.export 형식. 각 서비스 1절 유즈케이스 4에 적힌 것만: Docs docx·pdf, Slides pptx·pdf·txt·odp,
+// Sheets xlsx·pdf·csv·tsv·ods·zip. Drive에는 Slides 이미지 형식이 없고, Sheets csv·tsv는 첫 시트만 나온다.
 export type ExportFormat =
-  'docx' | 'pdf' | 'txt' | 'md' | 'html' | 'pptx' | 'odp' | 'xlsx' | 'csv' | 'tsv' | 'ods' | 'zip';
+  | 'docx'
+  | 'pdf'
+  | 'pptx'
+  | 'txt'
+  | 'odp'
+  | 'xlsx'
+  | 'csv'
+  | 'tsv'
+  | 'ods'
+  | 'zip';
 
 export interface ExportedFile {
   file_id: string;
@@ -65,11 +75,8 @@ export interface GoogleDrivePort {
   // 여러 명에게 편집(writer) 권한. 같은 파일의 권한 변경은 동시에 하면 안 되므로(마지막 쓰기만 남음)
   // Drive 배치 요청 한 번에 담는다(공식 권장: 순차 또는 배치). 사람별로 성공·실패를 돌려준다.
   // 같은 이메일을 다시 공유하면 기존 permission이 온다(재시도 안전).
-  shareWithUsers(
-    fileId: string,
-    emails: string[],
-    options?: { notify?: boolean; message?: string },
-  ): Promise<PermissionResult[]>;
+  // 알림 메일은 보내지 않는다. 명단 이메일은 Google 계정을 전제한다(아니면 그 사람만 400으로 실패, 2026-10-09 결정).
+  shareWithUsers(fileId: string, emails: string[]): Promise<PermissionResult[]>;
   // Forms 응답자 권한(view=published). 알림은 보내지 않는다. 배치 요청 하나.
   shareAsResponders(fileId: string, emails: string[]): Promise<PermissionResult[]>;
   // 편집·보기 권한만 온다(Forms 응답자 권한 view=published는 안 온다).

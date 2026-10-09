@@ -22,7 +22,7 @@ Drive API 쪽 내용(파일 메타데이터, 폴더, 내보내기, 변경 감지
 **유즈케이스별 메모**
 
 - 1: 강의 폴더가 교수자가 Drive 웹에서 직접 만든 폴더여도 ID만 알면 그 안에 만들 수 있다(`docs/google_drive.md` 10절 실측). 폴더 ID 검증은 불가능하므로 잘못된 ID면 404.
-- 2: 템플릿은 **Synsory가 보관하는 Markdown 텍스트**와 제목 포맷 문자열로 가정한다(플레이스홀더 `{{team_name}}`, `{{activity_name}}`, `{{due}}`). 교수자가 Drive에 이미 가진 Google Doc을 템플릿으로 쓰는 경로는 **Google Picker**로 가능해졌다(`docs/google_drive.md` 2.1절). **2026-10-04 상현 승인으로 경로 추가**: `create_group_documents(template_document_id=…)`가 Picker로 고른 문서를 그룹마다 Drive `files.copy` → Docs `batchUpdate`(`replaceAllText`, `matchCase`) → 공유한다(공통 함수 `google_drive.usecases.create_group_files_from_template`, Slides·Sheets와 같은 흐름. Docs 쪽은 `replace_tags`만). `body_template`(Markdown)과 `template_document_id` 중 하나만 준다. 원본은 수정하지 않고 복사본만 치환한다. 실측: Picker 전 404 확인(`uc2-template-picker-before.json`), Picker 후 성공은 보류(Slides로 확인됨). 기존 Markdown 경로는 그대로다. 생성 방식은 Markdown 변환(A)을 기본으로 하고, Docs `create`+`batchUpdate`(B)를 비교용으로 함께 구현한다.
+- 2: 템플릿은 **Synsory가 보관하는 Markdown 텍스트**와 제목 포맷 문자열로 가정한다. studio 이식본에는 docx 파일을 변환 업로드해 템플릿으로 쓰는 경로도 있다(Slides pptx·Sheets xlsx와 같은 구조, `createFromContent({ source: 'docx', target: 'doc' })` 1회 → 그룹마다 복사. 2026-10-09 지원 확정, Python에는 없음)(플레이스홀더 `{{team_name}}`, `{{activity_name}}`, `{{due}}`). 교수자가 Drive에 이미 가진 Google Doc을 템플릿으로 쓰는 경로는 **Google Picker**로 가능해졌다(`docs/google_drive.md` 2.1절). **2026-10-04 상현 승인으로 경로 추가**: `create_group_documents(template_document_id=…)`가 Picker로 고른 문서를 그룹마다 Drive `files.copy` → Docs `batchUpdate`(`replaceAllText`, `matchCase`) → 공유한다(공통 함수 `google_drive.usecases.create_group_files_from_template`, Slides·Sheets와 같은 흐름. Docs 쪽은 `replace_tags`만). `body_template`(Markdown)과 `template_document_id` 중 하나만 준다. 원본은 수정하지 않고 복사본만 치환한다. 실측: Picker 전 404 확인(`uc2-template-picker-before.json`), Picker 후 성공은 보류(Slides로 확인됨). 기존 Markdown 경로는 그대로다. 생성 방식은 Markdown 변환(A)을 기본으로 하고, Docs `create`+`batchUpdate`(B)를 비교용으로 함께 구현한다.
 - 2: 공유는 그룹원 이메일이 Google 계정이어야 한다(실측: 아니면 400 `invalidSharingRequest`, 알림 메일을 켜야 초대 가능). 같은 이메일 재공유는 200으로 멱등. 공유 알림 메일은 기본 끔(`sendNotificationEmail=false`)이고 알림 없이도 URL로 바로 열린다. 7절 실측 표.
 - 3: **권한 낮추기 방식으로 확정(2026-10-03 상현).** 교수자(owner)는 마감 뒤에도 웹·API 모두 편집 가능, 학생은 보기·댓글만. 조교 등은 `keep_emails`로 제외. 검토했다가 뺀 방식: ① 문서 잠금(`contentRestrictions.readOnly`)은 동작하지만 교수자도 API 편집이 403이라 제외. ② `permissions.create`의 `expirationTime`은 개인 계정에서 403 `cannotSetExpiration`으로 불가. "비활성화 = 읽기·댓글은 유지"다. Google에 예약 기능이 없으므로 due 시각에 호출하는 스케줄러는 Synsory 서비스 쪽 책임이고 여기서는 `close_submissions`만 제공한다(10절 11항).
 - 4: Turnitin API 연동은 이 레포 범위 밖이다. 여기서는 내보낸 바이트와 MIME, 파일명을 돌려주는 데까지 한다. 3번 잠금 뒤에 내보내야 제출 시점 내용이 고정된다.
@@ -309,7 +309,7 @@ doc = await docs_uc.read_document(docs, drive, document_id)
    Python과 달라진 점: `create_group_documents`의 "템플릿 둘 중 하나만"(`ValueError`)은 함수를 둘로 나눠 생기지 않는다.
 
 2. **port 메서드**: `GoogleDocsPort.replaceTags(documentId, variables)` → 태그별 치환 횟수. `documents.batchUpdate` 1회(`replaceAllText`, `matchCase`, 탭 지정 없음 = 모든 탭).
-3. **도구 매핑**: 그룹 파일 도구(`STUDIO_PORTING.md` 7절 `google_group_docs`).
+3. **도구 매핑**: 그룹 파일 도구(`STUDIO_PORTING.md` 7절 `google_docs`).
 4. **큐 작업**: 없음.
 5. **테스트**: `tests/google_docs/test_usecases.py`의 Drive 흐름 테스트는 `google-files.test.ts`, 템플릿 경로·치환 요청은 `studio-port/tests/unit/google-editors.test.ts`, Markdown 경로는 같은 파일의 `createGroupFilesFromContent`. `test_mapper.py`(본문 평문) 5개는 읽기를 이식하지 않아 옮기지 않았다.
 

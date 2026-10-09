@@ -136,7 +136,6 @@ class ShareRequest(BaseModel):
     role: str = "writer"
     notify: bool = False
     message: str | None = None
-    expiration_time: str | None = None  # RFC3339. 3안 검증용
 
 
 @router.post("/share")
@@ -144,7 +143,7 @@ async def share(req: ShareRequest, drive: DriveClient = Depends(_drive)):
     results = []
     for email in req.emails:
         try:
-            perm = await drive.share_with_user(req.document_id, email, req.role, req.notify, req.message, req.expiration_time)
+            perm = await drive.share_with_user(req.document_id, email, req.role, req.notify, req.message)
             results.append({"email": email, "ok": True, "permission": perm})
         except DriveApiError as e:
             results.append({"email": email, "ok": False, "status": e.status, "reason": e.reason, "message": e.message})

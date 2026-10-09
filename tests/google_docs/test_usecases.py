@@ -36,7 +36,7 @@ class FakeDrive:
         self.updated = getattr(self, "updated", []) + [(permission_id, role)]
         return {"id": permission_id, "role": role}
 
-    async def share_with_user(self, file_id, email, role="reader", notify=False, message=None, expiration_time=None):
+    async def share_with_user(self, file_id, email, role="reader", notify=False, message=None):
         if email == self.fail_email:
             raise DriveApiError(400, {"error": {"message": "Invalid email", "errors": [{"reason": "invalidSharingRequest"}]}})
         self.shared.append((file_id, email, role))

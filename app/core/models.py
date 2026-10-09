@@ -75,8 +75,6 @@ class Meeting(BaseModel):
     host_id: str | None = None
     uuid: str | None = Field(default=None, description="미팅 인스턴스 식별자. 반복 미팅은 회차마다 새로 생긴다")
     occurrences: list[MeetingOccurrence] = Field(default_factory=list, description="반복 미팅(type 8)의 회차. 최대 50개")
-    has_recording: bool = False
-    has_transcript: bool = False
 
 
 class AnswerGrade(BaseModel):
@@ -98,7 +96,6 @@ class FormSubmission(BaseModel):
     form_id: str
     provider: Provider = Provider.GOOGLE
     respondent_email: str | None = Field(default=None, description="이메일 수집(VERIFIED·RESPONDER_INPUT)을 켠 폼에서만 온다")
-    created_at: datetime | None = None
     submitted_at: datetime | None = Field(default=None, description="마지막 제출 시각(lastSubmittedTime). 채점 변경은 반영되지 않는다")
     answers: dict[str, list[str]] = Field(default_factory=dict, description="질문 ID → 답 문자열 목록(체크박스는 여러 개)")
     file_ids: dict[str, list[str]] = Field(default_factory=dict, description="파일 업로드 질문 ID → Drive 파일 ID 목록")

@@ -38,7 +38,7 @@ class FakeDrive:
     async def get_file(self, file_id, fields=None):
         return {"id": file_id, "name": "설문", "mimeType": "application/vnd.google-apps.form"}
 
-    async def move_file(self, file_id, to_folder_id, from_folder_id=None):
+    async def move_file(self, file_id, to_folder_id):
         self.calls.append(("move", file_id, to_folder_id))
         return {}
 
@@ -241,18 +241,12 @@ async def test_quiz_scores_fill_wrong_answers_with_zero():
 
 
 @pytest.mark.asyncio
-async def test_export_csv_bom_and_xlsx_text_cells():
+async def test_export_csv_bom_keeps_leading_zero():
     forms = FakeFormsResponses(RESP_FORM, PAGES)
-    exported = await usecases.export_responses(forms, "f1", "csv")
+    exported = await usecases.export_responses(forms, "f1")
     assert exported.content.startswith(b"\xef\xbb\xbf") and exported.filename == "퀴즈 응답.csv"
     rows = list(csv.reader(io.StringIO(exported.content.decode("utf-8-sig"))))
     assert rows[1][3] == "0123"
-    from openpyxl import load_workbook
-
-    ws = load_workbook(io.BytesIO((await usecases.export_responses(forms, "f1", "xlsx")).content)).active
-    assert ws["D2"].value == "0123" and ws["D2"].number_format == "@"
-    with pytest.raises(ValueError):
-        await usecases.export_responses(forms, "f1", "pdf")
 
 
 class FakeSheets:

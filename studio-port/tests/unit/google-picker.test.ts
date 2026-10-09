@@ -1,8 +1,8 @@
 import { expect, it } from 'vitest';
-import { acceptPickedFiles, type GoogleDrivePort } from '../../packages/application/src/index.ts';
-import { pickedFiles, pickerSession } from '../../packages/contracts/src/index.ts';
+import { acceptPickedFile, type GoogleDrivePort } from '../../packages/application/src/index.ts';
+import { pickedFile, pickerSession } from '../../packages/contracts/src/index.ts';
 import { documentFromDriveFile, pickerAppId } from '../../packages/infrastructure/src/index.ts';
-import { pickGoogleFiles, type PickerApi } from '../../packages/ui/src/index.ts';
+import { pickGoogleFile, type PickerApi } from '../../packages/ui/src/index.ts';
 import { fakePort, notFound } from '../fixtures/fake-port.ts';
 
 // google.picker 흉내. 빌더 호출을 기록하고, setVisible 때 정해 둔 응답들을 콜백에 넘긴다.
@@ -16,7 +16,6 @@ function fakePicker(responses: { action: string; docs?: { id: string }[] }[]) {
     setOrigin = (v: string) => (calls.push(['origin', v]), this);
     setTitle = (v: string) => (calls.push(['title', v]), this);
     addView = (v: unknown) => (calls.push(['view', v]), this);
-    enableFeature = (v: string) => (calls.push(['feature', v]), this);
     setCallback = (cb: Builder['callback']) => ((this.callback = cb), this);
     build = () => ({ setVisible: () => responses.forEach((r) => this.callback(r)) });
   }
@@ -33,7 +32,6 @@ function fakePicker(responses: { action: string; docs?: { id: string }[] }[]) {
     PickerBuilder: Builder,
     DocsView: View,
     ViewId: { DOCS: 'all' },
-    Feature: { MULTISELECT_ENABLED: 'multi' },
     Action: { PICKED: 'picked', CANCEL: 'cancel' },
   } as unknown as PickerApi;
   return { api, calls };
@@ -48,20 +46,16 @@ const OPTIONS = {
 };
 
 it('opens the Picker with token, key, appId and a MIME-filtered view; ignores "loaded"', async () => {
-  const p = fakePicker([
-    { action: 'loaded' },
-    { action: 'picked', docs: [{ id: 'f1' }, { id: 'f2' }] },
-  ]);
-  const ids = await pickGoogleFiles({ ...OPTIONS, multiple: true }, async () => p.api);
-  expect(ids).toEqual(['f1', 'f2']);
+  const p = fakePicker([{ action: 'loaded' }, { action: 'picked', docs: [{ id: 'f1' }] }]);
+  const id = await pickGoogleFile(OPTIONS, async () => p.api);
+  expect(id).toBe('f1');
   expect(
-    p.calls.filter((c) => ['token', 'key', 'appId', 'origin', 'feature'].includes(String(c[0]))),
+    p.calls.filter((c) => ['token', 'key', 'appId', 'origin'].includes(String(c[0]))),
   ).toEqual([
     ['token', 'tok'],
     ['key', 'key'],
     ['appId', '123456'],
     ['origin', 'http://localhost:5173'],
-    ['feature', 'multi'],
   ]);
   const view = p.calls.find((c) => c[0] === 'view')?.[1] as { state: Record<string, unknown> };
   expect(view.state).toEqual({
@@ -72,9 +66,9 @@ it('opens the Picker with token, key, appId and a MIME-filtered view; ignores "l
   });
 });
 
-it('returns an empty list when cancelled', async () => {
+it('returns null when cancelled', async () => {
   const p = fakePicker([{ action: 'cancel' }]);
-  expect(await pickGoogleFiles(OPTIONS, async () => p.api)).toEqual([]);
+  expect(await pickGoogleFile(OPTIONS, async () => p.api)).toBeNull();
 });
 
 it('derives the project number from the web client ID unless set', () => {
@@ -83,7 +77,7 @@ it('derives the project number from the web client ID unless set', () => {
   expect(pickerAppId('not-a-number.apps.googleusercontent.com')).toBeNull();
 });
 
-it('accepts only picked files the server can see and that are allowed kinds', async () => {
+it('accepts only a picked file the server can see and that is an allowed kind', async () => {
   const drive = fakePort<GoogleDrivePort>({
     getFile: async (id) => {
       if (id === 'not-via-picker') throw notFound();
@@ -91,10 +85,8 @@ it('accepts only picked files the server can see and that are allowed kinds', as
       return documentFromDriveFile({ id, name: id, mimeType: mime, trashed: id === 'trashed' });
     },
   });
-  const results = await acceptPickedFiles(
-    drive,
-    ['deck', 'pdf', 'trashed', 'not-via-picker'],
-    ['slides'],
+  const results = await Promise.all(
+    ['deck', 'pdf', 'trashed', 'not-via-picker'].map((id) => acceptPickedFile(drive, id, ['slides'])),
   );
   expect(results.map((r) => [r.file_id, r.document?.kind ?? null, r.error?.code ?? null])).toEqual([
     ['deck', 'slides', null],
@@ -104,7 +96,7 @@ it('accepts only picked files the server can see and that are allowed kinds', as
   ]);
 });
 
-it('picker contracts reject a non-numeric app id and empty picks', () => {
+it('picker contracts reject a non-numeric app id and an empty file id', () => {
   const session = {
     access_token: 't',
     expires_at: '2026-10-09T10:00:00Z',
@@ -113,5 +105,5 @@ it('picker contracts reject a non-numeric app id and empty picks', () => {
   };
   expect(pickerSession.parse(session)).toEqual(session);
   expect(pickerSession.safeParse({ ...session, app_id: 'my-project' }).success).toBe(false);
-  expect(pickedFiles.safeParse({ file_ids: [] }).success).toBe(false);
+  expect(pickedFile.safeParse({ file_id: '' }).success).toBe(false);
 });

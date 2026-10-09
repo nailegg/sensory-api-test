@@ -252,7 +252,7 @@ Docs·Sheets·Slides 변경 감지는 모두 여기서 한다. 테스트는 이 
 
 - `permissions.create` `type=user, role=writer`는 `drive.file`로 앱이 만든 파일에 동작한다. 소유자는 `role=owner` 권한 건으로 따로 있어 편집자만 골라 바꿀 수 있다.
 - 같은 이메일을 다시 공유하면 200 + 기존 permission id. 재시도에 안전하다.
-- Google 계정이 아닌 이메일은 `sendNotificationEmail=false`면 400 `invalidSharingRequest`. 초대하려면 알림을 켜야 한다.
+- Google 계정이 아닌 이메일은 `sendNotificationEmail=false`면 400 `invalidSharingRequest`. 초대하려면 알림을 켜야 한다(미실측). **2026-10-09 결정: 알림 옵션을 두지 않고 명단 이메일은 Google 계정을 전제한다.** 비 Google 주소는 그 사람만 실패로 기록돼 교수자가 본다. studio 쪽 안내 문구가 필요하다.
 - `expirationTime`은 개인 Gmail 소유 파일에서 403 `cannotSetExpiration`. Workspace에서만 될 것으로 보이며, 서비스가 개인 계정 사용자를 받는다면 쓸 수 없다.
 - `permissions.list` 응답에 이메일·표시 이름이 들어 있다. 샘플 저장 시 마스킹.
 
@@ -301,9 +301,10 @@ except DriveApiError as e:
    | `usecases.render_template` · `group_variables` | `packages/domain/src/integrations.ts` `renderTemplate` · `groupVariables` |
    | `usecases.share_file` · `create_group_files_from_template` · `downgrade_editors` · `close_submissions` · `restore_editors` | `packages/application/src/google-files.ts` 같은 이름(camelCase). 그룹·파일끼리는 동시에 4개씩(`concurrency.ts` `mapConcurrently`, 실측 6개 조 기준 순차 대비 Forms 약 6배·Docs 약 5배), 공유는 배치, 같은 파일의 권한 낮추기·되돌리기는 순서대로(10절). `DriveApiError`를 잡던 자리는 `AppError`를 잡는다(application은 infrastructure를 import할 수 없음). `replace_errors` 인자는 없앴다: 호출하던 Docs·Slides가 자기 API 오류만 넘겼고, TS에서는 그것도 `AppError`라 같은 동작이다. `ShareResult.ok`는 `error === null`로 대신한다 |
    | `usecases.get_document_meta` · `create_folder` · `move_to_trash` · `export_file` | port 메서드 하나씩이라 application 함수를 두지 않는다(`getFile` · `createFolder` · `trashFile` · `exportFile`) |
-   | `picker.py` 테스트 페이지(JS) + `config.picker_app_id` | 결정 H(서버가 Picker 열 때만 짧은 수명 토큰 전달, `STUDIO_PORTING.md` 6절). `packages/ui/src/google-picker.ts` `pickGoogleFiles`(브라우저), `packages/contracts/src/google-picker.ts` `pickerSession`·`pickedFiles`, `packages/application/src/google-picker.ts` `acceptPickedFiles`(고른 뒤 서버 접근·종류 확인, 테스트 페이지의 "서버 files.get 확인"), `packages/infrastructure/src/google-picker.ts` `pickerAppId`. 단위 테스트는 가짜 `google.picker`로. 실제 브라우저 확인은 Python 테스트 페이지 실측(2.1절)이 근거이고 TS 모듈은 미실측 |
-   | `client.set_read_only` | 이식하지 않음. 마감은 권한 낮추기로 정했다(10절 편집 잠금) |
-   | `client.rename_file` · `delete_file` · `create_empty_native_file` · `get_start_page_token` · `list_changes`, usecases `list_app_files` | 이식하지 않음. 어떤 흐름도 쓰지 않는다(`create_empty_native_file`은 Forms 실험용, `list_app_files`는 router 디버그용. `listFiles`로 옮겼다가 2026-10-09 karpathy 재검토로 뺌). 필요해지면 Python client를 보고 추가 |
+   | `picker.py` 테스트 페이지(JS) + `config.picker_app_id` | 결정 H(서버가 Picker 열 때만 짧은 수명 토큰 전달, `STUDIO_PORTING.md` 6절). `packages/ui/src/google-picker.ts` `pickGoogleFiles`(브라우저), `packages/contracts/src/google-picker.ts` `pickerSession`·`pickedFile`, `packages/application/src/google-picker.ts` `acceptPickedFile`(고른 뒤 서버 접근·종류 확인, 테스트 페이지의 "서버 files.get 확인"). 템플릿은 활동당 한 파일이라 다중 선택은 없다(2026-10-09), `packages/infrastructure/src/google-picker.ts` `pickerAppId`. 단위 테스트는 가짜 `google.picker`로. 실제 브라우저 확인은 Python 테스트 페이지 실측(2.1절)이 근거이고 TS 모듈은 미실측 |
+   | `client.set_read_only` | 이식하지 않음. 마감은 권한 낮추기로 정했다(10절 편집 잠금). Python에서도 2026-10-09 삭제(실측 기록은 10절·`samples/google_docs/uc3-lock-for-submission.json`에 남음) |
+   | `client.rename_file` · `delete_file` · `get_start_page_token` · `list_changes`, `share_with_user(expiration_time)` · `move_file(from_folder_id)` | 어떤 흐름도 쓰지 않아 **Python에서도 2026-10-09 삭제**. 필요해지면 git 이력(ac11146 이전)이나 공식 문서를 보고 다시 쓴다 |
+   | `client.create_empty_native_file`, usecases `list_app_files` | 이식하지 않음. `create_empty_native_file`은 Forms 실험용(`create_via_drive`), `list_app_files`는 이 레포 router의 실측 보조(`GET /google/drive/files`)라 Python에는 남긴다(`listFiles`로 옮겼다가 2026-10-09 뺌) |
 
 2. **port 메서드** (`packages/application/src/integration-ports.ts` `GoogleDrivePort`)
 
@@ -313,9 +314,9 @@ except DriveApiError as e:
    | `createFolder(name, parent?)` | `files.create` | `create_folder` |
    | `createFromContent({ name, content, source, target, parentFolderId? })` | `files.create` multipart 업로드(5MB 이하) | `create_from_content`. MIME 대신 `source` = `'markdown' \| 'docx' \| 'pptx' \| 'xlsx' \| 'csv'`, `target` = `'doc' \| 'slides' \| 'sheet'` |
    | `copyFile(id, name, parent?)` · `moveFile(id, toFolderId)` | `files.copy` · `files.update` `addParents` | 같은 이름. `removeParents`는 쓰는 흐름이 없어 뺐다(단일 부모라 `addParents`만으로 옮겨진다, 2026-10-09 실측) |
-   | `exportFile(id, format)` | `files.get` + `files.export` | usecase `export_file`. 파일 종류별 형식표를 어댑터가 고르고, 안 되는 형식은 `AppError UNSUPPORTED_EXPORT_FORMAT` |
+   | `exportFile(id, format)` | `files.get` + `files.export` | usecase `export_file`. 형식은 각 서비스 1절 유즈케이스 4에 적힌 것만(Docs docx·pdf. Python의 txt·md·html은 안 옮김, 2026-10-09). 안 되는 형식은 `AppError UNSUPPORTED_EXPORT_FORMAT` |
    | `trashFile` | `files.update` | 같은 이름 |
-   | `shareWithUsers(id, emails, { notify, message })` → 사람별 `PermissionResult`(항상 writer) | `permissions.create`를 **배치 요청** 하나로(실패한 사람만 단건 재시도) | `share_with_user`를 사람마다 부르던 것. `expiration_time`은 개인 계정에서 403이고 쓰는 흐름이 없어 뺐다 |
+   | `shareWithUsers(id, emails)` → 사람별 `PermissionResult`(항상 writer, 알림 없음) | `permissions.create`를 **배치 요청** 하나로(실패한 사람만 단건 재시도) | `share_with_user`를 사람마다 부르던 것. `expiration_time`은 개인 계정에서 403이고 쓰는 흐름이 없어 뺐다 |
    | `shareAsResponders(id, emails)` | 같음, `view=published` | `share_as_responder`. 알림은 항상 보내지 않는다. "링크가 있는 모든 사용자" 다시 열기(`email=None`)는 쓰는 흐름이 없어 뺐다 |
    | `listPermissions(id)` · `updatePermissionRole` · `deletePermission` | `permissions.*` | 같은 이름. `DrivePermission`은 흐름이 읽는 `id` · `type` · `role` · `email`만. Forms 응답자 권한(`view=published`)은 목록에 안 온다(`includePermissionsForView` 옵션은 쓰는 흐름이 없어 2026-10-09 뺌) |
 

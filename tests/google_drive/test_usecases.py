@@ -19,7 +19,7 @@ class FakeDrive:
         self.copied.append({"source": file_id, "name": name, "parent": parent_folder_id})
         return {"id": f"copy-{len(self.copied)}", "name": name, "mimeType": "application/vnd.google-apps.spreadsheet", "parents": [parent_folder_id]}
 
-    async def share_with_user(self, file_id, email, role="reader", notify=False, message=None, expiration_time=None):
+    async def share_with_user(self, file_id, email, role="reader", notify=False, message=None):
         self.shared.append((file_id, email, role))
         return {"id": f"perm-{email}", "role": role}
 

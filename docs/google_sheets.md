@@ -431,7 +431,7 @@ doc = await sheets_uc.read_spreadsheet(sheets, drive, spreadsheet_id, include_va
    | `writeValues(id, sheetTitle, cellRange, values)` | `values.update` RAW | `write_values` |
    | `clearColumns(id, sheetTitle, columns)` | `values.clear` `A:{열}` | `clear_values` |
 
-3. **도구 매핑**: 그룹 파일 도구(`google_group_sheets`). 유즈케이스 5(마감 후 값 읽기)는 `readValues` 결과를 응답으로 저장한다(`source_key` = 파일 ID, 결정 필요).
+3. **도구 매핑**: 그룹 파일 도구(`google_sheets`). 유즈케이스 5(마감 후 값 읽기)는 `readValues` 결과를 응답으로 저장한다(`source_key` = 파일 ID, 결정 필요).
 4. **큐 작업**: 없음(값 읽기는 마감 시각 작업에서 부른다).
 5. **테스트**: `tests/google_sheets/test_mapper.py` 좌표 중 열 문자·A1 2개 + `test_usecases.py` 중 치환 요청·시트 목록·값 읽기·csv 방식 → `studio-port/tests/unit/google-editors.test.ts`(GridRange·보호 범위·잠금 케이스는 보호 범위를 빼면서 같이 뺌). 복사 방식·실패 계속은 `google-files.test.ts`(공통 흐름), 내보내기 형식은 `google-drive.test.ts`. 옮기지 않음: 평문·Document 변환 4개(읽기 미이식), "둘 중 하나만" 1개(함수 분리). 실측(openpyxl 템플릿): 두 시트·수식 안 태그 치환, 텍스트 서식 `0123` 유지, 복사본 `sheetId`가 0이 아님, CSV 방식은 `0123` → `123`(10절 12항과 같음).
 

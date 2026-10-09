@@ -91,11 +91,10 @@ class DriveClient:
         resp = await self._request("GET", f"{BASE_URL}/files/{file_id}", params={"fields": fields})
         return resp.json()
 
-    async def move_file(self, file_id: str, to_folder_id: str, from_folder_id: str | None = None) -> dict:
-        """files.update로 폴더 이동 (쿼터 50). Docs `documents.create`는 폴더를 못 정하므로 생성 후 여기로 옮긴다."""
+    async def move_file(self, file_id: str, to_folder_id: str) -> dict:
+        """files.update로 폴더 이동 (쿼터 50). Docs `documents.create`는 폴더를 못 정하므로 생성 후 여기로 옮긴다.
+        단일 부모라 addParents만으로 옮겨진다(removeParents 불필요, 2026-10-09 실측)."""
         params: dict[str, str] = {"addParents": to_folder_id, "fields": DOCUMENT_META_FIELDS}
-        if from_folder_id:
-            params["removeParents"] = from_folder_id
         resp = await self._request("PATCH", f"{BASE_URL}/files/{file_id}", params=params, json={})
         return resp.json()
 
@@ -128,12 +127,6 @@ class DriveClient:
         if parent_folder_id:
             metadata["parents"] = [parent_folder_id]
         resp = await self._request("POST", f"{BASE_URL}/files", params={"fields": DOCUMENT_META_FIELDS}, json=metadata)
-        return resp.json()
-
-    async def rename_file(self, file_id: str, name: str) -> dict:
-        resp = await self._request(
-            "PATCH", f"{BASE_URL}/files/{file_id}", params={"fields": DOCUMENT_META_FIELDS}, json={"name": name}
-        )
         return resp.json()
 
     async def create_from_content(
@@ -181,32 +174,12 @@ class DriveClient:
         return resp.json()
 
     async def trash_file(self, file_id: str) -> dict:
-        """휴지통으로 이동 (files.update trashed=true). 영구 삭제는 delete_file."""
+        """휴지통으로 이동 (files.update trashed=true)."""
         resp = await self._request(
             "PATCH", f"{BASE_URL}/files/{file_id}", params={"fields": "id,trashed"}, json={"trashed": True}
         )
         return resp.json()
 
-    async def delete_file(self, file_id: str) -> None:
-        """files.delete 영구 삭제. 휴지통을 거치지 않는다."""
-        await self._request("DELETE", f"{BASE_URL}/files/{file_id}")
-
-    # --- 편집 잠금 (contentRestrictions) ---
-
-    async def set_read_only(self, file_id: str, read_only: bool, reason: str | None = None) -> dict:
-        """files.update contentRestrictions. readOnly=true면 편집자 포함 모두 편집 불가, 보기는 가능.
-        **현재 유즈케이스에서는 쓰지 않는다** (잠기면 소유자도 API 편집이 403이라 마감 처리는 permissions로 한다, 2026-10-03 결정).
-        동작 실측 기록은 docs/google_drive.md 10절, samples/google_docs/uc3-lock-for-submission.json."""
-        restriction: dict = {"readOnly": read_only}
-        if read_only and reason:
-            restriction["reason"] = reason
-        resp = await self._request(
-            "PATCH",
-            f"{BASE_URL}/files/{file_id}",
-            params={"fields": DOCUMENT_META_FIELDS},
-            json={"contentRestrictions": [restriction]},
-        )
-        return resp.json()
 
     # --- permissions ---
 
@@ -217,12 +190,10 @@ class DriveClient:
         role: str = "reader",
         notify: bool = False,
         message: str | None = None,
-        expiration_time: str | None = None,
     ) -> dict:
-        """permissions.create. role: reader | commenter | writer. expiration_time은 RFC3339 (user/group만, 1년 이내)."""
+        """permissions.create. role: reader | commenter | writer.
+        expirationTime은 개인 계정에서 403 cannotSetExpiration(2026-10-03 실측)이라 받지 않는다."""
         body: dict = {"type": "user", "role": role, "emailAddress": email}
-        if expiration_time:
-            body["expirationTime"] = expiration_time
         params: dict = {"sendNotificationEmail": str(notify).lower(), "fields": PERMISSION_FIELDS}
         if notify and message:
             params["emailMessage"] = message
@@ -260,17 +231,3 @@ class DriveClient:
 
     async def delete_permission(self, file_id: str, permission_id: str) -> None:
         await self._request("DELETE", f"{BASE_URL}/files/{file_id}/permissions/{permission_id}")
-
-    # --- changes (변경 감지: 폴링 우선, push는 9절) ---
-
-    async def get_start_page_token(self) -> str:
-        resp = await self._request("GET", f"{BASE_URL}/changes/startPageToken")
-        return resp.json()["startPageToken"]
-
-    async def list_changes(self, page_token: str) -> dict:
-        resp = await self._request(
-            "GET",
-            f"{BASE_URL}/changes",
-            params={"pageToken": page_token, "fields": f"nextPageToken,newStartPageToken,changes(fileId,removed,file({DOCUMENT_META_FIELDS}))"},
-        )
-        return resp.json()

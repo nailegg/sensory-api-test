@@ -121,7 +121,6 @@ def submission_from_response(response: dict, form_id: str, graded: dict[str, flo
         id=response["responseId"],
         form_id=form_id,
         respondent_email=response.get("respondentEmail"),
-        created_at=response.get("createTime"),
         submitted_at=response.get("lastSubmittedTime"),
         answers=answers,
         file_ids=file_ids,

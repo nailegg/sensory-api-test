@@ -78,9 +78,9 @@ studio-port/              # studio와 같은 설정의 TS 작업 폴더. 이식 
 - 호출이 성공하면 요청·응답을 `samples/<service>/<scenario>.json`에 저장한다. 저장 전에 토큰, 이메일, 개인 식별 정보를 마스킹한다.
 - 시크릿은 `.env`에만 둔다. 코드, 샘플, 문서에 시크릿을 쓰지 않는다. 새 키를 추가하면 `.env.example`에도 이름을 추가한다.
 - 공통 모델은 `core/models.py`에서만 정의하고, 서비스별 필드는 mapper에서 매핑한다. 서비스 폴더 안에 별도 모델을 만들지 않는다.
-- 새 서비스는 기존 서비스 폴더(`google_docs`)를 복사해서 시작한다. 등록은 두 줄이다: `main.py`에 `include_router`, `core/oauth.py`의 `REGISTERED_SCOPE_MODULES`에 그 서비스의 `scopes` 모듈. 후자를 빠뜨리면 scope가 인가 요청에 들어가지 않는다.
-- Drive API 호출(파일 메타데이터 `files.get`, 폴더 지정, 목록·검색·삭제·공유, `files.export`, `changes.watch`)은 전부 `services/google_drive/client.py`에 둔다. Docs·Sheets·Slides·Forms 폴더 안에 Drive 호출을 넣지 않는다.
-- `Document` 공통 모델의 `owner` · `created_at` · `modified_at` · `url`은 Drive `files.get`에서 온다. 각 서비스의 usecases가 자기 API 응답과 Drive 메타데이터를 함께 mapper에 넘긴다.
+- 새 서비스는 기존 서비스 폴더(`google_docs`)를 복사해서 시작하되, 그 서비스의 유즈케이스가 실제로 부르는 client 메서드만 남긴다(복사가 미사용 메서드를 퍼뜨린 전례가 있다, 2026-10-09 정리). 등록은 두 줄이다: `main.py`에 `include_router`, `core/oauth.py`의 `REGISTERED_SCOPE_MODULES`에 그 서비스의 `scopes` 모듈. 후자를 빠뜨리면 scope가 인가 요청에 들어가지 않는다.
+- Drive API 호출(파일 메타데이터 `files.get`, 폴더 지정, 복사·휴지통·공유, `files.export`)은 전부 `services/google_drive/client.py`에 둔다. 유즈케이스에 없는 호출(변경 감지 `changes.*` 등)은 미리 만들지 않는다. Docs·Sheets·Slides·Forms 폴더 안에 Drive 호출을 넣지 않는다.
+- `Document` 공통 모델에서 Drive `files.get`으로만 알 수 있는 값(`url` · `trashed` · 소유자·시각)은 그 값을 **실제로 쓰는 흐름이 있을 때만** 조회해 mapper에 넘긴다. 모델에 필드가 있다는 이유로 호출을 더하지 않는다(studio 이식본 `externalDocument`는 흐름이 읽는 `id` · `kind` · `title` · `trashed` 중심으로 줄인다, `docs/STUDIO_PORTING.md` 23번).
 - Docs·Sheets·Slides·Forms를 앱이 직접 만드는 시나리오는 `drive.file` scope만으로 될 수 있다. 그 경우 해당 서비스의 `scopes.py`는 비거나 짧고, 인가는 Drive scope로 이루어진다. 정확한 동작은 각 서비스 1단계에서 공식 문서로 확인한다.
 - 서비스별 제약·함정(쿼터, 토큰 만료, 플랜 제한, 웹훅 방식)은 코드를 만지기 전에 `docs/<service>.md`의 8절·10절을 먼저 본다. 스펙 문서가 아직 없으면 `docs/PLAN.md`의 "서비스별 예외·특이사항" 표를 본다.
 

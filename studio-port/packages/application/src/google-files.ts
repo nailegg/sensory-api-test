@@ -55,11 +55,8 @@ export async function shareFile(
   drive: GoogleDrivePort,
   fileId: string,
   emails: string[],
-  options: { notify?: boolean; message?: string } = {},
 ): Promise<ShareResult[]> {
-  const [results, error] = await attempt(() =>
-    drive.shareWithUsers(fileId, emails, options),
-  );
+  const [results, error] = await attempt(() => drive.shareWithUsers(fileId, emails));
   return results ?? emails.map((email) => ({ email, permission_id: null, error }));
 }
 
@@ -78,14 +75,8 @@ export async function createGroupFilesFromTemplate(
     groups: GroupSpec[];
     replaceTags: ReplaceTags;
     due?: string;
-    notify?: boolean;
-    shareMessage?: string;
   },
 ): Promise<GroupFileResult[]> {
-  const shareOptions = {
-    ...(input.notify !== undefined && { notify: input.notify }),
-    ...(input.shareMessage !== undefined && { message: input.shareMessage }),
-  };
   return mapConcurrently(input.groups, async (group): Promise<GroupFileResult> => {
     const variables = groupVariables(group.team_name, input.activityName, input.due ?? null);
     const failed = (document: ExternalDocument | null, error: AppError): GroupFileResult => ({
@@ -109,7 +100,7 @@ export async function createGroupFilesFromTemplate(
       team_name: group.team_name,
       document,
       replaced,
-      shares: await shareFile(drive, document.id, group.member_emails, shareOptions),
+      shares: await shareFile(drive, document.id, group.member_emails),
       error: null,
     };
   });
@@ -130,14 +121,8 @@ export async function createGroupFilesFromContent(
     target: UploadTarget;
     groups: GroupSpec[];
     due?: string;
-    notify?: boolean;
-    shareMessage?: string;
   },
 ): Promise<GroupFileResult[]> {
-  const shareOptions = {
-    ...(input.notify !== undefined && { notify: input.notify }),
-    ...(input.shareMessage !== undefined && { message: input.shareMessage }),
-  };
   return mapConcurrently(input.groups, async (group): Promise<GroupFileResult> => {
     const variables = groupVariables(group.team_name, input.activityName, input.due ?? null);
     const [document, error] = await attempt(() =>
@@ -155,7 +140,7 @@ export async function createGroupFilesFromContent(
       team_name: group.team_name,
       document,
       replaced: {},
-      shares: await shareFile(drive, document.id, group.member_emails, shareOptions),
+      shares: await shareFile(drive, document.id, group.member_emails),
       error: null,
     };
   });

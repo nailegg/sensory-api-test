@@ -1,4 +1,4 @@
-// 브라우저 전용: Google Picker를 띄워 교수자가 고른 파일 ID를 돌려준다(취소하면 빈 배열).
+// 브라우저 전용: Google Picker를 띄워 교수자가 고른 파일 ID 하나를 돌려준다(취소하면 null). 템플릿은 활동당 한 파일이다.
 // synsory-api app/services/google_drive/picker.py 테스트 페이지 JS의 이식본. 조건은 docs/google_drive.md 2.1절.
 // - drive.file 앱에 파일 접근이 생기려면 developerKey·appId(프로젝트 번호)·oauthToken 셋 다 필요하다.
 // - 브라우저가 Google에 로그인돼 있어야 한다(토큰만으로는 "Sign in" 화면, 2026-10-04 실측).
@@ -28,7 +28,6 @@ interface PickerBuilder {
   setOrigin(origin: string): PickerBuilder;
   setTitle(title: string): PickerBuilder;
   addView(view: DocsView): PickerBuilder;
-  enableFeature(feature: string): PickerBuilder;
   setCallback(callback: (data: PickerResponse) => void): PickerBuilder;
   build(): { setVisible(visible: boolean): void };
 }
@@ -40,7 +39,6 @@ export interface PickerApi {
   PickerBuilder: new () => PickerBuilder;
   DocsView: new (viewId: string) => DocsView;
   ViewId: { DOCS: string };
-  Feature: { MULTISELECT_ENABLED: string };
   Action: { PICKED: string; CANCEL: string };
 }
 
@@ -51,8 +49,6 @@ export interface PickerOptions {
   // 이 페이지의 origin(iframe postMessage 대상 확인용).
   origin: string;
   kinds: PickableKind[];
-  multiple?: boolean;
-  title?: string;
 }
 
 // gapi 스크립트를 한 번만 올리고 picker 모듈을 불러온다.
@@ -78,29 +74,28 @@ export function loadPickerApi(): Promise<PickerApi> {
   return loading;
 }
 
-export async function pickGoogleFiles(
+export async function pickGoogleFile(
   options: PickerOptions,
   load: () => Promise<PickerApi> = loadPickerApi,
-): Promise<string[]> {
+): Promise<string | null> {
   const picker = await load();
   const view = new picker.DocsView(picker.ViewId.DOCS)
     .setMimeTypes(options.kinds.map((k) => MIME[k]).join(','))
     .setIncludeFolders(true)
     .setSelectFolderEnabled(options.kinds.includes('folder'));
-  return new Promise<string[]>((resolve) => {
+  return new Promise<string | null>((resolve) => {
     const builder = new picker.PickerBuilder()
       .setOAuthToken(options.accessToken)
       .setDeveloperKey(options.developerKey)
       .setAppId(options.appId)
       .setOrigin(options.origin)
-      .setTitle(options.title ?? '템플릿으로 쓸 파일 고르기')
+      .setTitle('템플릿으로 쓸 파일 고르기')
       .addView(view)
       // 콜백은 PICKED·CANCEL 말고 "loaded"도 온다. 그건 무시한다.
       .setCallback((data) => {
-        if (data.action === picker.Action.PICKED) resolve((data.docs ?? []).map((d) => d.id));
-        else if (data.action === picker.Action.CANCEL) resolve([]);
+        if (data.action === picker.Action.PICKED) resolve(data.docs?.[0]?.id ?? null);
+        else if (data.action === picker.Action.CANCEL) resolve(null);
       });
-    if (options.multiple) builder.enableFeature(picker.Feature.MULTISELECT_ENABLED);
     builder.build().setVisible(true);
   });
 }
