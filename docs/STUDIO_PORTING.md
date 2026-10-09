@@ -123,7 +123,7 @@ synsory-api의 `XApiError(status, body, is_rate_limit, reason)`는 infrastructur
 studio의 Google 로그인(Supabase, `openid email profile`)과 **별개 흐름**이다. Supabase는 provider refresh token을 저장·갱신하지 않기 때문이다. 교수자가 "Google 연결"·"Zoom 연결"을 따로 누른다.
 
 1. **시작** `GET /api/connections/{platform}/start`: 교수자가 **첫 Google 활동을 저장할 때** 연결이 없으면 409 `EXTERNAL_RECONNECT_REQUIRED` + 이 URL을 돌려주고, 웹이 여기로 보낸다(결정 40, on-demand. 설정 화면의 "연결" 버튼도 같은 URL). state에 돌아갈 경로(작성 화면)를 담는다. state를 `studio_auth.requests`에 `purpose='connect-google'`(또는 `connect-zoom`), browser 해시, 10분 만료로 저장한다. studio Google 로그인이 이미 `purpose='google'`로 같은 방식을 쓴다(`application/src/auth.ts` `googleStart`). 인가 URL 파라미터는 synsory-api 그대로:
-   - Google: `access_type=offline`, `prompt=consent`, `include_granted_scopes=true`, scope = Drive `drive.file` (+ 이후 서비스 scope)
+   - Google: `access_type=offline`, `prompt=consent`, `include_granted_scopes=true`, scope = Drive `drive.file` + `userinfo.email`(연결 계정 이메일 표시용, 결정 38. 2026-10-09 구현) (+ 이후 서비스 scope)
    - Zoom: scope는 앱 설정에서 정해지지만 URL에도 넣는다. client 인증은 Basic 헤더
 2. **콜백** `GET /api/connections/{platform}/callback`: state를 1회 소비 → 코드 교환 → 받은 scope와 요청 scope 비교(누락 시 사용자에게 알림, synsory-api `missing_scopes`) → 저장.
 3. **저장** — 교수자 × 플랫폼당 한 행 `studio_auth.external_accounts`(아래 6.1). 토큰은 provider마다 모양이 달라 **암호화한 JSON 하나**로 담고, 암호를 풀지 않고 알아야 하는 값만 일반 칸으로 둔다. **[결정 필요 D]**

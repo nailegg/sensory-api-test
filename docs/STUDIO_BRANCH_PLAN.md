@@ -1,6 +1,6 @@
 # studio `feat/google-tools` 브랜치 작업 계획
 
-작성일: 2026-10-09 · 작성자: 상현 · 상태: 가정 G1~G5 확정(2026-10-09 상현), 1·2단계 완료, 3단계 전. 브랜치는 studio `main`(a03a27f)에서 `feat/google-tools`로 열었다(파일 변경 없음).
+작성일: 2026-10-09 · 작성자: 상현 · 상태: 가정 G1~G5 확정(2026-10-09 상현), 1·2단계 완료, 3단계 코드 완료(라이브 확인 대기), 4단계 전. 브랜치는 studio `main`(a03a27f)에서 `feat/google-tools`로 열었다(파일 변경 없음).
 
 결정 근거는 `docs/STUDIO_PORTING.md` 10절 결정 대장(번호로 인용), 서비스별 대응은 각 `docs/<service>.md` 11.x. 이 문서는 "무엇을 어떤 순서로, 어떻게 확인하며" 넣는지만 적는다.
 
@@ -46,7 +46,9 @@ studio를 읽고 확인한 사실:
 - 검증: 복사 전 synsory-api에서 `pnpm verify` 86개 통과를 기록 → 복사 후 studio에서 같은 86개 + 기존 24개 통과, `check:boundaries` 통과, `check:bundle`(웹 번들에 서버 코드 미포함) 통과.
 - 안 하는 것: 코드 수정. 복사하면서 "개선"하지 않는다. 필요한 수정은 3단계 이후 각 단계에서.
 
-### 3단계. 외부 계정 연결 (6절, 결정 32~40)
+### 3단계. 외부 계정 연결 (6절, 결정 32~40) — 코드 완료 2026-10-09 (studio 커밋 1개), 라이브 확인 대기
+
+결과: application `connections.ts`(`ConnectionService`: start·callback·status·accessToken·disconnect, `GoogleOAuthPort`), infrastructure `google-oauth.ts`(인가 URL·코드 교환·갱신·userinfo·revoke), env 2개(`GOOGLE_CONNECT_CLIENT_ID`·`_SECRET`, 없으면 연결 API 503), contracts `googleConnectionDto`, 라우트 4개(`POST /api/connections/google/start`, `GET …/callback`, `GET /api/connections/google`, `DELETE /api/connections/google`). 계획과 다른 점: ① 연결 계정 이메일(결정 38)을 받으려고 scope에 `userinfo.email`을 더했다(비민감). ② 콜백은 연결을 시작한 교수자의 로그인 세션과 같은 브라우저만 받는다(state의 profile_id와 세션 일치 확인). ③ 상태 조회는 세션 응답 대신 별도 `GET /api/connections/google`. ④ `IntegrationFactory`·`ConnectionStore` 없이 `Store` + port 하나. 검증: 단위 4개(어댑터), DB 4개(저장·거절 4종·캐시/갱신/끊김·해제), 기존 검사 전부 통과. 남은 것: 콘솔 설정 뒤 상현 계정으로 연결 → 행 생성 → `accessToken`으로 Drive `files.get` → 해제 1회.
 
 - 바꾸는 것:
   - infrastructure `google-oauth.ts`: 인가 URL(`access_type=offline&prompt=consent&include_granted_scopes=true`, scope `drive.file`), 코드 교환, refresh. synsory-api `core/oauth.py`의 Google 부분만.
