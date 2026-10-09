@@ -1,6 +1,6 @@
 # studio `feat/google-tools` 브랜치 작업 계획
 
-작성일: 2026-10-09 · 작성자: 상현 · 상태: 가정 G1~G5 확정(2026-10-09 상현), 1·2단계 완료, 3단계 코드 완료(라이브 확인 대기), 5·6단계 코드 완료(라이브 확인 대기), 7단계 전. 브랜치는 studio `main`(a03a27f)에서 `feat/google-tools`로 열었다(파일 변경 없음).
+작성일: 2026-10-09 · 작성자: 상현 · 상태: 가정 G1~G5 확정(2026-10-09 상현), 1·2단계 완료, 3단계 코드 완료(라이브 확인 대기), 6단계까지 완료(라이브 확인 포함), 7단계 전. 브랜치는 studio `main`(a03a27f)에서 `feat/google-tools`로 열었다(파일 변경 없음).
 
 결정 근거는 `docs/STUDIO_PORTING.md` 10절 결정 대장(번호로 인용), 서비스별 대응은 각 `docs/<service>.md` 11.x. 이 문서는 "무엇을 어떤 순서로, 어떻게 확인하며" 넣는지만 적는다.
 
@@ -97,6 +97,21 @@ studio를 읽고 확인한 사실:
 - 바꾸는 것: `GET /api/connections/google/picker-session`(교수자 세션·CSRF 확인, `Cache-Control: no-store`, 남은 수명 5분 미만이면 갱신 후), `POST /api/connections/google/picked-file` → `acceptPickedFile`. helmet: Picker 페이지가 쓰는 출처(`apis.google.com` 스크립트, `docs.google.com` iframe)와 `Referrer-Policy` 확인·조정(미확인 위험, 6절).
 - 검증: 단위 — 응답에 refresh token 없음, 헤더 no-store, 학생 세션 403. 라이브 1회 — 임시 HTML(테스트 전용, 커밋 안 함)로 Picker 열어 파일 고르고 `picked-file`이 200.
 - 안 하는 것: 화면(G1).
+
+### 6.5 라이브 확인 (2026-10-10) — 완료 (studio 커밋 6d149e1)
+
+로컬 Supabase + 상현 개인 Google 계정(연결용 클라이언트는 실측용과 다른 새 클라이언트). 결과는 studio `docs/VERIFICATION.md` 2026-10-10 항목.
+
+| 확인 | 결과 |
+| --- | --- |
+| 연결(3단계) | 성공. `connected: true`, 계정 이메일, `external_accounts` 1행 |
+| Picker 세션(6단계) | 200, `no-store`, refresh token 없음, 프로젝트 번호 추출 |
+| Docs 활동 open → closed → open(5단계) | 8초 안에 폴더+문서 2개, 태그 치환, writer → commenter → writer |
+| 설문 open → 응답 1건 → closed(5단계) | 폼 생성·응답자 제한, 수집 1행, 집계 평균 5 |
+
+라이브에서 잡은 버그 2건(수정·테스트 추가·커밋): ① 재개 시 `validateConfig`가 서버가 넣는 `team_snapshot`을 strict 스키마로 거절 → 검증 전 분리. ② 수집이 `course_members` `FOR SHARE`에서 worker 권한 부족(Postgres는 행 잠금에 UPDATE 필요) → 마이그레이션 0011. DB 테스트가 이제 worker 역할로 수집을 돌린다.
+
+알게 된 것(7단계·후속 결정): ① 사람별 공유 실패(예: 조원이 파일 소유자 본인)는 refs에 안 남아 상태 라우트에 안 보인다 → `share_errors`로 남길지 결정. ② 실패한 작업은 재시도 3회 뒤 `failed`로 멈추고, 재실행 경로는 교수자의 재개·재마감뿐 → 화면 설계 때 "다시 시도" 필요 여부. ③ Picker 자체(브라우저 모듈)는 아직 임시 HTML로 열어 보지 않았다(`picked-file`만 미확인). 실측 파일은 Drive 휴지통으로 정리했고 studio 로컬 DB의 수업 "Test" 데이터(학생 2·팀 구성·활동 2)는 남겨 두었다.
 
 ### 7단계. 마무리
 
