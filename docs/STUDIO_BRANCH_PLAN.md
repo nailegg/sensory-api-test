@@ -101,4 +101,10 @@ studio를 읽고 확인한 사실:
 
 1. G1(화면 범위 밖)·G2(open/closed 때 작업 시작)·G3(PR 묶음)이 맞는지.
 2. 5단계 라우트: `…/google/status`(진행 상태)는 넣고, `…/google/collect`(수동 재수집)는 요구가 생길 때 추가(2026-10-09 상현 "1로 가자"). "재개 시 복원"은 **포함**(2026-10-09 상현): `closed → open`이면 `google-reopen` 작업으로 `restoreEditors`(처음 공유한 조원만 writer로)·`openForm`.
-3. 3단계 env 이름 4개와 로그인용 GCP 프로젝트에 "Drive 연결용" 클라이언트·Picker API 키를 누가 만드는지(상현 콘솔 작업).
+3. 3단계 콘솔 작업(상현, 로그인용 GCP 프로젝트에서. 결정 39·40):
+   1. API 6개 사용 설정: Google Drive · Docs · Slides · Sheets · Forms · Picker API(안 켜면 403 `accessNotConfigured`. 실측 프로젝트에는 이미 켜져 있음).
+   2. OAuth 클라이언트 "Synsory Drive 연결(local)"(웹 애플리케이션) 생성, 리다이렉트 URI `http://localhost:5173/api/connections/google/callback`. dev·prod는 각각 따로(환경별 클라이언트).
+   3. Picker용 API 키: 애플리케이션 제한 = 웹사이트(`http://localhost:5173/*`, `https://docs.google.com/*`), API 제한 = Google Picker API.
+   4. 동의 화면이 테스트 상태면 상현 계정을 테스트 사용자로. scope는 코드가 `drive.file`만 요청하므로 콘솔 추가 없음.
+   5. studio env: `GOOGLE_CONNECT_CLIENT_ID` · `GOOGLE_CONNECT_CLIENT_SECRET`(비밀) · `GOOGLE_PICKER_API_KEY` · `GOOGLE_PROJECT_NUMBER`(비우면 client ID 앞 숫자).
+   확인: 로그인용 프로젝트 소유 계정(Supabase › Auth › Providers › Google의 client ID 앞 숫자가 프로젝트 번호). 상현 권한이 없으면 실측 프로젝트를 임시로 쓰고 결정 40 재검토.
