@@ -1,6 +1,6 @@
 import { AppError, renderTemplate, type Meeting } from '../../domain/src/index.ts';
 import { mapConcurrently } from './concurrency.ts';
-import type { MeetingSchedule, ZoomPort } from './integration-ports.ts';
+import type { MeetingSchedule, ZoomPort } from './zoom-ports.ts';
 
 // Zoom 흐름 중 호출 여러 개를 엮는 것. synsory-api app/services/zoom/usecases.py의 이식본.
 // 플랜 확인·소회의실·반복·취소·시작 링크는 ZoomPort 메서드 하나라 여기 두지 않는다.

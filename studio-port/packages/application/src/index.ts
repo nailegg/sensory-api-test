@@ -1,6 +1,7 @@
 export * from './integration-ports.ts';
 export * from './google-files.ts';
 export * from './google-forms.ts';
+export * from './zoom-ports.ts';
 export * from './zoom-meetings.ts';
 export * from './concurrency.ts';
 export * from './google-picker.ts';
