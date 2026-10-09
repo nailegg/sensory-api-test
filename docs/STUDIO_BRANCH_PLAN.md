@@ -1,6 +1,6 @@
 # studio `feat/google-tools` 브랜치 작업 계획
 
-작성일: 2026-10-09 · 작성자: 상현 · 상태: 가정 G1~G5 확정(2026-10-09 상현), 1·2단계 완료, 3단계 코드 완료(라이브 확인 대기), 4단계·검수 완료, 5단계 전. 브랜치는 studio `main`(a03a27f)에서 `feat/google-tools`로 열었다(파일 변경 없음).
+작성일: 2026-10-09 · 작성자: 상현 · 상태: 가정 G1~G5 확정(2026-10-09 상현), 1·2단계 완료, 3단계 코드 완료(라이브 확인 대기), 5단계 코드 완료(라이브 확인 대기), 6단계 전. 브랜치는 studio `main`(a03a27f)에서 `feat/google-tools`로 열었다(파일 변경 없음).
 
 결정 근거는 `docs/STUDIO_PORTING.md` 10절 결정 대장(번호로 인용), 서비스별 대응은 각 `docs/<service>.md` 11.x. 이 문서는 "무엇을 어떤 순서로, 어떻게 확인하며" 넣는지만 적는다.
 
@@ -74,7 +74,9 @@ studio를 읽고 확인한 사실:
 - 기록만(코드 변경 없음): 6.2절 "한 프로세스 안의 동시 갱신 공유"는 구현하지 않음(Google은 refresh token이 안 바뀌어 무해, 호출만 늘 수 있음. 5단계 실측에서 거슬리면 promise 공유 3줄). 결정 23(`externalDocument` 축소)은 5단계에서. 콜백 리다이렉트 쿼리 `?google=connected`·`/courses?google_error=<code>`는 화면 브랜치가 알아야 할 계약. 5단계 DB 테스트에서 `created_by_profile_id` 누락 시 집계가 조용히 비는 경로를 잡을 것. 6.3절 403 `insufficientPermissions` 재연결 처리는 5단계 작업 핸들러에서.
 - 미룸(사소): `callback` 반환 `account_email` 미사용, survey·quiz 스키마 중복, 테스트 `toThrow()` 4곳 약한 단언, `refresh_token` 없는 토큰 응답 단위 케이스.
 
-### 5단계. 생성·마감 작업 + 라우트 (결정 27·28·29, 8절)
+### 5단계. 생성·마감 작업 + 라우트 (결정 27·28·29, 8절) — 코드 완료 2026-10-09 (studio 커밋 1개), 라이브 확인 대기
+
+결과: application `google-activities.ts`(`provisionGoogleActivity`·`closeGoogleActivity`·`reopenGoogleActivity`·`collectGoogleForms`·`googleStatus`·`requireTeams`), `ActivityService.state()`에 `ActivityJobs` 훅(같은 트랜잭션에서 enqueue) + `ActivityService.get()`, infrastructure `google-jobs.ts`(작업 스키마·`enqueueGoogleJob`·보내기 전용 `createJobSender`·`googlePorts`), `migrate.ts`에 큐 3개, worker `main.ts`에 핸들러 3개, API에 훅·상태 라우트 `GET …/activities/:id/google/status`. 계획과 다른 점: ① "만든 교수자"는 활동을 **처음 `open`한 교수자**(`activities`에 만든 사람 칸이 없음). provision이 폴더 ref에 `created_by_profile_id`로 적고 마감·재개·수집은 거기서 읽는다. ② 수집용 별도 큐 없음: 마감 작업 끝에 바로 수집(결정 29). ③ `setExternalRefs` 메서드 대신 job 모듈이 `external_refs`를 직접 쓴다(ActivityService 미수정). ④ 조 단위 실패는 ref에 `error`로, 마감·재개 실패는 `close_error`·`reopen_error`로 남기고 상태 라우트가 보여준다. 폼 하나짜리 생성 실패는 예외로 올려 pg-boss가 3회 재시도. ⑤ 폴더는 교수자 Drive 루트에 "수업 - 활동" 이름으로. 검증: DB 테스트 4개(조별 파일 생성·실패 격리·멱등·마감·재개·상태 DTO, 설문 생성·응답자 제한·수집·재수집 무변화, 동료평가 조별 폼, 팀 구성 요구·훅 트랜잭션 롤백), 전 검사 통과(DB 46, 단위 107). 남은 것: 라이브(조 2개 Docs 활동 open → 파일·공유 → closed → commenter, 설문 1개 응답 → 수집)와 6.3절 403 `insufficientPermissions` 재연결 처리.
 
 - 바꾸는 것:
   - `ActivityService.setExternalRefs(tx, activityId, refs)` 하나 추가(지금은 쓰는 곳이 없어서 없다). `external_refs` 항목에 `created_by_profile_id`(결정 27).
