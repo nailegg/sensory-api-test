@@ -1,6 +1,6 @@
 # studio `feat/google-tools` 브랜치 작업 계획
 
-작성일: 2026-10-09 · 작성자: 상현 · 상태: 가정 G1~G5 확정(2026-10-09 상현), 1단계 완료, 2단계 전. 브랜치는 studio `main`(a03a27f)에서 `feat/google-tools`로 열었다(파일 변경 없음).
+작성일: 2026-10-09 · 작성자: 상현 · 상태: 가정 G1~G5 확정(2026-10-09 상현), 1·2단계 완료, 3단계 전. 브랜치는 studio `main`(a03a27f)에서 `feat/google-tools`로 열었다(파일 변경 없음).
 
 결정 근거는 `docs/STUDIO_PORTING.md` 10절 결정 대장(번호로 인용), 서비스별 대응은 각 `docs/<service>.md` 11.x. 이 문서는 "무엇을 어떤 순서로, 어떻게 확인하며" 넣는지만 적는다.
 
@@ -38,7 +38,9 @@ studio를 읽고 확인한 사실:
 - 검증: `tests/db/integration.test.ts`의 "keeps the product activity allowlist empty"를 "allows exactly the four google tools"로 바꾸고(4개는 create 성공, `peer_review`는 `INVALID_ARGUMENT`), 0009 권한 테스트에 `worker_update: true` 추가. `pnpm test:db` 통과.
 - 안 하는 것: Zoom 도구 이름(팀원이 자기 마이그레이션으로), 다른 테이블 변경.
 
-### 2단계. studio-port 파일 복사 (동작 변화 0)
+### 2단계. studio-port 파일 복사 (동작 변화 0) — 완료 2026-10-09 (studio 커밋 1개)
+
+결과: Google 파일 17개 + 테스트 6개·fixture 3개를 수정 없이 복사, index 5개에 export 추가. 복사 전 Zoom port를 `zoom-ports.ts`로 분리해(synsory-api b7bf657) Zoom 파일은 한 줄도 넣지 않았다. 검증: studio에서 typecheck·lint·boundaries·unit 95개(기존 24 + 복사 71, Zoom 테스트 15개 제외)·build·bundle·design·secrets 통과.
 
 - 바꾸는 것: `studio-port/packages/{domain,application,infrastructure,contracts,ui}/src/*.ts`를 studio 같은 경로로 복사. `index.ts`에 `export *` 추가(domain은 `index.ts` 한 파일이므로 끝에 export 줄만). `studio-stand-ins.ts`는 복사하지 않고 import를 studio의 `AppError`로 바꾼다. `tests/unit/*.test.ts`·`tests/fixtures/*`도 복사(이름 충돌 시 `google-` 접두사).
 - 검증: 복사 전 synsory-api에서 `pnpm verify` 86개 통과를 기록 → 복사 후 studio에서 같은 86개 + 기존 24개 통과, `check:boundaries` 통과, `check:bundle`(웹 번들에 서버 코드 미포함) 통과.
