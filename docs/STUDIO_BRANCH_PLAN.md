@@ -1,6 +1,6 @@
 # studio `feat/google-tools` 브랜치 작업 계획
 
-작성일: 2026-10-09 · 작성자: 상현 · 상태: 가정 G1~G5 확정(2026-10-09 상현), 1·2단계 완료, 3단계 코드 완료(라이브 확인 대기), 6단계까지 완료(라이브 확인 포함), 7단계 전. 브랜치는 studio `main`(a03a27f)에서 `feat/google-tools`로 열었다(파일 변경 없음).
+작성일: 2026-10-09 · 작성자: 상현 · 상태: 가정 G1~G5 확정(2026-10-09 상현), 1·2단계 완료, 3단계 코드 완료(라이브 확인 대기), 1~7단계 완료(2026-10-10). 브랜치는 studio `main`(a03a27f)에서 `feat/google-tools`로 열었다(파일 변경 없음).
 
 결정 근거는 `docs/STUDIO_PORTING.md` 10절 결정 대장(번호로 인용), 서비스별 대응은 각 `docs/<service>.md` 11.x. 이 문서는 "무엇을 어떤 순서로, 어떻게 확인하며" 넣는지만 적는다.
 
@@ -113,7 +113,26 @@ studio를 읽고 확인한 사실:
 
 알게 된 것(7단계·후속 결정): ① 사람별 공유 실패(예: 조원이 파일 소유자 본인)는 refs에 안 남아 상태 라우트에 안 보인다 → `share_errors`로 남길지 결정. ② 실패한 작업은 재시도 3회 뒤 `failed`로 멈추고, 재실행 경로는 교수자의 재개·재마감뿐 → 화면 설계 때 "다시 시도" 필요 여부. ③ Picker 자체(브라우저 모듈)는 아직 임시 HTML로 열어 보지 않았다(`picked-file`만 미확인). 실측 파일은 Drive 휴지통으로 정리했고 studio 로컬 DB의 수업 "Test" 데이터(학생 2·팀 구성·활동 2)는 남겨 두었다.
 
-### 7단계. 마무리
+### 7단계. 마무리 — 완료 2026-10-10
+
+- studio: `TODO.md`에 단계별 결과·남은 것, `docs/VERIFICATION.md`에 라이브 확인, `docs/SECURITY_REVIEW.md`에 연결·작업·Picker·worker 권한 행. 공유 실패 기록(`share_errors`, 결정 A) 커밋 966ac79.
+- synsory-api: `docs/PLAN.md` Google 4종을 "7 핸드오프 진행"으로, `README.md` 표, `docs/STUDIO_PORTING.md` 3절 현황.
+- 브랜치 커밋(main a03a27f 기준 10개): 5f9d43f 0010 · c4aa0be 복사 · 3215e98 연결 · d1a1053 ToolHandler · a7c5551 주석·순환 제거 · 5fe59be worker 작업 · fe848ca Picker · 6d149e1 라이브 버그 2건(0011) · 966ac79 share_errors. PR은 상현이 연다(G3: 묶음 네 개로 나누려면 커밋을 브랜치별로 cherry-pick해야 하므로, 한 PR로 내고 회의에서 단계 순으로 보는 쪽이 간단하다).
+
+**팀원(Zoom)에게 전달할 것**
+
+1. `studio_worker`에 `external_accounts` UPDATE(0010)와 `course_members` UPDATE(0011)가 있다. 전자는 Zoom 갱신 토큰 저장용, 후자는 수집(`CollectionService.commit`)이 `course_members`를 `FOR SHARE`로 잠그기 때문.
+2. Zoom 이식 파일은 synsory-api `studio-port/`의 `zoom-ports.ts`(port만 분리해 둠) · `zoom.ts` · `zoom-tool.ts` · `zoom-meetings.ts` · `zoom.test.ts`. 이 브랜치에는 Zoom 코드가 없다. `external-http.ts`는 공용이고 Zoom 오류 본문(`zoomCode`)을 이미 해석한다.
+3. synsory-api 쪽에서 지운 것: 소회의실 B안(`createBreakoutMeeting`), `Meeting.status`·`timezone`·`host_id`, zoom.md의 "대기실·호스트 전 입장" 문구(코드에 없던 것). 되살리려면 git 이력(ac11146 이전).
+4. 연결 흐름(`ConnectionService`)은 platform='google' 전용으로 썼다. Zoom은 refresh token이 갱신마다 바뀌므로 6.2절대로 갱신 경로에 행 잠금(`FOR UPDATE`)을 넣어야 하고, `accessToken()`에 platform 인자를 더하는 식으로 확장한다.
+5. 결정 42(Zoom https 리다이렉트: ngrok 고정 도메인·학교망 차단·앱 재설치 뒤 웹훅 수신, `docs/zoom.md` 2.1절)·43(명단 학번 필드, PR 회의 안건).
+6. 주석 규칙: 기술적 선택의 이유만 영어 한 줄. 복사 파일의 한국어 주석은 studio로 옮길 때 지운다.
+
+**PR 설명 초안**
+
+> Google 도구 4개(docs·slides·sheets·forms)를 활동 도구로 등록하고, 교수자 Google 계정 연결, 조별 파일·폼 생성/마감/재개/응답 수집을 worker 작업으로 붙인다. 검증은 synsory-api에서 실측한 코드를 복사한 것이고, studio에서는 단위 107·DB 47·라이브(연결, Docs 활동 open→close→open, 설문 수집) 통과. 화면은 없다(다음 브랜치). 설정: `GOOGLE_CONNECT_CLIENT_ID`·`_SECRET`·`GOOGLE_PICKER_API_KEY`. 결정 근거는 synsory-api `docs/STUDIO_PORTING.md` 10절.
+
+**브랜치 뒤 할 일(우선순위 순)**: ① 호출 최적화(물결 배치, 2절) ② 웹 화면(활동 만들기·Picker·진행 상태·"다시 시도") ③ 6.3절 403 `insufficientPermissions` 재연결 처리 ④ 결정 23 `externalDocument` 축소 ⑤ 미룬 사소 항목(4.5절).
 
 - studio `TODO.md`에 이 브랜치 범위·검증 기록, `docs/VERIFICATION.md`에 라이브 확인 결과(토큰·이메일 없이).
 - synsory-api: `docs/PLAN.md` 7단계 완료 표시, `docs/STUDIO_PORTING.md` 3절 현황 갱신, 팀원 전달 목록(worker UPDATE, Zoom 소회의실·`Meeting` 필드·대기실 삭제, 42·43).

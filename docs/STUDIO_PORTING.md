@@ -95,7 +95,7 @@ tests/fixtures/                   # synsory-api samples/*.json, 가짜 port
 tests/unit/                       # pytest 케이스의 vitest 번역
 ```
 
-**현황(2026-10-09)**: 위는 계획이고 studio-port에 **있는 것**은 domain `integrations.ts` · `google-forms-tool.ts` · `zoom-tool.ts`, application `integration-ports.ts` · `google-files.ts` · `google-forms.ts` · `zoom-meetings.ts` · `google-picker.ts` · `concurrency.ts`, infrastructure `external-http.ts` · `google-drive.ts` · `google-docs.ts` · `google-slides.ts` · `google-sheets.ts` · `google-forms.ts` · `zoom.ts` · `google-picker.ts` · `google-tags.ts`, contracts·ui `google-picker.ts`다. `google-files-tool.ts`(ToolHandler), `connections.ts`, `oauth-providers.ts`, `integration-jobs.ts`, `IntegrationFactory` · `ConnectionStore`, db·apps 쪽은 **없고** studio 브랜치에서 쓴다(README "여기서 하는 것").
+**현황(2026-10-10, studio `feat/google-tools`)**: 위 계획 중 studio에 **있는 것** — domain `errors.ts`(AppError·invariant 분리) · `integrations.ts` · `google-forms-tool.ts` · `google-tools.ts`(ToolHandler 4개, external_refs 스키마), application `integration-ports.ts` · `google-files.ts` · `google-forms.ts` · `google-picker.ts` · `concurrency.ts` · `connections.ts`(연결) · `google-activities.ts`(생성·마감·재개·수집·상태), infrastructure `external-http.ts` · `google-*.ts` 어댑터 · `google-oauth.ts` · `google-jobs.ts`(작업 스키마·보내기 전용 큐·port 묶음), contracts·ui `google-picker.ts`, `apps/api/app.ts`(연결 4 + Picker 2 + 상태 1 라우트, 상태 전환 훅), `apps/worker/main.ts`(작업 3종), 마이그레이션 0010·0011. 계획과 다른 이름: `connections.ts`가 `oauth-providers.ts`·`ConnectionStore`·`IntegrationFactory`를 대신하고, `zoom-webhook.ts`·`integration-jobs.ts`는 Zoom 브랜치 몫. 없는 것: 웹 화면(G1), Zoom.
 
 ## 4. port 설계
 
