@@ -69,10 +69,6 @@ class FakeSheets:
     async def get(self, spreadsheet_id, fields=None, ranges=None):
         return self.spreadsheet
 
-    async def get_values(self, spreadsheet_id, a1_range, value_render_option="UNFORMATTED_VALUE", date_time_render_option="SERIAL_NUMBER", major_dimension="ROWS"):
-        self.value_requests.append(a1_range)
-        return {"range": a1_range, "values": [["항목", "점수"], ["출석", 10.0]]}
-
 
 def test_replace_tag_requests_find_replace_all_sheets_match_case():
     reqs = replace_tag_requests({"team_name": "A조", "due": ""})
@@ -141,16 +137,6 @@ async def test_create_group_sheets_continues_after_copy_or_replace_failure():
     assert c.error is None and c.document.id == "s-2"
     assert drive.shared == []  # 치환 실패한 B조는 공유하지 않는다
 
-
-@pytest.mark.asyncio
-async def test_read_sheet_values_by_sheet_id_resolves_current_title():
-    sheets = FakeSheets()
-    sv = await usecases.read_sheet_values(sheets, "s-1", sheet_id=77, cell_range="A1:B2")
-    assert sv.sheet_title == "역할 분담" and sheets.value_requests == ["'역할 분담'!A1:B2"] and sv.values[1] == ["출석", 10.0]
-    first = await usecases.read_sheet_values(sheets, "s-1")
-    assert first.sheet_id == 0 and first.sheet_title == "평가"  # index 기준 첫 시트
-    with pytest.raises(SheetsApiError):
-        await usecases.read_sheet_values(sheets, "s-1", sheet_id=999)
 
 
 @pytest.mark.asyncio

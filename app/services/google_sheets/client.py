@@ -79,23 +79,6 @@ class SheetsClient:
 
     # --- spreadsheets.values ---
 
-    async def get_values(
-        self,
-        spreadsheet_id: str,
-        a1_range: str,
-        value_render_option: str = "UNFORMATTED_VALUE",
-        date_time_render_option: str = "SERIAL_NUMBER",
-        major_dimension: str = "ROWS",
-    ) -> dict:
-        """values.get (읽기 쿼터). 기본 UNFORMATTED_VALUE: 숫자는 숫자, 날짜는 1899-12-30 기준 일련번호.
-        FORMATTED_VALUE면 화면 문자열("1,234"), FORMULA면 수식 문자열. 뒤쪽 빈 행·빈 셀은 잘려서 온다."""
-        params = {
-            "valueRenderOption": value_render_option,
-            "dateTimeRenderOption": date_time_render_option,
-            "majorDimension": major_dimension,
-        }
-        return await self._request("GET", f"{BASE_URL}/spreadsheets/{spreadsheet_id}/values/{a1_range}", params=params)
-
     async def batch_get_values(
         self, spreadsheet_id: str, a1_ranges: list[str], value_render_option: str = "UNFORMATTED_VALUE"
     ) -> dict:

@@ -1,12 +1,11 @@
 """Sheets 시나리오 흐름. 여러 client와 mapper를 엮는다. FastAPI를 import하지 않는다.
 
-유즈케이스(docs/google_sheets.md 1절, 2026-10-04 확정: Docs·Slides와 같은 4개 + 마감 후 값 읽기):
+유즈케이스(docs/google_sheets.md 1절, 2026-10-04 확정: Docs·Slides와 같은 4개. 5번 값 읽기는 2026-10-09 삭제):
 1. 액티비티 폴더 생성 → google_drive.usecases.create_folder
 2. 템플릿으로 그룹마다 스프레드시트 생성 + 그룹원 편집 권한 → upload_template(액티비티당 1회) + create_group_sheets
 3. 마감 시 편집 비활성화 → close_submissions (google_drive.usecases, Docs·Slides와 같은 함수).
    선택지: lock_ranges로 학생 입력 열만 보호(파일은 열어 둠)
 4. 마감 시 파일로 내보내기 → export_spreadsheet (xlsx | pdf | csv | ods | tsv | zip)
-5. 마감 후 그룹 시트 값 읽기 → read_sheet_values (Synsory DB 반영은 호출자 책임)
 
 성적표 동기화(create_gradebook 등)는 검토 후 보류(1.3절). 여기 없다.
 """
@@ -95,50 +94,6 @@ async def list_sheets(sheets: SheetsClient, spreadsheet_id: str) -> list[SheetIn
             protected_ranges=s.get("protectedRanges", []),
         ))
     return out
-
-
-# ---------- 유즈케이스 5: 값 읽기 ----------
-
-
-@dataclass
-class SheetValues:
-    spreadsheet_id: str
-    sheet_id: int | None
-    sheet_title: str
-    range: str  # 실제 응답 범위(A1). 뒤쪽 빈 행·열은 잘려 있다
-    values: list[list]  # UNFORMATTED_VALUE: 숫자는 숫자, 날짜는 일련번호, 빈 셀은 "" 또는 행 끝에서 생략
-
-
-async def read_sheet_values(
-    sheets: SheetsClient,
-    spreadsheet_id: str,
-    sheet_id: int | None = None,
-    sheet_title: str | None = None,
-    cell_range: str | None = None,
-    value_render_option: str = "UNFORMATTED_VALUE",
-) -> SheetValues:
-    """시트 하나의 값을 2차원 배열로. sheet_id(불변)로 지정하면 spreadsheets.get으로 현재 이름을 찾아 A1을 만든다(호출 2회).
-    sheet_title로 지정하면 1회. 둘 다 없으면 첫 시트. 유효성(숫자 범위·빈 칸)과 DB 반영은 호출자 책임."""
-    if sheet_title is None or sheet_id is None:
-        spreadsheet = await sheets.get(spreadsheet_id)
-        titles = sheet_titles(spreadsheet)
-        if sheet_id is not None:
-            if sheet_id not in titles:
-                raise SheetsApiError(404, {"error": {"message": f"sheetId {sheet_id} not in spreadsheet", "status": "NOT_FOUND"}})
-            sheet_title = titles[sheet_id]
-        elif sheet_title is not None:
-            sheet_id = next((sid for sid, t in titles.items() if t == sheet_title), None)
-        else:
-            first = min(spreadsheet.get("sheets", []), key=lambda s: s["properties"].get("index", 0))
-            sheet_id, sheet_title = first["properties"]["sheetId"], first["properties"]["title"]
-    data = await sheets.get_values(spreadsheet_id, a1(sheet_title, cell_range), value_render_option=value_render_option)
-    return SheetValues(
-        spreadsheet_id=spreadsheet_id,
-        sheet_id=sheet_id,
-        sheet_title=sheet_title,
-        range=data.get("range", ""),
-        values=data.get("values", []),
-    )
 
 
 async def write_values(

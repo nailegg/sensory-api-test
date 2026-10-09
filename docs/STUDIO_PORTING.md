@@ -285,13 +285,13 @@ export const externalAccounts = internal.table(
 | 11 | Docs 마감 방식 | 확정(2026-10-03) | `permissions.update`로 학생 권한 낮추기. `contentRestrictions` 잠금은 소유자 API도 막혀 제외 |
 | 12 | Docs 본문 생성 | 확정 | Markdown 변환 업로드(Drive). `batchUpdate` 인덱스 방식보다 우월 |
 | 13 | Slides 유즈케이스 | 확정(2026-10-04) | Docs와 같은 4개. pptx 1회 변환 업로드 → 그룹마다 `files.copy` → `replaceAllText` |
-| 14 | Sheets 유즈케이스 | 확정(2026-10-04) | 4개 + 마감 후 값 읽기. xlsx 변환 → `files.copy` → `findReplace`(수식 포함). 값 쓰기 기본 `RAW`(학번 앞자리 0 보존) |
+| 14 | Sheets 유즈케이스 | 확정(2026-10-04, 2026-10-09 축소) | Docs·Slides와 같은 4개("마감 후 값 읽기" 5번은 2026-10-09 삭제: 당장 불필요). xlsx 변환 → `files.copy` → `findReplace`(수식 포함). 값 쓰기 기본 `RAW`(학번 앞자리 0 보존) |
 | 15 | Sheets 보호 범위 | 확정 | `editors.users`를 항상 명시(생략 시 학생도 편집 가능) |
 | 16 | Forms 유즈케이스 | 확정(2026-10-06) | 13개. 항상 `unpublished=true`로 만들고 질문을 넣은 뒤 게시. 자동 부여되는 `anyoneWithLink` 삭제. 응답은 폴링, 시트는 사본 내보내기 |
 | 17 | 0 시작 척도 | 확정(버그 수정) | `low` 생략 시 기본 0. Python·TS 모두 수정(`docs/google_forms.md` 10절 20항) |
 | 18 | 그룹 파일 공통 흐름 | 확정(2026-10-09) | 서비스별 함수 없이 `createGroupFilesFromTemplate` + 각 port의 `replaceTags`, 텍스트 템플릿은 `createGroupFilesFromContent` |
 | 19 | 호출 효율 | 확정(2026-10-09 실측, 8.1절) | 파일·그룹 생성은 동시 4개. 같은 파일 권한 변경은 순차, 조원 공유는 Drive 배치 1회, 배치 실패 시 실패한 사람만 단건 재시도 |
-| 20 | Sheets 유즈케이스 5의 `source_key` | **미정** | "파일 ID"로 가정만(`docs/google_sheets.md` 11.x) |
+| 20 | Sheets 유즈케이스 5의 `source_key` | 삭제(2026-10-09 상현) | 유즈케이스 5 자체를 뺐다(14번). `readValues`·`SheetValues`·`read_sheet_values`·`get_values`를 TS·Python에서 제거. 원래 메모: | "파일 ID"로 가정만(`docs/google_sheets.md` 11.x) |
 | 21 | Forms 12 xlsx 내보내기 | 확정(2026-10-09 상현) | **CSV만.** Python·TS 모두 xlsx 제거(30번). 이전 메모: | 30번(xlsx 라이브러리) 뒤. CSV만 쓸 거면 닫을 수 있음 |
 
 ### 10.3 studio 배치·코드 구조

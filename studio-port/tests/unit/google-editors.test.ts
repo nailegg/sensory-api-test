@@ -152,41 +152,6 @@ describe('GoogleSheetsPort (synsory-api tests/google_sheets/test_usecases.py)', 
       [77, '역할 분담', 1],
     ]);
   });
-
-  it('readValues by sheetId resolves the current title; defaults to the first sheet; unknown id fails', async () => {
-    const values = {
-      range: "'역할 분담'!A1:B2",
-      values: [
-        ['항목', '점수'],
-        ['출석', 10],
-      ],
-    };
-    const http = recordingFetch(
-      { json: SPREADSHEET },
-      { json: values },
-      { json: SPREADSHEET },
-      { json: values },
-      { json: SPREADSHEET },
-    );
-    const port = createGoogleSheets(token, http);
-    const read = await port.readValues('s-1', { sheetId: 77, cellRange: 'A1:B2' });
-    expect(decodeURIComponent(http.requests[1]?.url.pathname ?? '')).toBe(
-      "/v4/spreadsheets/s-1/values/'역할 분담'!A1:B2",
-    );
-    expect(http.requests[1]?.url.searchParams.get('valueRenderOption')).toBe('UNFORMATTED_VALUE');
-    expect(read).toMatchObject({
-      sheet_id: 77,
-      sheet_title: '역할 분담',
-      values: [
-        ['항목', '점수'],
-        ['출석', 10],
-      ],
-    });
-    expect(await port.readValues('s-1')).toMatchObject({ sheet_id: 0, sheet_title: '평가' });
-    await expect(port.readValues('s-1', { sheetId: 999 })).rejects.toMatchObject({
-      code: 'SHEET_NOT_FOUND',
-    });
-  });
 });
 
 // ---------- 텍스트 템플릿 변환 업로드 (Docs Markdown · Sheets CSV) ----------

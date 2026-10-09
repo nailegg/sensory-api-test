@@ -16,7 +16,7 @@ Synsory가 나중에 붙일 SaaS API(Google Drive · Docs · Sheets · Slides ·
 | --- | --- | --- | --- |
 | Google Drive | 6 완료 (공통 레이어) | 폴더·메타데이터·공유·마감·내보내기·Picker 템플릿 복사 | [google_drive.md](docs/google_drive.md) |
 | Google Docs | 6 완료 → 7 대기 | 4개: 폴더 생성, 그룹별 문서 생성·공유, 마감(권한 낮추기), 내보내기 | [google_docs.md](docs/google_docs.md) |
-| Google Sheets | 6 완료 → 7 대기 | 5개: Docs와 같은 4개 + 마감 후 값 읽기 | [google_sheets.md](docs/google_sheets.md) |
+| Google Sheets | 6 완료 → 7 대기 | 4개: Docs와 같은 4개(값 읽기는 2026-10-09 삭제) | [google_sheets.md](docs/google_sheets.md) |
 | Google Slides | 6 완료 → 7 대기 | 4개: Docs와 같은 4개(pptx 템플릿 변환 + 복사 + 치환) | [google_slides.md](docs/google_slides.md) |
 | Google Forms | 6 완료 → 7 대기 | 13개: 설문·퀴즈·조별 동료평가 생성, 응답자 제한, 제출 현황, 마감·재개, 응답 집계·점수·내보내기 | [google_forms.md](docs/google_forms.md) |
 | Zoom | 6 완료 → 7 대기 | 6개: 플랜 확인, 그룹별 미팅, 정기 회의, 변경·취소, 시작 링크, 출석 집계(웹훅) | [zoom.md](docs/zoom.md) |

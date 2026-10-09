@@ -1,5 +1,4 @@
 import { z } from 'zod';
-import { AppError } from '../../domain/src/index.ts';
 import type { GoogleSheetsPort, SheetInfo } from '../../application/src/index.ts';
 import {
   externalRequest,
@@ -11,7 +10,7 @@ import {
 import { batchUpdateReplies, tag, tagCounts } from './google-tags.ts';
 
 // Google Sheets v4 어댑터. synsory-api app/services/google_sheets/client.py + mapper.py(좌표)
-// + usecases(태그 치환·값 읽기)의 이식본. 함정은 synsory-api docs/google_sheets.md 10절.
+// + usecases(태그 치환)의 이식본. 값 읽기(유즈케이스 5)는 2026-10-09 유즈케이스 삭제로 뺐다. 함정은 synsory-api docs/google_sheets.md 10절.
 // 보호 범위(lock_ranges)는 보류 기능이라 옮기지 않았다(docs/google_sheets.md 1절 메모 3).
 
 const BASE_URL = 'https://sheets.googleapis.com/v4';
@@ -114,27 +113,6 @@ export function createGoogleSheets(
     },
 
     listSheets,
-
-    // sheetId로 고르면 spreadsheets.get + values.get(2회), 안 고르면 첫 시트(같은 2회).
-    async readValues(spreadsheetId, { sheetId, cellRange } = {}) {
-      const sheets = await listSheets(spreadsheetId);
-      const sheet = sheetId === undefined ? sheets[0] : sheets.find((s) => s.sheet_id === sheetId);
-      if (!sheet) throw new AppError('SHEET_NOT_FOUND', 404, '시트를 찾을 수 없습니다.');
-      const response = await call({
-        method: 'GET',
-        url: valuesUrl(spreadsheetId, a1(sheet.title, cellRange)),
-        query: {
-          valueRenderOption: 'UNFORMATTED_VALUE',
-          dateTimeRenderOption: 'SERIAL_NUMBER',
-          majorDimension: 'ROWS',
-        },
-      });
-      const data = await readJson(
-        response,
-        z.object({ values: z.array(z.array(z.unknown())).default([]) }),
-      );
-      return { sheet_id: sheet.sheet_id, sheet_title: sheet.title, values: data.values };
-    },
 
     async writeValues(spreadsheetId, sheetTitle, cellRange, values) {
       const range = a1(sheetTitle, cellRange);

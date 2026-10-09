@@ -196,13 +196,6 @@ export interface SheetInfo {
   index: number;
 }
 
-export interface SheetValues {
-  sheet_id: number;
-  sheet_title: string;
-  // UNFORMATTED_VALUE: 숫자는 숫자, 날짜는 1899-12-30 기준 일련번호. 행 끝 빈 칸은 빠진다.
-  values: unknown[][];
-}
-
 // Google Sheets. 읽기·쓰기 모두 사용자당 분당 60회(요청 수 기준)라 모아서 보낸다.
 // 값은 A1 표기(values.*), 구조·보호·치환은 batchUpdate(GridRange)로 다른 API다.
 export interface GoogleSheetsPort {
@@ -212,11 +205,6 @@ export interface GoogleSheetsPort {
   create(title: string, firstSheetTitle: string): Promise<string>;
   // index 순.
   listSheets(spreadsheetId: string): Promise<SheetInfo[]>;
-  // 시트 하나의 값. sheetId(불변)로 고르면 현재 이름을 찾아 읽는다. 없으면 첫 시트.
-  readValues(
-    spreadsheetId: string,
-    options?: { sheetId?: number; cellRange?: string },
-  ): Promise<SheetValues>;
   // RAW로 덮어쓴다(학번 "0123" 유지, 수식도 문자열). USER_ENTERED는 앞자리 0을 잃는다.
   writeValues(
     spreadsheetId: string,

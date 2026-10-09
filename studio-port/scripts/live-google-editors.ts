@@ -131,15 +131,17 @@ try {
   });
   const sheetId = sheetGroup?.document?.id ?? '';
   const tabs = await sheets.listSheets(sheetId);
-  const values = await sheets.readValues(sheetId);
-  const second = await sheets.readValues(sheetId, { sheetId: tabs[1]?.sheet_id ?? -1 });
+  // 값 읽기 port는 유즈케이스 5 삭제로 없다. 첫 시트를 CSV로 내보내 치환 결과를 본다(둘째 시트는 확인 못 함).
+  const csvOf = async (id: string) =>
+    new TextDecoder().decode((await drive.exportFile(id, 'csv')).content);
+  const firstSheet = await csvOf(sheetId);
   check(
-    'Sheets: xlsx → Sheets, findReplace on all sheets and inside formulas, text 0123 kept',
+    'Sheets: xlsx → Sheets, findReplace inside formulas, text 0123 kept (first sheet via csv)',
     sheetGroup?.error === null &&
-      values.values[1]?.[0] === '팀: A조' &&
-      values.values[2]?.[1] === '0123' &&
-      values.values[3]?.[0] === 'A조 합계' &&
-      second.values[0]?.[0] === 'A조 역할',
+      firstSheet.includes('팀: A조') &&
+      firstSheet.includes('0123') &&
+      firstSheet.includes('A조 합계') &&
+      (sheetGroup?.replaced['team_name'] ?? 0) >= 2,
     `replaced=${JSON.stringify(sheetGroup?.replaced)} sheetIds=${tabs.map((t) => t.sheet_id).join(',')}`,
   );
   const [csvGroup] = await createGroupFilesFromContent(drive, {
@@ -149,11 +151,11 @@ try {
     source: 'csv',
     target: 'sheet',
   });
-  const csvValues = await sheets.readValues(csvGroup?.document?.id ?? '');
+  const csvBack = await csvOf(csvGroup?.document?.id ?? '');
   check(
     'Sheets: CSV template (known: 0123 becomes a number)',
-    csvValues.values[1]?.[0] === 'A조' && csvValues.values[1]?.[1] === 123,
-    JSON.stringify(csvValues.values[1]),
+    csvBack.includes('A조,123'),
+    JSON.stringify(csvBack.split('\n')[1]),
   );
 
   const closed = await closeSubmissions(
@@ -179,16 +181,16 @@ try {
     spreadsheetId: exported.spreadsheet_id,
     previousColumns: exported.columns,
   });
-  const sheetValues = await sheets.readValues(exported.spreadsheet_id);
+  const header = (await csvOf(exported.spreadsheet_id)).split('\n')[0] ?? '';
   const moved = await drive.getFile(exported.spreadsheet_id);
   check(
     'Forms 13: export creates sheet in folder, re-export keeps the memo column',
     exported.created &&
       !again.created &&
       moved.parent_folder_id === folder.id &&
-      sheetValues.values[0]?.[0] === '제출 시각' &&
-      sheetValues.values[0]?.[4] === '교수자 메모',
-    JSON.stringify(sheetValues.values[0]),
+      header.startsWith('제출 시각') &&
+      header.includes('교수자 메모'),
+    header,
   );
 } finally {
   await drive.trashFile(folder.id);

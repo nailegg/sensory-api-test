@@ -212,22 +212,3 @@ async def export(spreadsheet_id: str, fmt: str = Query(default="xlsx"), drive: D
         media_type=exported.mime_type,
         headers={"Content-Disposition": f"attachment; filename*=UTF-8''{quote(exported.filename)}"},
     )
-
-
-# ---------- 유즈케이스 5 ----------
-
-
-@router.get("/values/{spreadsheet_id}")
-async def values(
-    spreadsheet_id: str,
-    sheet_id: int | None = Query(default=None, description="불변 시트 ID(URL의 gid). 없으면 sheet_title, 둘 다 없으면 첫 시트"),
-    sheet_title: str | None = Query(default=None),
-    cell_range: str | None = Query(default=None, description="예: A5:C9. 없으면 시트 전체"),
-    value_render_option: str = Query(default="UNFORMATTED_VALUE"),
-    sheets: SheetsClient = Depends(_sheets),
-):
-    """마감 후 그룹 시트 값 읽기. DB 반영은 호출자(서비스 레포) 책임."""
-    try:
-        return await usecases.read_sheet_values(sheets, spreadsheet_id, sheet_id, sheet_title, cell_range, value_render_option)
-    except SheetsApiError as e:
-        raise _to_http(e)

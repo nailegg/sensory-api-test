@@ -57,13 +57,13 @@
 | 동시 편집 | `batchUpdate`는 원자적이지만 Docs의 `requiredRevisionId` 같은 낙관적 잠금이 **없다** | 사용자가 행을 끼워 넣으면 A1 범위가 어긋난다. 10절 |
 | 날짜 | `UNFORMATTED_VALUE`로 읽으면 날짜가 1899-12-30 기준 일련번호(숫자) | 로케일에 따라 표시값이 달라진다 |
 
-**유즈케이스는 1절(2026-10-04 확정).** Docs·Slides와 같은 4개 + 마감 후 값 읽기. 성적표 동기화는 검토 후 보류했고 그 근거는 1.2~1.3에 있다. 핵심: 성적표 자체는 API로 전부 되지만 "학생이 자기 성적만, 입력 완료된 것만 본다"는 요구는 **Sheets에 행·셀 단위 권한이 없어** 서버가 걸러야 하므로, 성적 원본은 DB로 한다.
+**유즈케이스는 1절(2026-10-04 확정, 2026-10-09 5번 삭제).** Docs·Slides와 같은 4개. 성적표 동기화는 검토 후 보류했고 그 근거는 1.2~1.3에 있다. 핵심: 성적표 자체는 API로 전부 되지만 "학생이 자기 성적만, 입력 완료된 것만 본다"는 요구는 **Sheets에 행·셀 단위 권한이 없어** 서버가 걸러야 하므로, 성적 원본은 DB로 한다.
 
 ---
 
 ## 1. 이 서비스로 하는 일 (유즈케이스)
 
-2026-10-04 상현 확정: **Docs·Slides와 같은 유즈케이스 4개 + 마감 후 값 읽기 1개.** 전제도 같다(OAuth 연결은 교수자, 파일은 교수자 소유, 학생은 Drive 공유로 편집). **성적표 동기화는 검토 후 보류**(1.3). 성적의 원본은 Synsory DB이고 교수자 성적 입력은 Synsory 화면에서 한다.
+2026-10-04 상현 확정: **Docs·Slides와 같은 유즈케이스 4개.** (5번 "마감 후 값 읽기"는 2026-10-09 상현이 삭제: 당장 필요 없는데 과하게 적은 케이스. 템플릿 모양이 정해지고 읽을 필요가 생기면 git 이력 68ff1a7 이전의 `read_sheet_values`·`readValues`를 되살린다.) 전제도 같다(OAuth 연결은 교수자, 파일은 교수자 소유, 학생은 Drive 공유로 편집). **성적표 동기화는 검토 후 보류**(1.3). 성적의 원본은 Synsory DB이고 교수자 성적 입력은 Synsory 화면에서 한다.
 
 | # | 유즈케이스 | 호출 순서 | usecases 함수 |
 | --- | --- | --- | --- |
@@ -71,7 +71,6 @@
 | 2 | 교수자가 템플릿(태그가 든 시트 + 팀명으로 포맷되는 파일명)으로 폴더 안에 그룹마다 스프레드시트를 만들고 그룹원에게 편집 권한을 준다 | 액티비티당 1회: Drive `files.create` (xlsx 업로드 + Sheets 변환, `parents`=액티비티 폴더) → 그룹마다: Drive `files.copy` (`name`, `parents`) → Sheets `batchUpdate` (`findReplace` × 태그 수, `allSheets=true`, 1회) → 그룹원마다 Drive `permissions.create` (`role=writer`) | `upload_template` → `create_group_sheets` |
 | 3 | 마감(due) 시점에 편집을 비활성화한다 | Docs와 동일: 파일마다 Drive `permissions.list` → 학생 writer마다 `permissions.update` `role=commenter` | `close_submissions` (`google_drive.usecases`, Docs·Slides와 같은 함수) |
 | 4 | 같은 시점에 파일로 내보내 다른 API로 보낸다 | Drive `files.export` (xlsx · pdf · csv · ods · tsv · zip, 10MB 상한) | `export_spreadsheet` |
-| 5 | 마감 후 그룹 시트의 값을 읽어 Synsory DB에 반영한다 (동료 평가 점수, 체크리스트 등) | Sheets `spreadsheets.get`(`fields=sheets.properties`, 시트 이름 확인) → `values.get` 또는 `values.batchGet` (`valueRenderOption=UNFORMATTED_VALUE`) → 2차원 배열을 호출자에게 반환 | `read_sheet_values` |
 
 **유즈케이스별 메모**
 
@@ -82,7 +81,6 @@
 - 2: 교수자가 Drive에 이미 가진 시트를 템플릿으로 쓰는 것은 **Google Picker**로 가능하다(`docs/google_drive.md` 2.1절, 2026-10-04 탐색 완료. scope 추가 없음). Picker로 고른 시트 ID를 `template_spreadsheet_id`로 넘기면 copy 방식 코드가 그대로 동작해야 한다(원본은 수정하지 않고 복사본만 `findReplace`). 실측(2026-10-04): Picker 전 404는 확인(`samples/google_sheets/uc2-template-picker-before.json`), Picker 후 성공은 Slides로만 확인했고 Sheets는 보류. 복사→치환→공유 흐름의 공통 함수 `google_drive.usecases.create_group_files_from_template`(Slides가 사용)가 있으니 `create_group_sheets`의 copy 방식도 이것으로 바꿀 수 있다(치환 요청은 `replace_tags`로 전달, `replace_errors=(SheetsApiError,)`).
 - 3: 기본은 권한 낮추기. Sheets에는 추가로 `addProtectedRange`로 **학생 입력 열만 잠그고 파일은 열어 두는** 선택지가 있다(교수자가 같은 시트에 채점 열을 쓰는 경우). 실측(2026-10-04): 보호 중에도 소유자 API 쓰기는 200(막지 않음). `editors`를 생략하면 학생 writer까지 편집 가능으로 들어가므로 `lock_ranges`는 항상 `editors`를 명시한다(10절 10항). 채택 여부는 그 요구가 생길 때 정한다.
 - 4: 형식은 Docs의 docx·md·html 대신 **xlsx · pdf · csv · ods · tsv · zip**. CSV·TSV는 첫 시트만 나온다. 전체 보존은 xlsx.
-- 5: 이 유즈케이스가 Sheets 고유의 읽기다. 시트 이름이 바뀔 수 있으므로 `sheetId`로 시트를 찾아 A1 범위를 만든다(10절 9항). 값은 `UNFORMATTED_VALUE`로 읽어 숫자는 숫자로, 날짜는 일련번호로 받고 변환은 호출자가 한다. 유효성(숫자 범위, 빈 칸)은 Synsory 쪽 검증이다. 학생이 다른 그룹 시트를 볼 수 없는 것은 Drive 권한으로 보장된다(Docs 10절 12항 실측). 같은 그룹 안에서는 서로의 입력이 보이므로 **익명 동료 평가는 시트가 아니라 Forms 또는 Synsory 화면**으로 한다.
 - scope: 다섯 유즈케이스 모두 `drive.file` 하나. `services/google_sheets/scopes.py`는 빈 dict.
 - 보조 배관: `read_spreadsheet`(구조 + Document, `include_values`로 전체 값 평문)와 `list_sheets`(sheetId·이름·보호 범위). 서비스는 생성 직후 `list_sheets`로 `sheet_id`를 저장한다(복사본의 sheetId는 0이 아니다, 10절 9항).
 
@@ -210,9 +208,9 @@ Base URL: `https://sheets.googleapis.com/v4`. Discovery: `https://sheets.googlea
 | 3 마감 처리 · 없는 ID · 재실행 · 마감 뒤 교수자 쓰기 · 되돌리기 | `uc3-close-submission.json` |
 | 3 선택지: 보호 범위 → 소유자 API 쓰기 → editors 지정 → 해제 | `uc3-lock-ranges-owner-write.json` |
 | 4 내보내기(xlsx · csv · pdf · tsv, docx는 400) | `uc4-export.json` |
-| 5 값 읽기(UNFORMATTED vs FORMATTED, 날짜 일련번호, 시트 이름 변경 뒤 `sheet_id`로 읽기) | `uc5-read-values.json` |
-| 5 실험: `RAW` vs `USER_ENTERED` (학번 앞자리 0, 수식 문자열) | `uc5-raw-vs-user-entered.json` |
-| 5 실험: `values.append` 표 탐지 | `uc5-append.json` |
+| (삭제된 5) 값 읽기(UNFORMATTED vs FORMATTED, 날짜 일련번호, 시트 이름 변경 뒤 `sheet_id`로 읽기) | `uc5-read-values.json` (실측 기록만 유지) |
+| 실험: `RAW` vs `USER_ENTERED` (학번 앞자리 0, 수식 문자열. `writeValues` RAW 근거) | `uc5-raw-vs-user-entered.json` |
+| 실험: `values.append` 표 탐지 (append는 미사용으로 삭제) | `uc5-append.json` |
 | 에러 모음 | `error-cases.json` |
 | 배관 | `create-empty.json` |
 
@@ -236,7 +234,6 @@ Base URL: `https://sheets.googleapis.com/v4`. Discovery: `https://sheets.googlea
 | dataclass | 필드 | 쓰는 곳 |
 | --- | --- | --- |
 | `SheetInfo` | `sheet_id`(불변, URL의 gid), `title`, `index`, `hidden`, `row_count`, `column_count`, `frozen_row_count`, `protected_ranges[]` | `list_sheets`. 서비스는 생성 직후 `sheet_id`를 저장한다 |
-| `SheetValues` | `spreadsheet_id`, `sheet_id`, `sheet_title`, `range`(실제 응답 범위), `values`(2차원) | `read_sheet_values`(유즈케이스 5) |
 | `GroupSheetResult` | `team_name`, `document`, `replaced{태그: 횟수}`, `shares[]`, `error` | `create_group_sheets`. Slides의 `GroupPresentationResult`와 같은 형태 |
 
 ## 7. 에러와 예외 케이스
@@ -298,7 +295,6 @@ Base URL: `https://sheets.googleapis.com/v4`. Discovery: `https://sheets.googlea
 | 3 마감 처리 | 0 | g × (1 `permissions.list` + m `permissions.update`) | Docs와 동일 |
 | 3 열 보호 (선택) | g × 1 | 0 | `list_sheets`로 sheetId를 모르면 +1 읽기 |
 | 4 내보내기 | 0 | g × (1 `files.get` + 1 `files.export`) | |
-| 5 값 읽기 | g × 1~2 (`get` + `values.get`) | 0 | `sheet_title`을 알면 1회. 30그룹 = 읽기 30~60회 → **분당 60 한도에 닿는다.** 마감 후 일괄 읽기는 그룹 사이에 1초 간격 또는 `sheet_id`→이름을 미리 저장해 `get`을 생략 |
 
 ## 9. 웹훅 (해당 시)
 
@@ -316,7 +312,7 @@ Sheets API에는 없다. 변경 감지는 Drive `changes.watch`/`changes.list` �
 6. **A1 범위는 사용자가 행을 끼우면 어긋난다.** Docs의 `requiredRevisionId` 같은 낙관적 잠금이 없다. 행을 Synsory 레코드와 묶어야 하면 ① 첫 열에 ID를 넣고 쓰기 전에 `values.get`으로 위치를 다시 찾거나 ② developer metadata로 행에 ID를 붙이고 `*ByDataFilter`로 찾는다. 확정 유즈케이스(마감 후 읽기)는 전체를 읽으므로 해당 없음.
 7. **`spreadsheets.get`은 기본이 구조만.** 값은 `values.get`으로 따로 읽는다. `SheetsClient.get`은 `STRUCTURE_FIELDS` 마스크로 시트 속성·보호 범위만 받는다. `includeGridData=true`는 작은 시트에서만.
 8. **시트 이름에 공백·특수문자가 있으면 작은따옴표.** `a1()`이 항상 감싼다(`'팀 A'!A1:C3`, 이름 안의 `'`는 `''`). 실측에서 `'역할 분담 (학생이 이름 바꿈)'` 같은 이름도 통과.
-9. **`sheetId`는 불변, 이름은 가변 (2026-10-04 실측).** 학생이 시트 이름을 바꾼 뒤 옛 이름으로 읽으면 400 "Unable to parse range", `sheet_id`로 읽으면 성공. 서비스는 생성 직후 `list_sheets`로 `sheet_id`를 저장하고 `read_sheet_values(sheet_id=…)`로 읽는다. **변환 업로드·복사된 파일의 sheetId는 0이 아니다**(실측: 484197496, 705952363). `sheetId=0`을 가정한 코드는 "No grid with id: 0"으로 실패한다.
+9. **`sheetId`는 불변, 이름은 가변 (2026-10-04 실측).** 학생이 시트 이름을 바꾼 뒤 옛 이름으로 읽으면 400 "Unable to parse range", `sheet_id`로 읽으면 성공. 서비스는 생성 직후 `list_sheets`로 `sheet_id`를 저장하고 시트를 가리킬 때는 이름이 아니라 `sheet_id`로 읽는다. **변환 업로드·복사된 파일의 sheetId는 0이 아니다**(실측: 484197496, 705952363). `sheetId=0`을 가정한 코드는 "No grid with id: 0"으로 실패한다.
 10. **보호 범위 (2026-10-04 실측).** ① `editors`를 생략하면 Sheets가 **현재 문서 편집자 전원**(학생 writer 포함)을 편집 가능으로 넣어 보호가 아무도 막지 못한다. `editors.users=[]`로 보내야 소유자만 남는다. `protect_range_requests`는 항상 `editors`를 명시한다. ② 보호 중에도 소유자 토큰의 `values.update`는 200. 보호는 UI 편집 제한이고 API 쓰기 제한이 아니다(교수자가 Synsory로 채점 값을 쓰는 데 지장 없음). ③ 보기는 못 막는다. ④ `requestingUserCanEdit`는 소유자에게 항상 true. ⑤ 마감 처리의 기본은 Docs처럼 `permissions.update`이고, 보호 범위는 "일부 열만 잠그고 파일은 열어 둘" 때만 쓴다. 학생 계정에서 UI가 실제로 막히는지는 미실측(12절).
 11. **템플릿은 "xlsx 1회 변환 업로드 → 그룹마다 `files.copy` → `findReplace`" (채택, 2026-10-04 실측).** 변환 뒤 굵게·데이터 검증(`NUMBER_BETWEEN 0~10`)·`SUM` 수식·텍스트 서식·틀 고정(5행)·시트 2장이 모두 보존됐다. `findReplace`(`allSheets=true`, `matchCase=true`, `includeFormulas=true`)는 모든 시트의 셀 텍스트와 **수식 안 태그**(`="{{team_name}} 평균: "&…` → `="A조 평균: "&…`)까지 바꿨다. 응답 `occurrencesChanged`가 태그별 치환 횟수(team_name 3 = 평가!A2 + 평가!A11 수식 + 역할 분담!A1). `files.copy`에 `parents`를 주면 사본이 바로 액티비티 폴더에 생긴다.
 12. **CSV 변환 업로드 비교 (2026-10-04 실측).** 그룹당 Drive 1회로 가장 싸고 수식(`=SUM`)도 들어가지만, 시트 1장·검증 없음·서식 없음·틀 고정 없음이고 **`0123456`이 숫자 `123456`으로** 바뀐다. 값만 있는 단순 표에만 쓴다. 기본은 xlsx 방식.
@@ -382,13 +378,6 @@ protected_ids = await sheets_uc.lock_ranges(sheets, spreadsheet_id, sheet_id=eva
 # 4. 제출본 확보. 반드시 3 다음에
 exported = await sheets_uc.export_spreadsheet(drive, spreadsheet_id, fmt="xlsx")   # xlsx | pdf | csv(첫 시트만) | ods | tsv | zip
 
-# 5. 값 읽기 → DB 반영. sheet_id로 읽어 이름 변경에 영향받지 않게. UNFORMATTED: 숫자는 숫자, 날짜는 일련번호, 빈 셀은 잘림
-sv = await sheets_uc.read_sheet_values(sheets, spreadsheet_id, sheet_id=eval_sheet_id, cell_range="A6:C9")
-for row in sv.values:
-    row += [""] * (3 - len(row))                 # 뒤쪽 빈 셀 채우기
-    item, score, note = row
-    if isinstance(score, str) and score.startswith("#"): ...   # 수식 에러 값
-    save_score(team, item, score, note)
 
 # 보조: 구조 + 전체 값 평문 (Document.text). 트러블슈팅용
 doc = await sheets_uc.read_spreadsheet(sheets, drive, spreadsheet_id, include_values=True)
@@ -404,7 +393,7 @@ doc = await sheets_uc.read_spreadsheet(sheets, drive, spreadsheet_id, include_va
 
    | synsory-api | studio |
    | --- | --- |
-   | `google_sheets/client.py` + mapper 좌표(`column_letter` · `a1`) + usecases `replace_tag_requests` · `replace_tags` · `list_sheets` · `read_sheet_values` | `packages/infrastructure/src/google-sheets.ts` `createGoogleSheets(accessToken)` → `GoogleSheetsPort`, `columnLetter` · `a1` |
+   | `google_sheets/client.py` + mapper 좌표(`column_letter` · `a1`) + usecases `replace_tag_requests` · `replace_tags` · `list_sheets` | `packages/infrastructure/src/google-sheets.ts` `createGoogleSheets(accessToken)` → `GoogleSheetsPort`, `columnLetter` · `a1` |
    | usecases `create_group_sheets` copy 방식 | `createGroupFilesFromTemplate(drive, { ..., replaceTags: sheets.replaceTags })`. Python은 자체 루프였지만 동작(복사 실패 → error, 치환 실패 → 복사본 남기고 공유 안 함)이 공통 흐름과 같다 |
    | usecases `create_group_sheets` csv 방식 | `createGroupFilesFromContent(drive, { source: 'csv', target: 'sheet', ... })` (Docs Markdown 경로와 같은 함수) |
    | usecases `upload_template` | `drive.createFromContent({ source: 'xlsx', target: 'sheet', ... })` 한 번이라 함수를 두지 않는다 |
@@ -414,10 +403,9 @@ doc = await sheets_uc.read_spreadsheet(sheets, drive, spreadsheet_id, include_va
    | mapper `column_index` · `grid_range`, usecases `protect_range_requests` · `lock_ranges` · `unlock_ranges` | 이식하지 않음. 보호 범위는 보류 기능(1절 메모 3)이고 마감은 권한 낮추기로 확정됐다. 처음에 옮겼다가 2026-10-09 karpathy 재검토로 뺐다(application 호출 0). 필요해지면 Python을 보고 추가 |
 
    Python과 달라진 점:
-   - `read_sheet_values`는 `sheetId`로만 고른다(이름 지정 경로 없음. 이름은 사용자가 바꿀 수 있어 저장 식별자는 `sheetId`다). 없는 `sheetId`는 `AppError SHEET_NOT_FOUND` 404. `value_render_option`은 `UNFORMATTED_VALUE` 고정.
    - `writeValues`는 RAW 고정(`USER_ENTERED`는 학번 앞자리 0을 잃는다, 10절).
    - `clear_values(a1_range)` 대신 `clearColumns(spreadsheetId, sheetTitle, columns)`: A1 표기를 아는 쪽(infrastructure)이 범위를 만든다. application에 열 문자 변환을 두지 않으려고.
-   - `SheetInfo`에서 `row_count` · `column_count` · `frozen_row_count` · `protected_ranges` · `hidden`을, `SheetValues`에서 `range`를 뺐다(흐름이 쓰지 않음).
+   - `SheetInfo`에서 `row_count` · `column_count` · `frozen_row_count` · `protected_ranges` · `hidden`을 뺐다(흐름이 쓰지 않음).
    - "템플릿 둘 중 하나만"(`ValueError`)은 함수를 둘로 나눠 생기지 않는다.
 
 2. **port 메서드** (`GoogleSheetsPort`)
@@ -427,13 +415,12 @@ doc = await sheets_uc.read_spreadsheet(sheets, drive, spreadsheet_id, include_va
    | `replaceTags(id, variables)` | `batchUpdate` `findReplace`(allSheets·matchCase·includeFormulas) | `replace_tags` |
    | `create(title, firstSheetTitle)` → id | `spreadsheets.create`(ko_KR·Asia/Seoul, 시트 한 장) | `client.create`. 호출하는 흐름(Forms 13)이 한 장만 만들어 목록 대신 이름 하나 |
    | `listSheets(id)` | `spreadsheets.get` `fields=sheets(properties(...))` | `list_sheets` |
-   | `readValues(id, { sheetId?, cellRange? })` | `get` + `values.get` | `read_sheet_values` |
    | `writeValues(id, sheetTitle, cellRange, values)` | `values.update` RAW | `write_values` |
    | `clearColumns(id, sheetTitle, columns)` | `values.clear` `A:{열}` | `clear_values` |
 
-3. **도구 매핑**: 그룹 파일 도구(`google_sheets`). 유즈케이스 5(마감 후 값 읽기)는 `readValues` 결과를 응답으로 저장한다(`source_key` = 파일 ID, 결정 필요).
-4. **큐 작업**: 없음(값 읽기는 마감 시각 작업에서 부른다).
-5. **테스트**: `tests/google_sheets/test_mapper.py` 좌표 중 열 문자·A1 2개 + `test_usecases.py` 중 치환 요청·시트 목록·값 읽기·csv 방식 → `studio-port/tests/unit/google-editors.test.ts`(GridRange·보호 범위·잠금 케이스는 보호 범위를 빼면서 같이 뺌). 복사 방식·실패 계속은 `google-files.test.ts`(공통 흐름), 내보내기 형식은 `google-drive.test.ts`. 옮기지 않음: 평문·Document 변환 4개(읽기 미이식), "둘 중 하나만" 1개(함수 분리). 실측(openpyxl 템플릿): 두 시트·수식 안 태그 치환, 텍스트 서식 `0123` 유지, 복사본 `sheetId`가 0이 아님, CSV 방식은 `0123` → `123`(10절 12항과 같음).
+3. **도구 매핑**: 그룹 파일 도구(`google_sheets`). 응답 저장 없음(값 읽기 5번은 삭제).
+4. **큐 작업**: 없음.
+5. **테스트**: `tests/google_sheets/test_mapper.py` 좌표 중 열 문자·A1 2개 + `test_usecases.py` 중 치환 요청·시트 목록·csv 방식 → `studio-port/tests/unit/google-editors.test.ts`(GridRange·보호 범위·잠금 케이스는 보호 범위를 빼면서 같이 뺌). 복사 방식·실패 계속은 `google-files.test.ts`(공통 흐름), 내보내기 형식은 `google-drive.test.ts`. 옮기지 않음: 평문·Document 변환 4개(읽기 미이식), "둘 중 하나만" 1개(함수 분리). 실측(openpyxl 템플릿): 두 시트·수식 안 태그 치환, 텍스트 서식 `0123` 유지, 복사본 `sheetId`가 0이 아님, CSV 방식은 `0123` → `123`(10절 12항과 같음).
 
 ## 12. 미확인 · 보류 항목
 
