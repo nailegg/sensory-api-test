@@ -1,6 +1,6 @@
 # studio `feat/google-tools` 브랜치 작업 계획
 
-작성일: 2026-10-09 · 작성자: 상현 · 상태: 가정 G1~G5 확정(2026-10-09 상현), 1·2단계 완료, 3단계 코드 완료(라이브 확인 대기), 4단계 완료, 5단계 전. 브랜치는 studio `main`(a03a27f)에서 `feat/google-tools`로 열었다(파일 변경 없음).
+작성일: 2026-10-09 · 작성자: 상현 · 상태: 가정 G1~G5 확정(2026-10-09 상현), 1·2단계 완료, 3단계 코드 완료(라이브 확인 대기), 4단계·검수 완료, 5단계 전. 브랜치는 studio `main`(a03a27f)에서 `feat/google-tools`로 열었다(파일 변경 없음).
 
 결정 근거는 `docs/STUDIO_PORTING.md` 10절 결정 대장(번호로 인용), 서비스별 대응은 각 `docs/<service>.md` 11.x. 이 문서는 "무엇을 어떤 순서로, 어떻게 확인하며" 넣는지만 적는다.
 
@@ -65,6 +65,14 @@ studio를 읽고 확인한 사실:
 - 바꾸는 것: domain `google-tools.ts`에 `google_docs`·`google_slides`·`google_sheets`(파일 배포형: `validateConfig`가 `kind`·템플릿 ID 또는 본문·제목 템플릿·`due`를 검사, 응답 없음이라 `validateResponse`는 거절, `aggregate`는 팀별 파일 수)와 `google_forms`(`config.mode` = survey·quiz·peer_review, `validateResponse` = `FormSubmission`, `sourceKey` = 응답 ID, `identity` = `respondent_email`, `aggregate`·`dto`는 기존 `summarize`·`summarizePeerReviews`·`submissionStatus` 재사용). `productTools`에 4개 등록.
 - 검증: domain 단위 테스트 — `samples/google_forms/*.json`을 fixture로 `validateResponse`·`identity`·`sourceKey`, 잘못된 config 거절. DB 테스트 — `activities.create`가 4개 타입을 받고 `test_fixture_tool`은 거절. `tests/fixtures/tool.ts`는 그대로(테스트 전용).
 - 안 하는 것: 결과 화면 DTO 다듬기(화면이 없으므로 `summary`·`detail` 최소), 퀴즈 재채점 정책.
+
+### 4.5 검수 (2026-10-09, karpathy·주석) — 완료 (studio 커밋 a7c5551)
+
+별도 에이전트 검수 결과와 처리:
+- **순환 import(중)**: `google-tools.ts` ↔ domain `index.ts`. 파일을 직접 import하면 `ReferenceError` 실측(index 경유만 안전). `AppError`·`invariant`를 `domain/src/errors.ts`로 빼서 순환을 없앴다(index는 재export). 직접 import 확인 통과.
+- **주석(중)**: main은 주석 24줄·전부 영어·한 줄 "왜"인데 브랜치가 한국어 330줄을 더했다. 상현 결정: **기술적 선택의 이유만 영어 한 줄로 남기고 전부 삭제**(설명·유즈케이스 번호·이식 출처·구분선 제거). 이로써 studio 파일과 synsory-api `studio-port/`는 **주석만 다르다**(코드 본문 동일). "수정 없이 복사" diff 검증은 폐기(상현: 본문을 안 건드리면 동일성은 성립). 앞으로 코드 변경은 studio가 기준이고 studio-port는 참조용.
+- 기록만(코드 변경 없음): 6.2절 "한 프로세스 안의 동시 갱신 공유"는 구현하지 않음(Google은 refresh token이 안 바뀌어 무해, 호출만 늘 수 있음. 5단계 실측에서 거슬리면 promise 공유 3줄). 결정 23(`externalDocument` 축소)은 5단계에서. 콜백 리다이렉트 쿼리 `?google=connected`·`/courses?google_error=<code>`는 화면 브랜치가 알아야 할 계약. 5단계 DB 테스트에서 `created_by_profile_id` 누락 시 집계가 조용히 비는 경로를 잡을 것. 6.3절 403 `insufficientPermissions` 재연결 처리는 5단계 작업 핸들러에서.
+- 미룸(사소): `callback` 반환 `account_email` 미사용, survey·quiz 스키마 중복, 테스트 `toThrow()` 4곳 약한 단언, `refresh_token` 없는 토큰 응답 단위 케이스.
 
 ### 5단계. 생성·마감 작업 + 라우트 (결정 27·28·29, 8절)
 
