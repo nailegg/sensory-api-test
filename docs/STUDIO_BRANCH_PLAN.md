@@ -1,6 +1,6 @@
 # studio `feat/google-tools` 브랜치 작업 계획
 
-작성일: 2026-10-09 · 작성자: 상현 · 상태: 가정 G1~G5 확정(2026-10-09 상현), 1·2단계 완료, 3단계 코드 완료(라이브 확인 대기), 4단계 전. 브랜치는 studio `main`(a03a27f)에서 `feat/google-tools`로 열었다(파일 변경 없음).
+작성일: 2026-10-09 · 작성자: 상현 · 상태: 가정 G1~G5 확정(2026-10-09 상현), 1·2단계 완료, 3단계 코드 완료(라이브 확인 대기), 4단계 완료, 5단계 전. 브랜치는 studio `main`(a03a27f)에서 `feat/google-tools`로 열었다(파일 변경 없음).
 
 결정 근거는 `docs/STUDIO_PORTING.md` 10절 결정 대장(번호로 인용), 서비스별 대응은 각 `docs/<service>.md` 11.x. 이 문서는 "무엇을 어떤 순서로, 어떻게 확인하며" 넣는지만 적는다.
 
@@ -58,7 +58,9 @@ studio를 읽고 확인한 사실:
 - 검증: 단위 테스트(가짜 fetch·가짜 Store): 코드 교환 저장, 캐시 재사용, 만료 임박 갱신, `invalid_grant` → 행 삭제 + 409, scope 누락 거절. DB 테스트: upsert·삭제, 브라우저 역할 접근 불가. 라이브 1회: 로컬 studio에서 상현 계정 연결 → 행 생성 → `accessToken`으로 Drive `files.get` 성공 → 해제.
 - 안 하는 것: Zoom 연결, 다중 계정, "하루 전 점검", 키 분리(결정 37).
 
-### 4단계. ToolHandler 4개 (결정 26, 7절)
+### 4단계. ToolHandler 4개 (결정 26, 7절) — 완료 2026-10-09 (studio 커밋 1개)
+
+결과: domain `google-tools.ts`에 핸들러 4개와 config 스키마(Docs: 템플릿 파일 또는 Markdown 중 하나, Slides: 템플릿 파일, Sheets: 템플릿 파일 또는 CSV, Forms: `mode` survey·quiz·peer_review), 수집 payload 스키마 `formSubmission`, 5단계가 쓸 external_refs 항목 스키마 `googleFileRef`(조별 파일 + `member_emails`·`created_by_profile_id`)·`googleFormRef`(폼 + `questions`·`reviewees`). `productTools`에 등록. 집계: 파일 도구는 조별 파일 목록, Forms는 mode별로 `summarize`·점수표·`summarizePeerReviews`. 검증: 단위 8개(config 4종, 응답 없음, 집계, authorize, Forms 검증·키·dto·설문·동료평가 집계) + 기존 `productTools` 테스트를 4개 등록으로 수정, 전 검사 통과(단위 107, DB 42). 계획과 다른 점: "activities.create가 4개를 받는 DB 테스트"는 테스트 하네스가 허용 목록을 `test_fixture_tool`로 바꿔 끼워서 불가능해 생략(허용 목록은 1단계 격리 테스트, 등록은 단위 테스트가 증명). 주의: `google-tools.ts`와 `index.ts`가 서로 import한다(핸들러가 `invariant`를 쓰고 index가 등록). 모듈 평가 시점에는 안 쓰므로 안전하지만 domain 바깥은 항상 `index.ts`로 import할 것.
 
 - 바꾸는 것: domain `google-tools.ts`에 `google_docs`·`google_slides`·`google_sheets`(파일 배포형: `validateConfig`가 `kind`·템플릿 ID 또는 본문·제목 템플릿·`due`를 검사, 응답 없음이라 `validateResponse`는 거절, `aggregate`는 팀별 파일 수)와 `google_forms`(`config.mode` = survey·quiz·peer_review, `validateResponse` = `FormSubmission`, `sourceKey` = 응답 ID, `identity` = `respondent_email`, `aggregate`·`dto`는 기존 `summarize`·`summarizePeerReviews`·`submissionStatus` 재사용). `productTools`에 4개 등록.
 - 검증: domain 단위 테스트 — `samples/google_forms/*.json`을 fixture로 `validateResponse`·`identity`·`sourceKey`, 잘못된 config 거절. DB 테스트 — `activities.create`가 4개 타입을 받고 `test_fixture_tool`은 거절. `tests/fixtures/tool.ts`는 그대로(테스트 전용).
