@@ -96,6 +96,7 @@
 - **4. H 해결**: worker가 실패를 `jobFailure`(이메일·긴 ID 마스킹) JSON 한 줄로 로그. 단위 테스트.
 - 추가 발견(재시도 라이브에서): 재개가 **파일 소유자 본인**의 권한을 writer로 바꾸려다 실패(`reopen_error`). `restoreEditors`가 소유자를 건너뛰게 수정.
 - **S5 처리(2026-10-12)**: 0011을 테이블 전체 UPDATE에서 **`updated_at` 열 하나**로 좁힘. Postgres는 행 잠금에 "어느 한 열"의 UPDATE만 요구함을 실측(열 권한 상태에서 이메일 UPDATE 거절). 근본 대안 D(`commit`에 시스템 호출자 경로)는 PR 안건.
+- **D 근거 재확인(2026-10-13)**: "worker가 `CollectionService.commit`을 부른다"는 **명시 규칙은 studio에 없다**(AGENTS·SECURITY_REVIEW·VERIFICATION·코드 주석 모두). 정황 근거는 studio `TODO.md` P5 절("Worker·큐·계측")이 `commit`의 기능(checkpoint revision 검사, 100행·1 MiB 묶음, 원본별 멱등, 진행 지점 원자 갱신·중간 실패 복구)을 "기반을 구현한다"로 적고, 같은 절에서 "외부 HTTP를 수행하는 구체적인 도구 작업은 등록하지 않는다"고 의도적으로 멈춘 것. 즉 `commit`은 worker 수집을 위해 미리 둔 기반이고 우리 `google-activity` 작업이 첫 실제 소비자다. 그러나 작성자가 worker 역할로 `commit`을 실행한 적은 없다(통합 테스트는 교수자 actor, 0001이 worker에 `course_members` UPDATE를 안 줌). 따라서 "worker가 자신을 누구로 밝히고 부르는가"는 미결 설계이고, K2(작업을 넣은 교수자를 actor로)와 0011은 그 빈칸을 우리가 채운 선택이다. 함수가 틀린 것이 아니라 시스템 호출자 입구가 없는 미완성 기반이므로, `commitFromJob`을 우리가 만들면 작성자 몫의 결정을 대신하게 된다. 브랜치는 B+K2로 두고 PR에서 작성자(taeyeongyoo)에게 묻는다.
 
 ## 5. 권고
 
