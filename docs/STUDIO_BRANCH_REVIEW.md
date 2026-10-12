@@ -39,9 +39,10 @@
 
 ## 2. 발견된 오류
 
-### 라이브에서 잡혀 수정된 2건 — 검증
-- ① `team_snapshot` strict 거절: 수정(`parseConfig` 분리·되붙임)과 단위 회귀 적절. 부작용: `validateResponse`도 같은 함수라 payload에 `team_snapshot` 키가 오면 strict를 우회(실해 없음, 낮음).
+### 라이브에서 잡혀 수정된 3건 — 검증
+- ① `team_snapshot` strict 거절: 수정(`parseConfig` 분리·되붙임)과 단위 회귀 적절. 부작용: `validateResponse`도 같은 함수라 payload에 `team_snapshot` 키가 오면 strict를 우회(실해 없음, 낮음). (이후 되붙임 제거, 응답 검증 분리.)
 - ② worker `course_members` 잠금 권한: 원인·0011·회귀 적절. 권한 확대 리스크는 S5.
+- ③ 재개 시 소유자 권한 복원 실패(재시도 라이브, 2026-10-10): 조원이 파일 소유자 본인이면 `owner → writer` 변경을 Google이 거절해 `reopen_error`. 원인은 `restoreEditors`가 소유자를 걸러내지 않은 것(마감 쪽 `downgradeEditors`는 걸러냈음). 수정: `role === 'owner'`는 건너뜀, 단위 회귀. 운영에서는 소유자가 활동을 연 교수자 계정이라 그 계정이 조에 들어 있을 때만 발생. D(재개 오류 표시) 수정 덕에 드러남.
 
 ### 새로 찾은 결함
 - **A. 조 단위 실패는 영구히 재생성되지 않는다(중~높)** — `provisionGoogleActivity`가 폴더 ref가 있으면 즉시 return. 조 하나가 429/5xx/404로 실패하면 `{team_id, error}`만 남고 이후 open은 reopen으로 가서 `restoreEditors`만 돈다. 교수자가 할 수 있는 일이 없다(DB 직접 수정 외).
