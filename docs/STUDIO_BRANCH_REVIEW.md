@@ -57,6 +57,7 @@
 
 ## 3. 불완전할 수 있는 부분
 - 가짜 port: DB 테스트 `fakeGoogle`은 배치 전체 실패→개별 재시도, 페이지네이션·`since`를 흉내 내지 않음. slides·sheets에 docs fake. `refresh_token` 없는 응답은 `GOOGLE_SCOPE_MISSING`이라는 오해하기 쉬운 코드.
+- **실행 중간 사망 시 중복 공유(2026-10-13 확인, A·F 수정의 잔여)**: provision은 폴더는 즉시 기록하지만 조별 파일 ref는 **모든 조가 끝난 뒤 한 번** 기록하고, 조별 흐름은 복사 → 치환 → 공유를 조마다 이어서 한다. 강제 종료·OOM·2시간 만료로 중간에 죽으면 이번 실행에서 이미 만들고 공유까지 끝난 조들이 refs에 없어 재실행이 같은 조의 파일을 다시 만들고 다시 공유한다 → 학생이 파일 두 개를 받는다. graceful stop(10초)은 조가 많은 작업을 보호하지 못한다. 앞서 "중복 공유 없음"이라 적은 것은 틀렸다. 제안: 조마다 "만들기 → refs 기록 → 공유" 순서로 바꾸고 기록을 조 단위로 한다. 기록 전 사망은 공유 안 된 고아 1개, 기록 후 사망은 재실행이 refs의 파일에 공유만 다시 한다(권한 생성은 Drive에서 멱등). 변경은 `google-files.ts` 두 흐름에 조 결과 콜백 하나와 provision의 조별 `updateRefs`. 결정 대기.
 - 경계: 콜드 캐시에서 동시 4개 갱신(무해). provision은 멱등 아님(F). close·reopen은 멱등. API 401 시 "한 번만 갱신 후 재시도" 미구현. 연결 해제 뒤 provision은 예외→failed(상태는 `provisioned:false`만), close는 조별 `close_error`, reopen은 기록되나 안 보임(D), 수집은 G. 교수자가 수업에서 빠짐: 수집만 FORBIDDEN.
 - 조용히 삼켜짐: `googleRefs`의 `safeParse`+`flatMap`은 스키마에 안 맞는 ref를 없는 것처럼 취급(스키마 진화 시 파일이 마감·재개·수집에서 조용히 빠짐). `accountEmail` 실패 시 null. `ExternalResponseError`는 작업 전체 실패.
 - 관측: 로그 0줄, `observe` 없음, 교수자는 재시도 횟수·실패 사유를 볼 수 없음.
