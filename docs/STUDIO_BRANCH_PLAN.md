@@ -138,6 +138,8 @@ studio를 읽고 확인한 사실:
 
 **브랜치 뒤 할 일(우선순위 순)**: ① 호출 최적화(물결 배치, 2절) ② 웹 화면(활동 만들기·Picker·진행 상태·"다시 시도") ③ 6.3절 403 `insufficientPermissions` 재연결 처리 ④ 결정 23 `externalDocument` 축소 ⑤ 검토 보고의 다음 브랜치 항목(J 템플릿 소유자 가드, E 이메일 없는 학생, I 콜백 세션 만료, 라우트 HTTP 테스트, Slides·Sheets·퀴즈 라이브, 연결 라우트 교수자 제한, 0011 범위) ⑥ 4.5절 사소 항목.
 
+**PR 회의 안건(2026-10-13 상현)**: ① **외부 API 호출 작업의 동시성 관리**(결정 51): 같은 활동 작업의 겹침과 상태 전환·Google 반영의 시간차를 어떻게 다룰지. 현재는 프로세스 안 직렬화 + refs 잠금 병합 + 단일 재시도 작업 + worker 1대 전제. 제안은 실행 시점 상태 수렴(가) 또는 DB 임대(나). ② `CollectionService.commit`의 시스템 호출자 경로(결정 41·검토 보고 "D 근거 재확인"): worker가 자신을 누구로 밝히고 부를지는 작성자가 비워 둔 설계. ③ 명단 학번 필드(결정 43, 팀원).
+
 - studio `TODO.md`에 이 브랜치 범위·검증 기록, `docs/VERIFICATION.md`에 라이브 확인 결과(토큰·이메일 없이).
 - synsory-api: `docs/PLAN.md` 7단계 완료 표시, `docs/STUDIO_PORTING.md` 3절 현황 갱신, 팀원 전달 목록(worker UPDATE, Zoom 소회의실·`Meeting` 필드·대기실 삭제, 42·43).
 

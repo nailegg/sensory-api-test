@@ -120,7 +120,7 @@
 
 | # | 발견 | 전제 vs 실제 | 처리 |
 | --- | --- | --- | --- |
-| K1 (높음, 실측) | 단일 큐로도 같은 활동 작업이 겹칠 수 있음 | 전제: `groupConcurrency: 1`이면 DB가 직렬화. 실제: 그룹 필터는 active 행의 NOT EXISTS 서브쿼리라 동시 fetch 둘 다 통과(30/30 재현). `localConcurrency: 2`와 notify 동시 깨움으로 retry(작업 2개)·빠른 close→open에서 거의 확실히 겹치고, `saveRefs` 덮어쓰기로 ref 유실 | **수정**: `localGroupConcurrency: 1`(프로세스 안 원자적) + refs 쓰기를 행 잠금 안 읽기-합치기-쓰기로 + 재시도를 작업 하나로. 프로세스 간 직렬화는 없어 `WORKER_INSTANCES=1` 전제를 문서화 |
+| K1 (높음, 실측) | 단일 큐로도 같은 활동 작업이 겹칠 수 있음 | 전제: `groupConcurrency: 1`이면 DB가 직렬화. 실제: 그룹 필터는 active 행의 NOT EXISTS 서브쿼리라 동시 fetch 둘 다 통과(30/30 재현). `localConcurrency: 2`와 notify 동시 깨움으로 retry(작업 2개)·빠른 close→open에서 거의 확실히 겹치고, `saveRefs` 덮어쓰기로 ref 유실 | **수정**: `localGroupConcurrency: 1`(프로세스 안 원자적) + refs 쓰기를 행 잠금 안 읽기-합치기-쓰기로 + 재시도를 작업 하나로. 프로세스 간 직렬화는 없어 `WORKER_INSTANCES=1` 전제를 문서화. 1대 전제는 기존 studio에 없던 제약이라 "외부 API 호출 작업의 동시성 관리"로 PR 안건(결정 51, 2026-10-13) |
 | K2 (중간) | 수집 commit이 "처음 연 교수자가 지금도 활성 교수자 + 수업 미보관"을 요구 | `courses.member(…, instructor=true)`가 `removed_at`·보관 검사 | **수정**: 수집 주체를 작업을 넣은(닫은·재시도한) 교수자로. 보관 수업은 retry 라우트도 막힘(설계상 수용) |
 | K3 (중간) | 상태 전환 훅이 트랜잭션 안에서 풀 연결을 하나 더 빌림 | `Database.query`는 새 연결. 동시 open이 풀 크기면 5초 뒤 일괄 500 | **수정**: `ConnectionService.status(profileId, tx)`로 트랜잭션 연결 사용 |
 | K4 (낮음) | 연결 콜백이 인증 훅 아래라 세션 만료 시 JSON 401 | 로그인 콜백은 `/api/auth/` 면제 경로 | 미처리(검토 보고 I와 동일, 다음 브랜치) |
