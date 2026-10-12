@@ -123,7 +123,7 @@
 | K1 (높음, 실측) | 단일 큐로도 같은 활동 작업이 겹칠 수 있음 | 전제: `groupConcurrency: 1`이면 DB가 직렬화. 실제: 그룹 필터는 active 행의 NOT EXISTS 서브쿼리라 동시 fetch 둘 다 통과(30/30 재현). `localConcurrency: 2`와 notify 동시 깨움으로 retry(작업 2개)·빠른 close→open에서 거의 확실히 겹치고, `saveRefs` 덮어쓰기로 ref 유실 | **수정**: `localGroupConcurrency: 1`(프로세스 안 원자적) + refs 쓰기를 행 잠금 안 읽기-합치기-쓰기로 + 재시도를 작업 하나로. 프로세스 간 직렬화는 없어 `WORKER_INSTANCES=1` 전제를 문서화. 1대 전제는 기존 studio에 없던 제약이라 "외부 API 호출 작업의 동시성 관리"로 PR 안건(결정 51, 2026-10-13) |
 | K2 (중간) | 수집 commit이 "처음 연 교수자가 지금도 활성 교수자 + 수업 미보관"을 요구 | `courses.member(…, instructor=true)`가 `removed_at`·보관 검사 | **수정**: 수집 주체를 작업을 넣은(닫은·재시도한) 교수자로. 보관 수업은 retry 라우트도 막힘(설계상 수용) |
 | K3 (중간) | 상태 전환 훅이 트랜잭션 안에서 풀 연결을 하나 더 빌림 | `Database.query`는 새 연결. 동시 open이 풀 크기면 5초 뒤 일괄 500 | **수정**: `ConnectionService.status(profileId, tx)`로 트랜잭션 연결 사용 |
-| K4 (낮음) | 연결 콜백이 인증 훅 아래라 세션 만료 시 JSON 401 | 로그인 콜백은 `/api/auth/` 면제 경로 | 미처리(검토 보고 I와 동일, 다음 브랜치) |
+| K4 (낮음) | 연결 콜백이 인증 훅 아래라 세션 만료 시 JSON 401 | 로그인 콜백은 `/api/auth/` 면제 경로 | 미처리(검토 보고 I와 동일, 다음 브랜치). **원인 확인(2026-10-13): 우리 이슈.** studio의 `onRequest` 훅은 `/api/auth/*`·health·openapi만 인증을 면제하고, 로그인 Google 콜백은 그 면제 경로 아래에 두고 핸들러 안에서 실패를 웹으로 redirect한다(studio 관례). 우리 연결 콜백은 `/api/connections/google/callback`이라 훅이 먼저 돌고, 동의 화면에 머무는 동안 세션이 만료되면 훅이 401 JSON을 던져 핸들러의 try/catch(redirect)에 못 닿는다. 데이터 영향 없음(연결은 안 만들어짐). 수정은 면제 목록에 이 경로를 넣고 핸들러 안에서 `auth.authenticate`를 try/catch로 부르는 것(콘솔 리다이렉트 URI 유지). 경로를 `/api/auth/` 아래로 옮기면 콘솔 URI도 바꿔야 함 |
 | K5 (낮음) | 15분 만료 뒤 supervisor가 재시도해 핸들러 겹침 | `expireInSeconds` 기본 15분 | **수정**: 2시간 |
-| K6 (확인 필요) | 스냅샷의 `student_ids`에 `removed_at` 미적용 → 제거된 학생에게도 재시도 시 공유 | 스냅샷은 open 시점 명단을 고정하는 설계 | 미처리. 스냅샷 의미론상 의도로 보고 기록만 |
+| K6 (확인 필요) | 스냅샷의 `student_ids`에 `removed_at` 미적용 → 제거된 학생에게도 재시도 시 공유 | 스냅샷은 open 시점 명단을 고정하는 설계 | **PR 안건**(2026-10-13 상현, 결정 52). 스냅샷 의미론상 의도로 볼지, 재시도(빈 조 채우기) 때만 `removed_at`을 걸러 공유 대상에서 뺄지 작성자와 정한다 |
 
