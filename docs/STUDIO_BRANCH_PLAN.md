@@ -132,7 +132,7 @@ studio를 읽고 확인한 사실:
 
 > Google 도구 4개(docs·slides·sheets·forms)를 활동 도구로 등록하고, 교수자 Google 계정 연결, 조별 파일·폼 생성/마감/재개/응답 수집을 worker 작업으로 붙인다. 검증은 synsory-api에서 실측한 코드를 복사한 것이고, studio에서는 단위 107·DB 47·라이브(연결, Docs 활동 open→close→open, 설문 수집) 통과. 화면은 없다(다음 브랜치). 설정: `GOOGLE_CONNECT_CLIENT_ID`·`_SECRET`·`GOOGLE_PICKER_API_KEY`. 결정 근거는 synsory-api `docs/STUDIO_PORTING.md` 10절.
 
-**2차 검토 반영(2026-10-12, 검토 보고 6절)**: pg-boss 그룹 직렬화가 프로세스 간 원자적이지 않음 → `localGroupConcurrency` + refs 잠금 병합 + 재시도 단일 작업 + `WORKER_INSTANCES=1` 전제; 수집 주체 = 닫은 교수자; 훅의 연결 확인을 트랜잭션 연결로; 작업 만료 2시간.
+**2차 검토 반영(2026-10-12, 검토 보고 6절)**: pg-boss 그룹 직렬화가 프로세스 간 원자적이지 않음 → `localGroupConcurrency` + refs 잠금 병합 + 재시도 단일 작업 + `WORKER_INSTANCES=1` 전제; 수집 주체 = 닫은 교수자; 훅의 연결 확인을 트랜잭션 연결로; 작업 만료 2시간. K4(연결 콜백 세션 만료 시 JSON 401)는 2026-10-13 수정: 콜백을 인증 훅 면제 목록에 넣고 핸들러 안에서 인증해 실패 시 웹으로 redirect.
 
 **검토 반영(2026-10-10, `docs/STUDIO_BRANCH_REVIEW.md`)**: 큐 통합(B·C), 빈 조 채우기·수집 오류 기록·재시도 라우트(A·G·D·F), 배포 체크리스트(O2·E1), 실패 로그(H), 소유자 권한 복원 건너뛰기. 남은 권고는 검토 보고 5절 "다음 브랜치".
 
