@@ -132,6 +132,8 @@ studio를 읽고 확인한 사실:
 
 > Google 도구 4개(docs·slides·sheets·forms)를 활동 도구로 등록하고, 교수자 Google 계정 연결, 조별 파일·폼 생성/마감/재개/응답 수집을 worker 작업으로 붙인다. 검증은 synsory-api에서 실측한 코드를 복사한 것이고, studio에서는 단위 107·DB 47·라이브(연결, Docs 활동 open→close→open, 설문 수집) 통과. 화면은 없다(다음 브랜치). 설정: `GOOGLE_CONNECT_CLIENT_ID`·`_SECRET`·`GOOGLE_PICKER_API_KEY`. 결정 근거는 synsory-api `docs/STUDIO_PORTING.md` 10절.
 
+**2차 검토 반영(2026-10-12, 검토 보고 6절)**: pg-boss 그룹 직렬화가 프로세스 간 원자적이지 않음 → `localGroupConcurrency` + refs 잠금 병합 + 재시도 단일 작업 + `WORKER_INSTANCES=1` 전제; 수집 주체 = 닫은 교수자; 훅의 연결 확인을 트랜잭션 연결로; 작업 만료 2시간.
+
 **검토 반영(2026-10-10, `docs/STUDIO_BRANCH_REVIEW.md`)**: 큐 통합(B·C), 빈 조 채우기·수집 오류 기록·재시도 라우트(A·G·D·F), 배포 체크리스트(O2·E1), 실패 로그(H), 소유자 권한 복원 건너뛰기. 남은 권고는 검토 보고 5절 "다음 브랜치".
 
 **브랜치 뒤 할 일(우선순위 순)**: ① 호출 최적화(물결 배치, 2절) ② 웹 화면(활동 만들기·Picker·진행 상태·"다시 시도") ③ 6.3절 403 `insufficientPermissions` 재연결 처리 ④ 결정 23 `externalDocument` 축소 ⑤ 검토 보고의 다음 브랜치 항목(J 템플릿 소유자 가드, E 이메일 없는 학생, I 콜백 세션 만료, 라우트 HTTP 테스트, Slides·Sheets·퀴즈 라이브, 연결 라우트 교수자 제한, 0011 범위) ⑥ 4.5절 사소 항목.
