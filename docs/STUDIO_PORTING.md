@@ -236,7 +236,7 @@ export const externalAccounts = internal.table(
 - **폴링 주기**: Forms 응답 목록은 "비싼 읽기"(사용자당 분당 180). 활동이 `open`인 동안만 돌린다. 주기 **[결정 필요 K]**.
 - **Zoom 웹훅**: `POST /api/webhooks/zoom`. 이 라우트만 Fastify JSON 파싱 전 **원본 바이트**를 받아 서명 검증(`v0:{ts}:{raw body}` HMAC-SHA256, 상수 시간 비교) → `endpoint.url_validation`이면 CRC 응답(3초 안) → 그 밖은 큐에 넣고 즉시 204. 처리는 worker에서. 72시간마다 재검증, 6회 연속 실패 시 구독 중지.
 - 외부 HTTP 호출은 DB 트랜잭션 밖에서 한다. 결과 저장만 짧은 트랜잭션으로.
-- **Google 활동 작업(2026-10-10 구현)**: 큐 하나 `google-activity`, 작업 종류는 `data.kind`(provision·close·reopen), group = 활동 ID. pg-boss의 그룹 동시성은 **큐 이름 단위**이고, 전역(`groupConcurrency`) 필터는 동시 fetch에 **원자적이지 않다**(2차 검토 실측). 그래서 `localGroupConcurrency: 1`(프로세스 안 직렬화)을 쓰고 refs 쓰기는 행 잠금 안에서 병합하며, worker는 1개 인스턴스를 전제한다. `singletonKey`는 standard 큐에서 효과가 없어 쓰지 않는다. 상태 전환과 같은 트랜잭션에서 enqueue(`ActivityJobs` 훅), 재시도 3회·30초, 실패는 `jobFailure` 구조화 로그.
+- **Google 활동 작업(2026-10-10 구현)**: 큐 하나 `google-activity`, 작업 종류는 `data.kind`(provision·close·reopen), group = 활동 ID. pg-boss의 그룹 동시성은 **큐 이름 단위**이고, 전역(`groupConcurrency`) 필터는 동시 fetch에 **원자적이지 않다**(2차 검토 실측). 그래서 `localGroupConcurrency: 1`(프로세스 안 직렬화)을 쓰고 refs 쓰기는 행 잠금 안에서 병합하며, worker는 1개 인스턴스를 전제한다. 생성은 조별로 "만들기 → `share_pending`으로 기록 → 공유" 순서라 중간에 죽어도 재실행이 파일을 다시 만들지 않고 공유만 마저 한다(2026-10-13). `singletonKey`는 standard 큐에서 효과가 없어 쓰지 않는다. 상태 전환과 같은 트랜잭션에서 enqueue(`ActivityJobs` 훅), 재시도 3회·30초, 실패는 `jobFailure` 구조화 로그.
 
 ### 8.1 동시 처리 (2026-10-09 실측·반영)
 
