@@ -92,7 +92,7 @@
 
 ## 처리 현황 (2026-10-10, 상현 지시로 push 전 반영)
 
-- **1. B·C 해결**: 큐 하나(`google-activity`)에 group = 활동 ID → 같은 활동의 작업이 순서대로 하나씩. `singletonKey` 제거. (`google-jobs.ts`, `migrate.ts`, worker)
+- **1. B·C 해결**: 큐 하나(`google-activity`)에 group = 활동 ID → 같은 활동의 작업이 순서대로 하나씩. `singletonKey` 제거. (`google-jobs.ts`, `migrate.ts`, worker) → 2026-10-13: 큐 정책을 `singleton`으로 바꾸면서 `singletonKey`를 다시 씀(아래 K1).
 - **2. A·G·D 해결**: provision이 폴더를 먼저 저장하고 빠진 조만 채움(F도 같이 완화). 수집 실패는 폼 ref `collect_error`. 상태 DTO가 `close_error`·`reopen_error`·`collect_error`를 모두 표시. `POST …/google/retry` 추가. DB 테스트 3건 추가.
 - **3. O2·E1**: studio `TODO.md`에 배포 체크리스트(마이그레이션 → 기동 순서, 0행 확인, 동의 화면 프로덕션 전환).
 - **4. H 해결**: worker가 실패를 `jobFailure`(이메일·긴 ID 마스킹) JSON 한 줄로 로그. 단위 테스트.
@@ -122,7 +122,7 @@
 
 | # | 발견 | 전제 vs 실제 | 처리 |
 | --- | --- | --- | --- |
-| K1 (높음, 실측) | 단일 큐로도 같은 활동 작업이 겹칠 수 있음 | 전제: `groupConcurrency: 1`이면 DB가 직렬화. 실제: 그룹 필터는 active 행의 NOT EXISTS 서브쿼리라 동시 fetch 둘 다 통과(30/30 재현). `localConcurrency: 2`와 notify 동시 깨움으로 retry(작업 2개)·빠른 close→open에서 거의 확실히 겹치고, `saveRefs` 덮어쓰기로 ref 유실 | **수정**: `localGroupConcurrency: 1`(프로세스 안 원자적) + refs 쓰기를 행 잠금 안 읽기-합치기-쓰기로 + 재시도를 작업 하나로. 프로세스 간 직렬화는 없어 `WORKER_INSTANCES=1` 전제를 문서화. 1대 전제는 기존 studio에 없던 제약이라 "외부 API 호출 작업의 동시성 관리"로 PR 안건(결정 51, 2026-10-13) |
+| K1 (높음, 실측) | 단일 큐로도 같은 활동 작업이 겹칠 수 있음 | 전제: `groupConcurrency: 1`이면 DB가 직렬화. 실제: 그룹 필터는 active 행의 NOT EXISTS 서브쿼리라 동시 fetch 둘 다 통과(30/30 재현). `localConcurrency: 2`와 notify 동시 깨움으로 retry(작업 2개)·빠른 close→open에서 거의 확실히 겹치고, `saveRefs` 덮어쓰기로 ref 유실 | **수정**: `localGroupConcurrency: 1`(프로세스 안 원자적) + refs 쓰기를 행 잠금 안 읽기-합치기-쓰기로 + 재시도를 작업 하나로. 프로세스 간 직렬화는 없어 `WORKER_INSTANCES=1` 전제를 문서화. 1대 전제는 기존 studio에 없던 제약이라 "외부 API 호출 작업의 동시성 관리"로 PR 안건(결정 51, 2026-10-13). **2026-10-13 재수정(studio ffc6def)**: pg-boss 큐를 `singleton` 정책으로 만들고 작업에 `singletonKey = 활동 ID`를 붙여, 같은 활동의 작업은 **unique index**로 한 번에 하나만 active가 된다(DB 제약이라 worker 프로세스 수와 무관하게 원자적). `localGroupConcurrency`와 worker 1대 전제는 제거. 큐 정책은 사후 변경이 안 되어 `migrate.ts`가 정책이 다르면 큐를 지우고 다시 만든다(배포 전이라 잃는 작업 없음, 로컬은 `pnpm db:migrate` 재실행). 큐 어댑터는 드라이버 오류의 SQLSTATE를 `code`로 올려 pg-boss가 unique 위반(23505)을 빈 fetch로 다루게 한다. 알려진 한계: 다른 프로세스가 집으려는 맨 앞 작업의 활동이 이미 active면 그 fetch는 빈 결과로 끝나고 1초 뒤 다시 폴링한다(정확성 문제 아님, 같은 활동 작업이 연달아 쌓일 때만 생기는 지연). DB 테스트 1건(독립 fetch 둘이 같은 활동을 동시에 집지 못하고 다른 활동은 집음). C 결함의 직접 해법(큐 정책 변경)을 처음에 택하지 않고 group으로 두 번 우회한 것이 원인이었다 |
 | K2 (중간) | 수집 commit이 "처음 연 교수자가 지금도 활성 교수자 + 수업 미보관"을 요구 | `courses.member(…, instructor=true)`가 `removed_at`·보관 검사 | **수정**: 수집 주체를 작업을 넣은(닫은·재시도한) 교수자로. 보관 수업은 retry 라우트도 막힘(설계상 수용) |
 | K3 (중간) | 상태 전환 훅이 트랜잭션 안에서 풀 연결을 하나 더 빌림 | `Database.query`는 새 연결. 동시 open이 풀 크기면 5초 뒤 일괄 500 | **수정**: `ConnectionService.status(profileId, tx)`로 트랜잭션 연결 사용 |
 | K4 (낮음) | 연결 콜백이 인증 훅 아래라 세션 만료 시 JSON 401 | 로그인 콜백은 `/api/auth/` 면제 경로 | **수정**(2026-10-13, 상현 지시, studio 0aeedda). 원인은 우리 경로 선택: studio의 `onRequest` 훅은 `/api/auth/*`·health·openapi만 인증을 면제하고, 로그인 Google 콜백은 그 면제 경로 아래에서 핸들러 안의 실패를 웹으로 redirect한다(관례). 우리 콜백은 `/api/connections/google/callback`이라 훅이 먼저 돌아, 동의 화면에 머무는 동안 세션이 만료되면 훅의 401 JSON이 핸들러의 try/catch에 닿기 전에 나갔다. 데이터 영향 없음. 수정: 면제 목록에 이 경로를 추가하고 핸들러 try 안에서 `auth.authenticate`를 직접 불러 실패하면 `/courses?google_error=UNAUTHENTICATED`로 redirect(콘솔 리다이렉트 URI 유지). 라우트 테스트 1건 추가(세션 없이 호출 → 302). 단위 108·DB 48·타입·린트·경계 통과 |
